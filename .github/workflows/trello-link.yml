@@ -35,7 +35,10 @@ jobs:
         run: |
           set -euo pipefail
           api() { curl -sS -w '\n%{http_code}' "$@"; }
-          cards=$(curl -sS "https://api.trello.com/1/boards/$BOARD/cards?fields=name,id&key=$KEY&token=$TOKEN")
+          resp=$(api "https://api.trello.com/1/boards/$BOARD/cards?fields=name,id&key=$KEY&token=$TOKEN")
+          code=$(echo "$resp" | tail -n1)
+          [ "$code" = "200" ] || { echo "::error::Falha ao buscar cards do board (HTTP $code)"; exit 1; }
+          cards=$(echo "$resp" | sed '$d')
           while read -r ref; do
             [ -z "$ref" ] && continue
             card=$(echo "$cards" | jq -r --arg ref "$ref" \
