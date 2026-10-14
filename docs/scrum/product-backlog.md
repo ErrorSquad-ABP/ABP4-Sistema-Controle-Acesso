@@ -197,7 +197,7 @@ Pontos:   — (Planning 1)
 
 ### US-12 · Design no Figma (fase 1)
 
-- **Épico**: E6 · **Sprint**: 1 · **Pontos**: — (Planning 1)
+- **Épico**: E4/E6 · **Sprint**: 1 · **Pontos**: — (Planning 1)
 
 **Narrativa**: Como dev, quero o design system e o fluxo do usuário desenhados no Figma, para implementar as telas mobile com tipografia, cores e componentes já definidos, sem decidir visual na hora do código.
 
@@ -233,7 +233,7 @@ Descobertas por sprint. Títulos, épico e sprint alvo conforme previsto; o refi
 | US-17 | Consultar/cancelar autorização admin | E2 | S2 |
 | US-18 | Minhas autorizações usuário | E2 | S2 |
 | US-19 | Credencial QR rotativa + validação 10s | E2 | S2 |
-| US-20 | Validação de acesso QR com geofence 100m | E2 | S2 |
+| US-20 | Validação de acesso QR com geofence 100m | E2 | S3 |
 | US-21 | Eventos de acesso + histórico com filtros | E2 | S2/S3 |
 | US-22 | Display: render do QR + status | E3 | S2 |
 | US-23 | NFC RC522 + feedback de decisão | E3 | S3 |
