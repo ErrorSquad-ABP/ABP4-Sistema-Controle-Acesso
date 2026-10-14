@@ -71,3 +71,5 @@ Passo a passo de ambiente, infraestrutura e execução em [`docs/guides/como-rod
 ## Equipe
 
 **ErrorSquad** · ABP 2026-2 · 4DSM · FATEC Jacareí — Scrum Master: João Victor Lopes Rosa. Os demais integrantes entram nesta lista quando forem adicionados ao projeto.
+
+> Vinculo Trello<->GitHub ativo.
