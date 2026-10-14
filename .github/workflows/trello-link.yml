@@ -1,0 +1,57 @@
+name: trello-link
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, ready_for_review, closed]
+
+permissions:
+  contents: read
+
+jobs:
+  link:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extrair referencias US-XX do PR
+        id: refs
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          printf '%s\n%s\n%s' "$TITLE" "$BODY" "$BRANCH" \
+            | grep -oiE 'US-[0-9]+' | tr '[:lower:]' '[:upper:]' | sort -u > /tmp/refs.txt
+          echo "count=$(wc -l < /tmp/refs.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Anexar PR aos cards no Trello
+        if: steps.refs.outputs.count != '0'
+        env:
+          KEY: ${{ secrets.TRELLO_API_KEY }}
+          TOKEN: ${{ secrets.TRELLO_TOKEN }}
+          BOARD: ${{ vars.TRELLO_BOARD_ID }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_STATE: ${{ github.event.pull_request.state }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+        run: |
+          set -euo pipefail
+          api() { curl -sS -w '\n%{http_code}' "$@"; }
+          cards=$(curl -sS "https://api.trello.com/1/boards/$BOARD/cards?fields=name,id&key=$KEY&token=$TOKEN")
+          while read -r ref; do
+            [ -z "$ref" ] && continue
+            card=$(echo "$cards" | jq -r --arg ref "$ref" \
+              '.[] | select(.name | ascii_upcase | startswith($ref + " ")) | .id' | head -n1)
+            if [ -z "$card" ]; then
+              echo "::warning::Card $ref nao encontrado no board"
+              continue
+            fi
+            resp=$(api -X POST "https://api.trello.com/1/cards/$card/attachments?key=$KEY&token=$TOKEN" \
+              --data-urlencode "url=$PR_URL" --data-urlencode "name=$PR_TITLE")
+            code=$(echo "$resp" | tail -n1)
+            [ "$code" = "200" ] || { echo "::error::Falha ao anexar em $ref (HTTP $code)"; exit 1; }
+            if [ "$PR_STATE" = "closed" ] && [ "$PR_MERGED" = "true" ]; then ST="merged"; else ST="$PR_STATE"; fi
+            resp=$(api -X POST "https://api.trello.com/1/cards/$card/actions/comments?key=$KEY&token=$TOKEN" \
+              --data-urlencode "text=PR \"$PR_TITLE\" ($ST) — $PR_URL")
+            code=$(echo "$resp" | tail -n1)
+            [ "$code" = "200" ] || { echo "::error::Falha ao comentar em $ref (HTTP $code)"; exit 1; }
+            echo "Card $ref linkado ($ST)"
+          done < /tmp/refs.txt
