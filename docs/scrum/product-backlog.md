@@ -251,7 +251,7 @@ Descobertas por sprint. Títulos, épico e sprint alvo conforme previsto; o refi
 | US-35 | Diagramas e docs de arquitetura finais | E6 | S3 |
 | US-36 | Relatório ABNT e apresentação final | E6 | S4 |
 
-**Distribuição por épico**: E1 com 3 cards (todos na Sprint 1, a fundação não tem story futura) · E2 com 11 · E3 com 7 · E4 com 7 · E5 com 4 · E6 com 4 — **36 stories no total**, sendo 13 detalhadas na Sprint 1 e 23 futuras.
+**Distribuição por épico** (cada story conta **uma vez**, pelo épico primário): E1 com 3 cards (todos na Sprint 1, a fundação não tem story futura) · E2 com 11 · E3 com 7 · E4 com 7 · E5 com 4 · E6 com 4 **(US-12 = E4/E6 compartilhada; contada em E6)** — **36 stories no total**, sendo 13 detalhadas na Sprint 1 e 23 futuras.
 
 ## Índice
 
