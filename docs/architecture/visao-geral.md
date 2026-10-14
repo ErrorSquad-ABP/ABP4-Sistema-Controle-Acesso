@@ -16,7 +16,7 @@ flowchart LR
   M -. prod .- MP[HiveMQ Cloud · MQTT TLS]
 ```
 
-- **Dev**: broker Mosquitto local (porta 1883, sem TLS) e Postgres do compose — ver [`../guides/como-rodar.md`](../guides/como-rodar.md).
+- **Dev**: broker Mosquitto local (porta `1884` no host, `1883` interna do container; sem TLS) e Postgres do compose — ver [`../guides/como-rodar.md`](../guides/como-rodar.md).
 - **Prod**: HiveMQ Cloud (MQTT sobre TLS, com credenciais), Postgres no Neon e backend no Render.
 
 ## Fluxo de acesso via QR
