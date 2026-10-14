@@ -1,0 +1,34 @@
+name: abp4-dev
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: abp4-mosquitto
+    # Host 1884: 1883 ja esta em uso na maquina do dev (mosquitto do projeto legado)
+    ports:
+      - "1884:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: abp4-postgres
+    environment:
+      POSTGRES_USER: abp4
+      POSTGRES_PASSWORD: abp4
+      POSTGRES_DB: abp4
+    # Host 5436: 5432 ja esta em uso na maquina do dev (asakai-db-1)
+    ports:
+      - "5436:5432"
+    volumes:
+      - abp4-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U abp4 -d abp4"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  abp4-pgdata:

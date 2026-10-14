@@ -11,7 +11,7 @@ Guia para subir o ambiente de desenvolvimento na sua máquina. Todos os comandos
 
 ## 1) Subir a infraestrutura de dev
 
-Sobe o broker MQTT (Mosquitto, porta `1883`) e o PostgreSQL (porta `5432`):
+Sobe o broker MQTT (Mosquitto) e o PostgreSQL. No host, as portas publicadas são `1884` (Mosquitto) e `5436` (PostgreSQL) — as portas padrão `1883`/`5432` já estão ocupadas por outros projetos nesta máquina. Dentro dos containers as portas continuam padrão: `1883` e `5432`.
 
 ```bash
 docker compose -f infra/docker-compose.dev.yml up -d
@@ -25,7 +25,7 @@ docker compose -f infra/docker-compose.dev.yml logs mosquitto
 docker compose -f infra/docker-compose.dev.yml exec postgres pg_isready -U abp4
 ```
 
-Esperado: os dois serviços `running`, o Mosquitto registrando que escuta na porta 1883 e o `pg_isready` respondendo `accepting connections`. Os valores de conexão locais (usuário/senha/banco `abp4`) servem só para dev — em produção valem Neon + HiveMQ Cloud.
+Esperado: os dois serviços `running`, o Mosquitto registrando que escuta na porta 1883 (interna do container) e o `pg_isready` respondendo `accepting connections`. Do host, acesse-os em `localhost:1884` (MQTT) e `localhost:5436` (PostgreSQL). Os valores de conexão locais (usuário/senha/banco `abp4`) servem só para dev — em produção valem Neon + HiveMQ Cloud.
 
 ## 2) Backend, mobile e firmware
 
