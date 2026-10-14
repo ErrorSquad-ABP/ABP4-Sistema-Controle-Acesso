@@ -1,0 +1,33 @@
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Env e segredos
+.env
+.env.*
+!.env.example
+
+# Flutter/Dart
+.dart_tool/
+.packages
+build/
+*.g.dart
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Python (utilitarios locais/Wokwi)
+__pycache__/
+.venv/
+
+# Sistema/editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Processo (ledger local do SDD)
+.superpowers/
