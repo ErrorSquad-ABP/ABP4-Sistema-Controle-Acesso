@@ -1,16 +1,26 @@
 # design
 
-Assets de UI do projeto. A fonte viva do design é o arquivo Figma:
-**[ABP 4DSM · Controle de Acesso](https://www.figma.com/design/g9FXCiyqOzeo5cttSgyRWm)** (montado via Figma MCP).
+Fonte viva: **[ABP-4DSM (Figma)](https://www.figma.com/design/nddGhlwJIi5rMzhvsK5Rkl)** — 4 páginas:
+`01 · Design System` · `02 · Telas — Claro` · `03 · Telas — Escuro` · `04 · Handoff & Regras de Negócio`.
 
-## Direção visual (decidida em 2026-10-14)
+## Direção visual — "Monochrome Premium" (decidida em 15/10/2026)
 
-**B · "Acesso Limpo"** — corporativo moderno, claro e arejado:
+Preto e branco, clean; **cor apenas como feedback de estado**. Temas **Claro e Escuro** (switch de aparência na tela de Perfil).
 
-- `bg/canvas` `#F7F9FC` · `bg/surface` `#FFFFFF`
-- `text/primary` `#101828` · `text/secondary` `#667085`
-- `brand/primary` `#1A5FB4` · `brand/soft` `#E8F0FA` · `border/subtle` `#E4E7EC`
-- `state/success` `#0E7C5B` · `state/danger` `#D92D20` · `state/warning` `#B54708`
-- Tipografia: **Inter** · raios suaves (10–12) · sombras leves
+**Tokens** (Claro → Escuro):
 
-O tema do Flutter (US-09) deve espelhar esses tokens.
+| Papel | Claro | Escuro |
+|---|---|---|
+| Fundo | `#FAFAFA` | `#0A0A0A` |
+| Superfície | `#FFFFFF` | `#161616` |
+| Texto | `#0A0A0A` | `#FAFAFA` |
+| Texto secundário | `#6E6E6E` | `#A3A3A3` |
+| Hairline | `#E8E8E8` | `#262626` |
+
+**Feedback** (igual nos dois temas): sucesso `#16A34A` (soft `#ECFDF3`) · erro `#DC2626` (soft `#FEF2F2`) · atenção `#D97706` (soft `#FFFBEB`).
+
+**Forma**: tipografia **Inter** (Display 32 · Título 24 · Cabeçalho 20 · Corpo 16 · Legenda 13 · Micro 11 maiúsculo) · raio 12 (controles) / 16 (cards) / pills (chips) · grid 8pt · botões primários preto↔branco · ícones de linha 1.5px · separação por hairlines (sem sombras pesadas).
+
+O tema do Flutter (US-09) espelha estes tokens nos dois modos (ThemeData claro/escuro).
+
+> Histórico: `Page 1` (protótipo inicial) e a exploração azul anterior estão descartadas — mantidas apenas como referência.
