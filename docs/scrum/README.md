@@ -7,8 +7,8 @@ Somos um time pequeno de 6 pessoas tocando o Sistema Integrado de Controle de Ac
 ## Papéis
 
 - **SM**: João Victor Lopes Rosa.
-- **PO**: designado pelo time na Planning 1 (stakeholder avaliador: Prof. Leandro Toss Hoffmann e banca).
-- **Devs**: os 6 — time pequeno, todos executam.
+- **PO**: Felipe Pacheco (@FelipePacheco30) — definido em 15/10 (stakeholder avaliador: Prof. Leandro Toss Hoffmann e banca).
+- **Devs**: os 6 — todos executam, inclusive SM e PO.
 
 ## Ritos
 
