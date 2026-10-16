@@ -32,6 +32,6 @@ O tema do Flutter (US-09) espelha estes tokens nos dois modos (ThemeData claro/e
 | `telas-escuro/` | O mesmo fluxo no tema escuro + Perfil com seletor de tema |
 | `handoff-regras-de-negocio.png` | Página de regras e handoffs (QR 10s, geofence 100m, perfis, NFC, fluxos) |
 
-PNGs exportados do Figma em 16/10 (a fonte viva continua sendo o arquivo no Figma).
+PNGs exportados do Figma em 16/10, já com a tipografia **Figtree** (a fonte viva continua sendo o arquivo no Figma).
 
 > Histórico: `Page 1` (protótipo inicial) e a exploração azul anterior estão descartadas — mantidas apenas como referência.
