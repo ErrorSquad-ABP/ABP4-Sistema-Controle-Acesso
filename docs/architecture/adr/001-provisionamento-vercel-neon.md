@@ -20,3 +20,14 @@ RNF06 exige banco em nuvem; RP11 pede deploy automatizado; RP12 pede containers 
   - **Backend → terminal**: publicação MQTT **pontual** por comando (conecta → publica → desconecta), o que é seguro em serverless.
   - O **worker MQTT persistente** (conexão sempre ativa: assina os tópicos do terminal e publica comandos) roda no **Render** como web service pequeno — mesmo repositório e domínio da API, com entry point próprio (`worker.ts`), compartilhando o Neon e o HiveMQ. A API permanece 100% na Vercel. *(Decidido em 16/10 — card US-37.)*
 - O Docker segue obrigatório no desenvolvimento (compose) e continua disponível como caminho alternativo de deploy, atendendo RP12.
+
+## Limites dos planos gratuitos (verificados em 16/10/2026)
+
+| Serviço | Limite relevante | Impacto / mitigação |
+|---|---|---|
+| **Vercel (Hobby)** | Funções executam por até **10 s** por request · uso não-comercial (projeto acadêmico ✓) | Manter handlers enxutos; o publish MQTT pontual cabe folgado (<1 s). |
+| **Render (free)** | Web service **dorme após 15 min sem tráfego HTTP** — conexões MQTT de saída **não contam** como tráfego | O worker faz **self-ping HTTP a cada 10 min** (keep-alive) — requisito do US-37. Alternativa robusta: VM "Always Free" da Oracle. |
+| **Neon (free)** | 1 GB de storage por projeto · 100 CU-hours/mês · autosuspend de 5 min | Suficiente para o projeto; primeira query após ocioso leva ~1 s. Usar o endpoint **`-pooler`**. |
+| **HiveMQ Cloud (Serverless/free)** | 100 conexões · 10 GB/mês · retenção de 3 dias · **clusters Serverless têm EOL em 31/12/2026** | Cobre todo o semestre (entrega final em dez/2026). Plano B documentado: **EMQX Cloud Serverless** (free) ou Mosquitto numa VM. |
+| **GitHub Actions** | Repositório **público** → minutos ilimitados | CI/CD do time sem custo. |
+| **Figma (Education)** | 200 chamadas de MCP por dia | Design sem gargalo no semestre. |
