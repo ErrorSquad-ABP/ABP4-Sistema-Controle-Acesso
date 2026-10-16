@@ -210,12 +210,12 @@ Pontos:   — (Planning 1)
 
 - **Épico**: E1 · **Sprint**: 1 · **Pontos**: — (Planning 1)
 
-**Narrativa**: Como time, quero o deploy automático do backend após merge na `main`, para validar a entrega em ambiente real (Render + Neon) já na Sprint 1, com healthcheck público.
+**Narrativa**: Como time, quero o deploy automático do backend após merge na `main`, para validar a entrega em ambiente real (Vercel + Neon) já na Sprint 1, com healthcheck público.
 
 **Critérios de aceite**:
 
 - [ ] Workflow `cd-backend.yml` disparando deploy após merge na `main`
-- [ ] Backend do esqueleto no ar no Render com healthcheck público
+- [ ] Backend do esqueleto no ar no Vercel com healthcheck público
 - [ ] Neon provisionado
 - [ ] Secrets configurados
 
