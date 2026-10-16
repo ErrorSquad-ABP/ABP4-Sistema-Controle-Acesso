@@ -21,6 +21,7 @@ Stories do backlog com **Sprint alvo S2** no [`product-backlog.md`](../product-b
 | US-27 | Login real + sessão | E4 | S2 |
 | US-28 | Minhas autorizações no app | E4 | S2 |
 | US-29 | Scanner QR + resultado no app | E4 | S2 |
+| US-37 | Worker MQTT persistente no Render | E1 | S2 |
 
 **US-21 (S2/S3)** entra fatiada: a fatia da S2 fecha na Review 2; o restante segue na Sprint 3.
 

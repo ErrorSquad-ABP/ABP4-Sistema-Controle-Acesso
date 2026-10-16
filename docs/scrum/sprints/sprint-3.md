@@ -20,6 +20,7 @@ Stories do backlog com **Sprint alvo S3** e com **S2/S3** no [`product-backlog.m
 | US-33 | Revisão de segurança | E5 | S3 |
 | US-34 | Teste em hardware real | E5 | S3 |
 | US-35 | Diagramas e docs de arquitetura finais | E6 | S3 |
+| US-38 | Demo web (Flutter build) na Vercel | E6 | S3 |
 
 **US-21 (S2/S3)**: o que não fechou na Sprint 2 é retomado aqui.
 

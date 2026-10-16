@@ -18,5 +18,5 @@ RNF06 exige banco em nuvem; RP11 pede deploy automatizado; RP12 pede containers 
 - A Vercel é **serverless**: não mantém processos de longa duração. Um cliente MQTT "sempre ligado" **não roda lá**. Por isso:
   - **Terminal → backend**: HTTP(S) direto do ESP32 (busca do QR a cada 10s, envio de leituras NFC, heartbeat).
   - **Backend → terminal**: publicação MQTT **pontual** por comando (conecta → publica → desconecta), o que é seguro em serverless.
-  - Se no futuro o time quiser um worker MQTT persistente, ele roda **fora da Vercel** (ex.: Render free) sem alterar a API — decisão adiada (YAGNI).
+  - O **worker MQTT persistente** (conexão sempre ativa: assina os tópicos do terminal e publica comandos) roda no **Render** como web service pequeno — mesmo repositório e domínio da API, com entry point próprio (`worker.ts`), compartilhando o Neon e o HiveMQ. A API permanece 100% na Vercel. *(Decidido em 16/10 — card US-37.)*
 - O Docker segue obrigatório no desenvolvimento (compose) e continua disponível como caminho alternativo de deploy, atendendo RP12.
