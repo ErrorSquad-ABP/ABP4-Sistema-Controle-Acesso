@@ -21,6 +21,22 @@ Guia interno do ErrorSquad para o projeto ABP4. Vale para todo mundo que mexe no
 - **1 review mínimo** antes do merge, com CI verde.
 - PR pequeno e direto; se ficou grande, quebre em PRs menores.
 
+## CI (GitHub Actions)
+
+Cada stack tem seu workflow, disparado em PR e em push na `main` **só quando a pasta dela muda** (filtro `paths`; o próprio YAML também dispara):
+
+| Workflow | Pasta | Etapas |
+|---|---|---|
+| [`ci-backend.yml`](../../.github/workflows/ci-backend.yml) | `backend/` | `npm ci` → lint (inclui regra de camadas) → typecheck → testes com cobertura → build → build da imagem Docker + smoke test do `/health` |
+| [`ci-mobile.yml`](../../.github/workflows/ci-mobile.yml) | `mobile/` | `flutter pub get` → `flutter analyze` → `flutter test` |
+| [`ci-firmware.yml`](../../.github/workflows/ci-firmware.yml) | `firmware/` | `pio run` (com `config.h` copiado do `config.example.h`) |
+| [`trello-link.yml`](../../.github/workflows/trello-link.yml) | — | anexa o PR ao card `US-XX` e comenta o status |
+
+- Enquanto `mobile/pubspec.yaml` (US-09) ou `firmware/platformio.ini` (US-07) não existirem, o respectivo job **passa com um aviso** em vez de falhar; quando o esqueleto entrar, o CI passa a valer sem mudar nada.
+- Antes de abrir PR, rode localmente o mesmo que o CI roda: no backend, `npm run lint && npm run typecheck && npm test && npm run build`.
+- Falhou? Abra a aba **Checks** do PR: cada etapa tem nome próprio, e o resumo do job do backend mostra a tabela de cobertura.
+- Os badges no `README.md` raiz mostram o estado da `main`.
+
 ## Ação de review
 
 Quem revisa olha o PR contra o Definition of Done em [`../scrum/definition-of-done.md`](../scrum/definition-of-done.md):
