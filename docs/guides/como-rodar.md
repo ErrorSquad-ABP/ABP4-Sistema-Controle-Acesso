@@ -27,17 +27,27 @@ docker compose -f infra/docker-compose.dev.yml exec postgres pg_isready -U abp4
 
 Esperado: os dois serviços `running`, o Mosquitto registrando que escuta na porta 1883 (interna do container) e o `pg_isready` respondendo `accepting connections`. Do host, acesse-os em `localhost:1884` (MQTT) e `localhost:5436` (PostgreSQL). Os valores de conexão locais (usuário/senha/banco `abp4`) servem só para dev — em produção valem Neon + HiveMQ Cloud.
 
-## 2) Backend, mobile e firmware
+## 2) Backend
+
+```bash
+cd backend
+cp .env.example .env     # opcional: sem .env valem os defaults
+npm ci
+npm run dev
+```
+
+Conferindo: `curl -i http://localhost:3000/health` deve responder `200` com `{"status":"ok",...}`. Antes de abrir PR rode `npm run lint && npm run typecheck && npm test`. Detalhes (scripts, variáveis e Docker) em [`backend/README.md`](../../backend/README.md).
+
+## 3) Mobile e firmware
 
 Ainda não há código executável: os esqueletos chegam na Sprint 1.
 
-- Backend — card **US-03** (`backend/`), instalado e rodado com Node.
 - Mobile — card **US-09** (`mobile/`), rodado com o Flutter SDK.
 - Firmware — card **US-07** (`firmware/`), compilado pelo PlatformIO ou simulado no Wokwi.
 
 Quando cada esqueleto entrar, o `README.md` da respectiva pasta e este guia são atualizados com os comandos reais.
 
-## 3) Parar tudo
+## 4) Parar tudo
 
 ```bash
 docker compose -f infra/docker-compose.dev.yml down
