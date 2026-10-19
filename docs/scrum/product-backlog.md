@@ -183,6 +183,9 @@ Pontos:   — (Planning 1)
 - [ ] Tela de login (mock → API da US-06 quando disponível)
 - [ ] Scanner de QR com `mobile_scanner`
 - [ ] Permissão de geolocalização (`geolocator`)
+- [ ] Estados de loading/erro
+- [ ] Feedback de erro/sucesso sobre `successSoft`/`errorSoft`/`warningSoft` (contraste AA nos dois temas)
+- [ ] Textos do Material em pt-BR (`flutter_localizations` + `supportedLocales`)
 
 ### US-11 · Documentos Scrum
 
