@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/main/server.ts",
+    "prebuild": "prisma generate",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main/server.js",
     "db:generate": "prisma generate",
