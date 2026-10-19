@@ -10,7 +10,9 @@ src/
 ├─ application/     casos de uso (importam só domain)
 ├─ infrastructure/  adapters que implementam os ports (relógio hoje; Prisma/MQTT nos próximos cards)
 ├─ main/            env.ts, app Express, rotas, middlewares, composition root e server
+│  └─ http/contract/ contrato REST v1: schemas Zod + operations.ts → rotas e OpenAPI (US-06)
 └─ shared/          utilitários sem regra de negócio (logger)
+scripts/            generate-openapi.ts (gera docs/api/openapi.yaml)
 tests/
 ├─ unit/            casos de uso e env, sem HTTP
 └─ integration/     rotas via Supertest em createApp()
@@ -36,6 +38,7 @@ npm run dev              # http://localhost:3000/health
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` | Vitest (unit + integração) |
 | `npm run test:coverage` | testes com cobertura |
+| `npm run openapi:generate` | regera `docs/api/openapi.yaml` a partir do contrato em `src/main/http/contract/` |
 
 ## Variáveis de ambiente
 
@@ -51,6 +54,8 @@ Validadas em [`src/main/config/env.ts`](src/main/config/env.ts); modelo em [`.en
 ## Endpoints
 
 - `GET /health` → `200 { status, version, uptimeSeconds, timestamp }`
+- `GET /docs` → Swagger UI do contrato v1 · `GET /openapi.json` → o documento OpenAPI
+- `/api/v1/...` → rotas do contrato v1 (auth, users, authorizations, access-events). Por enquanto são stubs: validam a entrada com Zod e respondem `501 NOT_IMPLEMENTED` citando o card que as implementa. Detalhes em [`docs/api/README.md`](../docs/api/README.md).
 
 Erros seguem sempre `{ "error": { "code", "message", "details?" } }` — tabela completa no guia do caso de uso modelo.
 
