@@ -29,6 +29,16 @@ const envSchema = z.object({
     .string()
     .regex(/^[0-9A-F]{4,20}$/, 'deve ser hexadecimal maiusculo (4 a 20 caracteres)')
     .default('04A1B2C3'),
+  /** Postgres (Neon em producao, compose no dev). Ausente = /health reporta not_configured. */
+  DATABASE_URL: z
+    .string()
+    .trim()
+    .transform((v) => v || undefined)
+    .refine(
+      (v) => v === undefined || /^postgres(ql)?:\/\/\S+$/.test(v),
+      'deve comecar com postgres:// ou postgresql://',
+    )
+    .optional(),
 });
 
 export type Env = Readonly<z.infer<typeof envSchema>>;

@@ -32,6 +32,13 @@ describe('loadEnv', () => {
     expect(env.APP_VERSION).toBeUndefined();
   });
 
+  it('aceita DATABASE_URL postgres e trata vazia como ausente', () => {
+    const url = 'postgresql://user:pass@ep-x-pooler.neon.tech/db?sslmode=require';
+
+    expect(loadEnv({ DATABASE_URL: url }).DATABASE_URL).toBe(url);
+    expect(loadEnv({ DATABASE_URL: '' }).DATABASE_URL).toBeUndefined();
+  });
+
   it('retorna objeto congelado', () => {
     expect(Object.isFrozen(loadEnv({}))).toBe(true);
   });
@@ -44,6 +51,7 @@ describe('loadEnv', () => {
     ['MQTT_URL sem esquema mqtt', { MQTT_URL: 'http://localhost:1884' }, 'MQTT_URL'],
     ['SIM_TERMINAL_ID invalido', { SIM_TERMINAL_ID: 'Terminal 01' }, 'SIM_TERMINAL_ID'],
     ['SIM_NFC_UID nao hexadecimal', { SIM_NFC_UID: 'xyz' }, 'SIM_NFC_UID'],
+    ['DATABASE_URL fora do padrao postgres', { DATABASE_URL: 'mysql://x' }, 'DATABASE_URL'],
   ])('falha no boot com %s, citando a variavel', (_caso, source, variavel) => {
     expect(() => loadEnv(source)).toThrow(InvalidEnvError);
     expect(() => loadEnv(source)).toThrow(variavel);

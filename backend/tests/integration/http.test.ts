@@ -27,11 +27,36 @@ const env = loadEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent', APP_VERSION: 'test-
 const app = createApp(buildContainer(env), { extraRoutes: [probe] });
 
 describe('GET /health', () => {
+  it('responde 200 com database ok quando o banco responde', async () => {
+    const comBanco = createApp(buildContainer(env, { databaseProbe: { ping: () => Promise.resolve() } }));
+
+    const res = await request(comBanco).get('/health');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: 'ok', database: 'ok' });
+  });
+
+  it('responde 503 sem vazar detalhes quando o banco esta indisponivel', async () => {
+    const semBanco = createApp(
+      buildContainer(env, { databaseProbe: { ping: () => Promise.reject(new Error('senha do banco')) } }),
+    );
+
+    const res = await request(semBanco).get('/health');
+
+    expect(res.status).toBe(503);
+    expect(res.body).toMatchObject({ status: 'error', database: 'unavailable' });
+    expect(JSON.stringify(res.body)).not.toContain('senha do banco');
+  });
+
   it('responde 200 com o status do servico', async () => {
     const res = await request(app).get('/health');
 
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: 'ok', version: 'test-sha' });
+    expect(res.body).toMatchObject({
+      status: 'ok',
+      version: 'test-sha',
+      database: 'not_configured',
+    });
     expect(res.body.uptimeSeconds).toBeTypeOf('number');
     expect(new Date(res.body.timestamp).toISOString()).toBe(res.body.timestamp);
     expect(res.headers['x-powered-by']).toBeUndefined();

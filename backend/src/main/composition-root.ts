@@ -1,5 +1,7 @@
 import { CheckHealthUseCase } from '../application/health/check-health.use-case.js';
+import type { DatabaseProbe } from '../domain/ports/database-probe.js';
 import { SystemClock } from '../infrastructure/clock/system-clock.js';
+import { PostgresDatabaseProbe } from '../infrastructure/database/postgres-database-probe.js';
 import { createLogger, type Logger } from '../shared/logger.js';
 import type { Env } from './config/env.js';
 
@@ -14,12 +16,27 @@ export interface Container {
   };
 }
 
-export function buildContainer(env: Env): Container {
+export interface ContainerOverrides {
+  /** Troca o probe do banco (usado nos testes de integracao). */
+  databaseProbe?: DatabaseProbe;
+}
+
+export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Container {
   const clock = new SystemClock();
+  const logger = createLogger(env.LOG_LEVEL);
+  const databaseProbe =
+    overrides.databaseProbe ??
+    (env.DATABASE_URL ? new PostgresDatabaseProbe(env.DATABASE_URL) : undefined);
   return {
-    logger: createLogger(env.LOG_LEVEL),
+    logger,
     useCases: {
-      checkHealth: new CheckHealthUseCase(clock, clock.now(), env.APP_VERSION ?? 'dev'),
+      checkHealth: new CheckHealthUseCase(
+        clock,
+        clock.now(),
+        env.APP_VERSION ?? 'dev',
+        databaseProbe,
+        logger,
+      ),
     },
   };
 }
