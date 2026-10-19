@@ -6,7 +6,7 @@ import {
   type CommandMessage,
   type MessagesByChannel,
 } from '../../domain/terminal/messages.js';
-import { TERMINAL_ID_PATTERN } from '../../domain/terminal/topics.js';
+import { TERMINAL_ID_PATTERN } from '../../shared/terminal-id.js';
 
 const envelope = {
   v: z.literal(CONTRACT_VERSION),

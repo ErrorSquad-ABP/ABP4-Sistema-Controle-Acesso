@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TERMINAL_ID_PATTERN } from '../../domain/terminal/topics.js';
+import { TERMINAL_ID_PATTERN } from '../../shared/terminal-id.js';
 import { LOG_LEVELS } from '../../shared/logger.js';
 
 /** String opcional: vazia conta como ausente (`VAR=` no .env). */

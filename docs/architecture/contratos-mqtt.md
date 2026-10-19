@@ -6,7 +6,7 @@ O pedido de acesso por QR **não** passa por MQTT: o app o envia à API por HTTP
 
 ## Tópicos
 
-`{id}` é o `terminalId` (ex.: `terminal-01`: letras minúsculas, dígitos e hífen).
+`{id}` é o `terminalId` (ex.: `terminal-01`): 1 a 64 caracteres, só minúsculas, dígitos e hífen, começando por letra ou número (regra única em `backend/src/shared/terminal-id.ts`).
 
 | Tópico | Sentido | QoS | Retain | Mensagem |
 |---|---|---|---|---|

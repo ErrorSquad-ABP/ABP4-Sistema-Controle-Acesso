@@ -1,3 +1,4 @@
+import { TERMINAL_ID_PATTERN } from '../../shared/terminal-id.js';
 import { CHANNELS, type Channel } from './messages.js';
 
 /** Entrega por canal (QoS e retain) conforme o contrato MQTT v1. */
@@ -8,8 +9,6 @@ export const CHANNEL_DELIVERY: Readonly<Record<Channel, { qos: 0 | 1; retain: bo
   commands: { qos: 1, retain: false },
   acks: { qos: 1, retain: false },
 };
-
-export const TERMINAL_ID_PATTERN = /^[a-z0-9-]{1,32}$/;
 
 export function topicFor(channel: Channel, terminalId: string): string {
   return `terminals/${terminalId}/${channel}`;
