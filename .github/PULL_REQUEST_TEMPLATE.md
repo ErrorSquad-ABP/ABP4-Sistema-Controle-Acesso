@@ -3,6 +3,7 @@
 <!-- 1-3 linhas. Cite o card: US-XX -->
 
 Card: US-XX — https://trello.com/c/...
+Dependências: US-YY (opcional; não vincula)
 
 ## Como testar
 

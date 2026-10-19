@@ -38,7 +38,7 @@ Somos um time pequeno de 6 pessoas tocando o Sistema Integrado de Controle de Ac
 
 ## Rastreio
 
-Todo trabalho é rastreável de ponta a ponta: `US-XX` no card do Trello → título da branch → título/corpo do PR → execução. O workflow `trello-link.yml` amarra o PR ao card pelo `US-XX`.
+Todo trabalho é rastreável de ponta a ponta: `US-XX` no card do Trello → título da branch → linha `Card: US-XX` do PR → execução. O workflow `trello-link.yml` amarra o PR ao card por essa linha.
 
 ## Índice
 

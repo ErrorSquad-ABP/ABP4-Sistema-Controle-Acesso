@@ -7,23 +7,43 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  # Serializa por PR: um evento nao cancela o anterior (evita anexo/comentario perdido).
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
 jobs:
   link:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Extrair referencias US-XX do PR
+      # Vinculo = story entregue pelo PR. Uma unica linha "Card: US-XX" no corpo;
+      # "Card: nenhuma" para manutencao sem story. Título/branch nao vinculam.
+      - name: Extrair o card do PR
         id: refs
         env:
-          TITLE: ${{ github.event.pull_request.title }}
           BODY: ${{ github.event.pull_request.body }}
-          BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          printf '%s\n%s\n%s' "$TITLE" "$BODY" "$BRANCH" \
-            | grep -oiE 'US-[0-9]+' | tr '[:lower:]' '[:upper:]' | sort -u > /tmp/refs.txt
-          echo "count=$(wc -l < /tmp/refs.txt)" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          card_lines=$(printf '%s\n' "$BODY" | grep -iE '^[[:space:]]*card:' || true)
+          line_count=$(printf '%s\n' "$card_lines" | grep -c . || true)
+          card_line=$(printf '%s\n' "$card_lines" | head -n1 || true)
+          refs=$(printf '%s\n' "$card_line" | grep -oiE 'US-[0-9]+' | tr '[:lower:]' '[:upper:]' | sort -u || true)
+          count=$(printf '%s\n' "$refs" | grep -c . || true)
+          if [ "$line_count" -eq 0 ] || [ "$line_count" -gt 1 ]; then
+            echo "::warning::Informe exatamente uma linha 'Card: US-XX' (ou 'Card: nenhuma'). PR nao vinculado."
+            count=0
+          elif [ "$count" -eq 0 ] && printf '%s' "$card_line" | grep -qi 'nenhuma'; then
+            echo "::notice::Card: nenhuma - PR sem vinculo de story."
+          elif [ "$count" -ne 1 ]; then
+            echo "::warning::A linha Card precisa de um unico US-XX. PR nao vinculado."
+            count=0
+          fi
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" -eq 1 ]; then printf '%s\n' "$refs" > /tmp/refs.txt; fi
 
-      - name: Anexar PR aos cards no Trello
-        if: steps.refs.outputs.count != '0'
+      - name: Anexar PR ao card no Trello
+        if: steps.refs.outputs.count == '1'
         env:
           KEY: ${{ secrets.TRELLO_API_KEY }}
           TOKEN: ${{ secrets.TRELLO_TOKEN }}
@@ -47,14 +67,49 @@ jobs:
               echo "::warning::Card $ref nao encontrado no board"
               continue
             fi
-            resp=$(api -X POST "https://api.trello.com/1/cards/$card/attachments?key=$KEY&token=$TOKEN" \
-              --data-urlencode "url=$PR_URL" --data-urlencode "name=$PR_TITLE")
+
+            # Anexo idempotente por URL do PR.
+            resp=$(api "https://api.trello.com/1/cards/$card/attachments?fields=url&key=$KEY&token=$TOKEN")
             code=$(echo "$resp" | tail -n1)
-            [ "$code" = "200" ] || { echo "::error::Falha ao anexar em $ref (HTTP $code)"; exit 1; }
+            [ "$code" = "200" ] || { echo "::error::Falha ao listar anexos de $ref (HTTP $code)"; exit 1; }
+            attachments=$(echo "$resp" | sed '$d')
+            if echo "$attachments" | jq -e --arg u "$PR_URL" '.[] | select(.url == $u)' >/dev/null; then
+              echo "Anexo de $ref ja existe"
+            else
+              resp=$(api -X POST "https://api.trello.com/1/cards/$card/attachments?key=$KEY&token=$TOKEN" \
+                --data-urlencode "url=$PR_URL" --data-urlencode "name=$PR_TITLE")
+              code=$(echo "$resp" | tail -n1)
+              [ "$code" = "200" ] || { echo "::error::Falha ao anexar em $ref (HTTP $code)"; exit 1; }
+            fi
+
             if [ "$PR_STATE" = "closed" ] && [ "$PR_MERGED" = "true" ]; then ST="merged"; else ST="$PR_STATE"; fi
-            resp=$(api -X POST "https://api.trello.com/1/cards/$card/actions/comments?key=$KEY&token=$TOKEN" \
-              --data-urlencode "text=PR \"$PR_TITLE\" ($ST) — $PR_URL")
-            code=$(echo "$resp" | tail -n1)
-            [ "$code" = "200" ] || { echo "::error::Falha ao comentar em $ref (HTTP $code)"; exit 1; }
+
+            # Comentario idempotente por (PR, estado), percorrendo a paginacao.
+            exists=0
+            before=""
+            while :; do
+              q="https://api.trello.com/1/cards/$card/actions?filter=commentCard&limit=100&key=$KEY&token=$TOKEN"
+              [ -n "$before" ] && q="$q&before=$before"
+              resp=$(api "$q")
+              code=$(echo "$resp" | tail -n1)
+              [ "$code" = "200" ] || { echo "::error::Falha ao listar comentarios de $ref (HTTP $code)"; exit 1; }
+              actions=$(echo "$resp" | sed '$d')
+              if echo "$actions" | jq -e --arg u "$PR_URL" --arg m "($ST)" \
+                '.[] | select((.data.text // "") | contains($u) and contains($m))' >/dev/null; then
+                exists=1
+                break
+              fi
+              n=$(echo "$actions" | jq 'length')
+              [ "$n" -lt 100 ] && break
+              before=$(echo "$actions" | jq -r '.[-1].id')
+            done
+            if [ "$exists" -eq 1 ]; then
+              echo "Comentario ($ST) de $ref ja existe"
+            else
+              resp=$(api -X POST "https://api.trello.com/1/cards/$card/actions/comments?key=$KEY&token=$TOKEN" \
+                --data-urlencode "text=PR \"$PR_TITLE\" ($ST) — $PR_URL")
+              code=$(echo "$resp" | tail -n1)
+              [ "$code" = "200" ] || { echo "::error::Falha ao comentar em $ref (HTTP $code)"; exit 1; }
+            fi
             echo "Card $ref linkado ($ST)"
           done < /tmp/refs.txt

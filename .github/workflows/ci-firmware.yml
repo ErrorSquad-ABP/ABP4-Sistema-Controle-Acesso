@@ -1,10 +1,8 @@
 name: ci-firmware
 
 on:
+  # Em PR roda sempre: os checks sao obrigatorios na main.
   pull_request:
-    paths:
-      - 'firmware/**'
-      - '.github/workflows/ci-firmware.yml'
   push:
     branches: [main]
     paths:
@@ -25,7 +23,7 @@ defaults:
 
 jobs:
   build:
-    name: build (PlatformIO)
+    name: ci-firmware-build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

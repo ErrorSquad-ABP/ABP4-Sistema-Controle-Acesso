@@ -17,25 +17,26 @@ Guia interno do ErrorSquad para o projeto ABP4. Vale para todo mundo que mexe no
 ## PRs
 
 - Título: `tipo: US-XX descricao` (ex.: `feat: US-03 esqueleto do backend`).
-- Corpo: descreva o que mudou e **cole o link do card do Trello** — o workflow `trello-link.yml` encontra o `US-XX` no título/corpo/branch e anexa o PR ao card automaticamente.
+- Corpo: descreva o que mudou e informe **uma linha `Card: US-XX — <link do card>`** — o `trello-link.yml` usa só essa linha (título e branch não vinculam). Para outros cards citados, use `Dependências:`; o vínculo automático significa **story entregue**, não dependência.
 - **1 review mínimo** antes do merge, com CI verde.
 - PR pequeno e direto; se ficou grande, quebre em PRs menores.
 
 ## CI (GitHub Actions)
 
-Cada stack tem seu workflow, disparado em PR e em push na `main` **só quando a pasta dela muda** (filtro `paths`; o próprio YAML também dispara):
+Cada stack tem seu workflow. **Em PR os três rodam sempre** (são os checks obrigatórios da `main`); em push na `main`, só quando a pasta dele muda (filtro `paths`):
 
-| Workflow | Pasta | Etapas |
-|---|---|---|
-| [`ci-backend.yml`](../../.github/workflows/ci-backend.yml) | `backend/` | `npm ci` → lint (inclui regra de camadas) → typecheck → testes com cobertura → build → build da imagem Docker + smoke test do `/health` |
-| [`ci-mobile.yml`](../../.github/workflows/ci-mobile.yml) | `mobile/` | `flutter pub get` → `flutter analyze` → `flutter test` |
-| [`ci-firmware.yml`](../../.github/workflows/ci-firmware.yml) | `firmware/` | `pio run` (com `config.h` copiado do `config.example.h`) |
-| [`trello-link.yml`](../../.github/workflows/trello-link.yml) | — | anexa o PR ao card `US-XX` e comenta o status |
+| Workflow | Pasta | Job (check obrigatório) | Etapas |
+|---|---|---|---|
+| [`ci-backend.yml`](../../.github/workflows/ci-backend.yml) | `backend/` | `ci-backend-check` · `ci-backend-docker` | `npm ci` → lint (inclui regra de camadas) → typecheck → testes com cobertura → build → imagem Docker + smoke test do `/health` |
+| [`ci-mobile.yml`](../../.github/workflows/ci-mobile.yml) | `mobile/` | `ci-mobile-check` | `flutter pub get` → `flutter analyze` → `flutter test` |
+| [`ci-firmware.yml`](../../.github/workflows/ci-firmware.yml) | `firmware/` | `ci-firmware-build` | `pio run` (com `config.h` copiado do `config.example.h`) |
+| [`trello-link.yml`](../../.github/workflows/trello-link.yml) | — | — | anexa o PR ao card da linha `Card: US-XX` e comenta o status |
 
-- Enquanto `mobile/pubspec.yaml` (US-09) ou `firmware/platformio.ini` (US-07) não existirem, o respectivo job **passa com um aviso** em vez de falhar; quando o esqueleto entrar, o CI passa a valer sem mudar nada.
+- Até a US-07 entrar, o `ci-firmware-build` passa com aviso se `firmware/platformio.ini` não existir; **o PR da US-07 remove esse skip**.
+- Os quatro checks acima são obrigatórios na `main`, além de 1 aprovação. Merge com check vermelho ou pendente não passa.
+- Os badges no `README.md` raiz mostram o estado da `main`.
 - Antes de abrir PR, rode localmente o mesmo que o CI roda: no backend, `npm run lint && npm run typecheck && npm test && npm run build`.
 - Falhou? Abra a aba **Checks** do PR: cada etapa tem nome próprio, e o resumo do job do backend mostra a tabela de cobertura.
-- Os badges no `README.md` raiz mostram o estado da `main`.
 
 ## Ação de review
 
@@ -52,7 +53,7 @@ Review não é carimbo: aponte o problema com o caminho do arquivo e o que você
 
 ## Rastreio
 
-`US-XX` no card do Trello → nome da branch → título/corpo do PR. A partir do card se chega ao código e do código se chega ao card, sempre.
+`US-XX` no card do Trello → nome da branch → linha `Card: US-XX` do PR. A partir do card se chega ao código e do código se chega ao card, sempre.
 
 ## Segredos
 
