@@ -21,11 +21,13 @@ flowchart LR
 
 ## Fluxo de acesso via QR
 
+> **Pendência de decisão (US-04):** o ADR 001 define QR/NFC/heartbeat por HTTP e MQTT apenas para comandos, mas o passo 1 abaixo ainda descreve o QR via MQTT. O contrato da US-04 fecha a matriz por mensagem e atualiza este fluxo.
+
 1. O backend publica um QR Code rotativo (validade de 10 s) no tópico MQTT do terminal.
 2. O terminal exibe o QR Code no display.
 3. O usuário escaneia o QR Code com o app.
-4. O app envia a credencial do usuário + a geolocalização à API (HTTPS REST).
-5. A API valida a credencial, a janela de uso, o número de usos, o local e a distância (≤ 100 m).
+4. O app envia o token lido do QR (com o identificador do terminal), a credencial do usuário e a geolocalização à API (HTTPS REST).
+5. A API valida o token do QR (formato, terminal e expiração de 10 s), a credencial do usuário, a janela de uso, o número de usos, o local e a distância (≤ 100 m).
 6. A API publica o comando de abertura no tópico do terminal e registra o evento de acesso.
 7. O terminal abre a porta, sinaliza o resultado (LED/buzzer) e confirma a execução ao backend.
 
