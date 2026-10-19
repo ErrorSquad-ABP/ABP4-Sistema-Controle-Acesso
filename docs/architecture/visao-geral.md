@@ -4,6 +4,8 @@ O sistema controla o acesso de pessoas a um edifício em três frentes que conve
 
 ## Diagrama
 
+O modelo relacional persistido pelo backend está em [`modelo-dados.md`](modelo-dados.md).
+
 ```mermaid
 flowchart LR
   A[App Flutter] -- HTTPS REST --> B[API Express/TS · Vercel]

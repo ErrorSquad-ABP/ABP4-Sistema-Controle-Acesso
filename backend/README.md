@@ -11,8 +11,9 @@ src/
 ├─ infrastructure/  adapters que implementam os ports (relógio hoje; Prisma/MQTT nos próximos cards)
 ├─ main/            env.ts, app Express, rotas, middlewares, composition root e server
 │  └─ http/contract/ contrato REST v1: schemas Zod + operations.ts → rotas e OpenAPI (US-06)
-└─ shared/          utilitários sem regra de negócio (logger)
-scripts/            generate-openapi.ts (gera docs/api/openapi.yaml)
+└─ shared/          utilitários sem regra de negócio (logger, hash de senha)
+prisma/              schema.prisma · migrations · seed.ts
+scripts/             generate-openapi.ts (gera docs/api/openapi.yaml)
 tests/
 ├─ unit/            casos de uso, env, schemas do contrato e documento OpenAPI (sem HTTP)
 └─ integration/     rotas via Supertest em createApp()
@@ -26,14 +27,23 @@ A regra de dependência entre camadas é verificada pelo ESLint. Para adicionar 
 cd backend
 cp .env.example .env     # opcional: sem .env valem os defaults
 npm ci
+npm run db:generate      # gera o Prisma Client em src/generated/prisma
+npm run db:migrate:deploy  # aplica a migration no Postgres do compose
+npm run db:seed          # dados de demonstração (idempotente)
 npm run dev              # http://localhost:3000/health
 ```
+
+O Postgres de dev sobe pelo compose (`docker compose -f infra/docker-compose.dev.yml up -d postgres`) e a `DATABASE_URL` do `.env.example` já aponta para ele. Sem banco, a API sobe e o `/health` responde `database: not_configured`.
 
 | Script | O que faz |
 |---|---|
 | `npm run dev` | servidor com reload (tsx watch), lê `.env` se existir |
 | `npm run build` | compila para `dist/` |
 | `npm start` | roda o build (`node dist/main/server.js`) |
+| `npm run db:generate` | gera o Prisma Client (necessário após `npm ci` e ao mudar o schema) |
+| `npm run db:migrate` | cria/aplica migration em desenvolvimento (`prisma migrate dev`) |
+| `npm run db:migrate:deploy` | aplica migrations pendentes (CI e produção) |
+| `npm run db:seed` | popula os dados de demonstração (pode rodar de novo) |
 | `npm run lint` | ESLint, incluindo a regra de camadas |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` | Vitest (unit + integração) |
@@ -50,6 +60,7 @@ Validadas em [`src/main/config/env.ts`](src/main/config/env.ts); modelo em [`.en
 | `PORT` | `3000` | porta HTTP |
 | `LOG_LEVEL` | `info` | `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` \| `silent` |
 | `APP_VERSION` | `dev` | versão exibida no `/health` (no CI/CD, o SHA do commit) |
+| `DATABASE_URL` | — | Postgres (`postgres://` ou `postgresql://`); compose no dev, Neon com `-pooler` em produção |
 
 ## Endpoints
 

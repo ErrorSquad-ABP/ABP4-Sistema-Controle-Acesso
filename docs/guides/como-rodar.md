@@ -33,10 +33,13 @@ Esperado: os dois serviços `running`, o Mosquitto registrando que escuta na por
 cd backend
 cp .env.example .env     # opcional: sem .env valem os defaults
 npm ci
+npm run db:generate      # Prisma Client em src/generated/prisma
+npm run db:migrate:deploy  # cria as tabelas no Postgres do compose
+npm run db:seed          # dados de demonstração (pode rodar de novo)
 npm run dev
 ```
 
-Conferindo: `curl -i http://localhost:3000/health` deve responder `200` com `{"status":"ok",...}`. Antes de abrir PR rode `npm run lint && npm run typecheck && npm test`. Detalhes (scripts, variáveis e Docker) em [`backend/README.md`](../../backend/README.md).
+Conferindo: `curl -i http://localhost:3000/health` deve responder `200` com `{"status":"ok","database":"ok",...}` (com o Postgres no ar). Sem `DATABASE_URL`, o mesmo endpoint responde `database: not_configured`. Antes de abrir PR rode `npm run lint && npm run typecheck && npm test`. Detalhes (scripts, variáveis e Docker) em [`backend/README.md`](../../backend/README.md).
 
 ## 3) Mobile
 

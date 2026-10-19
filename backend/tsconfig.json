@@ -18,5 +18,5 @@
     "forceConsistentCasingInFileNames": true,
     "sourceMap": true
   },
-  "include": ["src", "tests", "scripts", "vitest.config.ts", "eslint.config.js"]
+  "include": ["src", "tests", "scripts", "prisma", "vitest.config.ts", "eslint.config.js"]
 }
