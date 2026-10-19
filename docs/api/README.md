@@ -36,6 +36,7 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 - **Datas**: ISO 8601. Na entrada aceita offset (`2026-10-20T14:00:00-03:00`); na resposta sempre UTC (`Z`).
 - **Erros**: `{ "error": { "code", "message", "details?" } }` — tabela de códigos em [`caso-de-uso-modelo.md`](../architecture/caso-de-uso-modelo.md#erros-do-domínio-ao-http).
 - **Listas**: `{ items, page, pageSize, total }`; `page` começa em 1, `pageSize` padrão 20 (máx. 100).
+- **Pedido de acesso QR**: o app envia `qrToken` (lido do QR), `terminalId` e `position`; o usuário vem do JWT. O backend confere se o `terminalId` bate com o terminal assinado dentro do token — divergiu, nega com `INVALID_CREDENTIAL`.
 - **Acesso negado não é erro HTTP**: `POST /access-events/qr` responde `200` com `decision: DENIED` e o `reason` (ex.: `OUT_OF_RANGE`, `AUTHORIZATION_EXPIRED`), porque toda tentativa é registrada como evento.
 - **Perfis**: `ADMIN` (administrador), `RESIDENT` (condômino), `VISITOR` (visitante).
 
@@ -48,6 +49,8 @@ Para mudar o contrato:
 1. Edite os schemas (`contract/schemas/*.ts`) e/ou `contract/operations.ts`.
 2. Rode `npm run openapi:generate` no `backend/`.
 3. Commite o código **e** o `docs/api/openapi.yaml` juntos.
+
+Requisições usam a forma de **entrada** dos schemas (antes de `transform`/`default`) e respostas a forma de **saída**. Quando as duas diferem, o componente de entrada mantém o nome (`X`) e o de saída ganha o sufixo `XOutput`; um schema usado só em respostas mantém o nome base. Objetos de resposta não são fechados (`additionalProperties`), para que acrescentar campo continue compatível.
 
 O teste `tests/unit/openapi-document.test.ts` falha no CI se o YAML commitado estiver desatualizado, e também valida o documento contra a especificação OpenAPI 3.1.
 

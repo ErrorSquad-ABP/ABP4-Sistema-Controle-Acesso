@@ -14,7 +14,7 @@ src/
 └─ shared/          utilitários sem regra de negócio (logger)
 scripts/            generate-openapi.ts (gera docs/api/openapi.yaml)
 tests/
-├─ unit/            casos de uso e env, sem HTTP
+├─ unit/            casos de uso, env, schemas do contrato e documento OpenAPI (sem HTTP)
 └─ integration/     rotas via Supertest em createApp()
 ```
 
