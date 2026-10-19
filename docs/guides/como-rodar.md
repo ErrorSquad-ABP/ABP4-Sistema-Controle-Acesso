@@ -38,16 +38,21 @@ npm run dev
 
 Conferindo: `curl -i http://localhost:3000/health` deve responder `200` com `{"status":"ok",...}`. Antes de abrir PR rode `npm run lint && npm run typecheck && npm test`. Detalhes (scripts, variáveis e Docker) em [`backend/README.md`](../../backend/README.md).
 
-## 3) Mobile e firmware
+## 3) Mobile
 
-Ainda não há código executável: os esqueletos chegam na Sprint 1.
+```bash
+cd mobile
+flutter pub get
+flutter run -d chrome    # sem Android SDK; com emulador/aparelho: flutter run
+```
 
-- Mobile — card **US-09** (`mobile/`), rodado com o Flutter SDK.
-- Firmware — card **US-07** (`firmware/`), compilado pelo PlatformIO ou simulado no Wokwi.
+Conferindo: abre a tela inicial "Controle de acesso" em Figtree, no tema claro ou escuro conforme o sistema. Antes de abrir PR rode `flutter analyze && flutter test`. Detalhes (estrutura, tema e rotas) em [`mobile/README.md`](../../mobile/README.md).
 
-Quando cada esqueleto entrar, o `README.md` da respectiva pasta e este guia são atualizados com os comandos reais.
+## 4) Firmware
 
-## 4) Parar tudo
+Ainda não há código executável: o esqueleto chega pelo card **US-07** (`firmware/`), compilado pelo PlatformIO ou simulado no Wokwi. Quando entrar, o `README.md` da pasta e este guia são atualizados com os comandos reais.
+
+## 5) Parar tudo
 
 ```bash
 docker compose -f infra/docker-compose.dev.yml down
