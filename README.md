@@ -43,12 +43,12 @@ ABP4-Sistema-Controle-Acesso/
 │  ├─ scrum/                 processo, product-backlog, DoD, sprints e templates
 │  ├─ architecture/          visao-geral.md · contratos-mqtt.md · modelo-dados.md · adr/
 │  ├─ api/                   openapi.yaml (gerado) · README.md — contrato REST v1
-│  └─ guides/                desenvolvimento.md · como-rodar.md
+│  └─ guides/                desenvolvimento.md · como-rodar.md · deploy.md
 ├─ infra/                    docker-compose.dev.yml (Mosquitto + Postgres) · mosquitto/
 ├─ design/                   export de assets do Figma
 ├─ .github/
 │  ├─ workflows/             ci-backend.yml · ci-mobile.yml · ci-firmware.yml ·
-│  │                         * cd-backend.yml (US-13) · trello-link.yml
+│  │                         cd-backend.yml · trello-link.yml
 │  └─ CODEOWNERS · PULL_REQUEST_TEMPLATE.md · ISSUE_TEMPLATE/
 └─ README.md · .gitignore · .editorconfig
 ```

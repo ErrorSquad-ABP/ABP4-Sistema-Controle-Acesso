@@ -22,6 +22,8 @@ RNF06 exige banco em nuvem; RP11 pede deploy automatizado; RP12 pede containers 
 
 > **Adendo (18/10/2026) — transporte do terminal:** a decisão de usar HTTP(S) direto do ESP32 para QR/NFC/heartbeat foi revista antes da implementação. O terminal fala **MQTT bidirecional** com o backend (QR, eventos, heartbeat, ACK) e o app fala HTTPS com a API. A API continua serverless na Vercel e publica comandos MQTT pontuais; o processo MQTT que assina os tópicos roda localmente na S1 (US-04) e no Render a partir da S2 (US-37). O worker **não compartilha o domínio da API** (URL própria no Render). A matriz detalhada fica em `docs/architecture/visao-geral.md`; o contrato, em `docs/architecture/contratos-mqtt.md` (US-04).
 
+> **Adendo (19/10/2026) — entrada e CD da API:** a Vercel passou a rodar Express sem configuração, então o adaptador `api/index.ts` previsto acima não é necessário: o app é exportado por `backend/src/index.ts` e o deploy sai pelo `cd-backend.yml` (Vercel CLI no GitHub Actions, com o Root Directory `backend` no projeto). O `/health` público também verifica a conexão com o Neon (`database`). Passo a passo em [`../../guides/deploy.md`](../../guides/deploy.md).
+
 - O Docker segue obrigatório no desenvolvimento (compose) e continua disponível como caminho alternativo de deploy, atendendo RP12.
 
 ## Limites dos planos gratuitos (verificados em 16/10/2026)
