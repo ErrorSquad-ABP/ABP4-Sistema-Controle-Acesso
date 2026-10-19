@@ -1,4 +1,57 @@
 # mobile
 
-App Flutter do usuário e da administração (Riverpod + go_router, alvo Android).
-Esqueleto entra pela Sprint 1 — card US-09 (ver `docs/scrum/product-backlog.md`).
+App Flutter do usuário e da administração — Flutter 3.47 (Dart 3.13) + Riverpod 3 + go_router, alvo Android (US-09).
+
+## Estrutura
+
+```text
+lib/
+├─ main.dart                 ProviderScope + runApp
+├─ app.dart                  MaterialApp.router: temas claro/escuro, themeMode e router via Riverpod
+├─ core/
+│  ├─ theme/                 tokens e ThemeData do design system
+│  │  ├─ app_colors.dart     AppPalette (ThemeExtension): base monocromática + feedback
+│  │  ├─ app_typography.dart escala Figtree (Display 32 … Micro 11)
+│  │  ├─ app_spacing.dart    grid 8pt, margem 24, raios 12/16/pill, toque 56
+│  │  ├─ app_theme.dart      AppTheme.light() / AppTheme.dark()
+│  │  └─ theme_mode_provider.dart  aparência (sistema/claro/escuro)
+│  └─ router/app_router.dart rotas (AppRoutes) + appRouterProvider
+└─ features/                 uma pasta por feature (auth, authorizations, scanner, admin…)
+   └─ home/                  tela inicial provisória do esqueleto
+test/                        widget test do app + testes do tema
+assets/fonts/figtree/        Figtree 400/500/600/700 + OFL.txt
+```
+
+## Rodando
+
+```bash
+cd mobile
+flutter pub get
+flutter run -d chrome     # ou: flutter run (emulador/aparelho Android)
+```
+
+| Comando | O que faz |
+|---|---|
+| `flutter analyze` | lints (`flutter_lints` + regras extras em `analysis_options.yaml`) |
+| `flutter test` | widget test do app e testes do tema |
+| `dart format lib test` | formatação |
+| `flutter build apk` | build Android (exige Android SDK) |
+| `flutter build web` | build web |
+
+O CI (`ci-mobile.yml`) roda `flutter pub get`, `flutter analyze` e `flutter test` em todo PR que mexe em `mobile/`.
+
+## Tema
+
+Espelha o design system **Monochrome Premium** do Figma ([`design/README.md`](../design/README.md)) nos dois modos.
+
+- **Cores**: leia pelo tema, nunca com hex solto na tela — `Theme.of(context).colorScheme` para a base e `context.palette` (de `app_colors.dart`) para os tokens do projeto, inclusive feedback (`success`, `error`, `warning` e as versões `*Soft`).
+- **Tipografia**: `Theme.of(context).textTheme` — `displaySmall` (Display 32), `headlineSmall` (Título 24), `titleLarge` (Cabeçalho 20), `bodyLarge`/`bodyMedium` (Corpo 16, primário/secundário), `bodySmall` (Legenda 13), `labelSmall` (Micro 11, escrever o texto em caixa alta).
+- **Espaços e raios**: `AppSpacing` e `AppRadius`.
+- **Componentes**: `FilledButton` = primário (cápsula preto↔branco), `OutlinedButton` = secundário, `TextButton` = ghost; `TextField`, `Card`, `Divider` e `NavigationBar` já saem no padrão.
+- **Aparência**: segue o sistema; `ref.read(themeModeProvider.notifier).set(ThemeMode.dark)` troca (seletor do Perfil).
+
+A fonte Figtree é empacotada no app (declarada no `pubspec.yaml`): funciona offline e mantém os testes determinísticos.
+
+## Rotas
+
+Declaradas em `lib/core/router/app_router.dart`. Para uma tela nova: crie a página em `lib/features/<feature>/`, adicione o caminho em `AppRoutes` e um `GoRoute` na lista. Redirects (ex.: exigir login) entram no próprio `GoRouter`, lendo providers via `ref`.
