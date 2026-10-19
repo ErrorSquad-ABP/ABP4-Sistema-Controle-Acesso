@@ -12,9 +12,17 @@ export interface CreateAppOptions {
   extraRoutes?: Router[];
 }
 
-/** Monta o app Express sem `listen` — reaproveitado por server.ts, testes e (US-13) Vercel. */
+/** Monta o app Express sem `listen` — reaproveitado por server.ts, testes e Vercel. */
 export function createApp(container: Container, options: CreateAppOptions = {}): Express {
-  const app = express();
+  return configureApp(express(), container, options);
+}
+
+/** Aplica a composição HTTP num app já criado (o entry da Vercel precisa chamar `express()`). */
+export function configureApp(
+  app: Express,
+  container: Container,
+  options: CreateAppOptions = {},
+): Express {
   app.disable('x-powered-by');
   app.use(express.json({ limit: '100kb' }));
 
