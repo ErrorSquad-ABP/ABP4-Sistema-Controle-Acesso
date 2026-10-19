@@ -15,7 +15,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: App()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Controle de acesso'), findsOneWidget);
+    expect(find.text('Bem-vindo de volta'), findsOneWidget);
     expect(find.text('CONTROLE DE ACESSO'), findsOneWidget);
     expect(scaffoldBackground(tester), AppPalette.light.background);
   });

@@ -54,4 +54,8 @@ A fonte Figtree é empacotada no app (declarada no `pubspec.yaml`): funciona off
 
 ## Rotas
 
+A abertura do app aponta para `/login`, com o mock da tela Entrar baseado nos exports do Figma. Usa os temas existentes e funciona sem backend. O formulário valida o `LoginRequest` da US-06: e-mail de até 254 caracteres e senha de 1 a 72; normaliza o e-mail para minúsculas e preserva a senha.
+
+O `loginGatewayProvider` fornece um `StubLoginGateway`: após um breve carregamento, simula `501 NOT_IMPLEMENTED` da US-14 e mostra um aviso, sem criar sessão ou armazenar credenciais. Para testar, use `maria.souza@exemplo.com` e `senha-forte-123`; campos inválidos mostram mensagens individuais. A recuperação de senha orienta procurar a administração, pois não há endpoint no contrato v1. A futura integração HTTP deve substituir esse gateway por `POST /api/v1/auth/login` e tratar a resposta de autenticação. A tela provisória anterior continua em `/`.
+
 Declaradas em `lib/core/router/app_router.dart`. Para uma tela nova: crie a página em `lib/features/<feature>/`, adicione o caminho em `AppRoutes` e um `GoRoute` na lista. Redirects (ex.: exigir login) entram no próprio `GoRouter`, lendo providers via `ref`.
