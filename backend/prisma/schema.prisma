@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum AuthorizationStatus {
+  ACTIVE
+  CANCELLED
+}
+
+enum CredentialType {
+  QR
+  NFC
+}
+
+enum AccessMethod {
+  QR
+  NFC
+}
+
+enum AccessDecision {
+  ALLOWED
+  DENIED
+}
+
+model User {
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String
+  email        String       @unique
+  passwordHash String
+  role         UserRole     @default(USER)
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  authorizations       Authorization[] @relation("AuthorizationRecipient")
+  createdAuthorizations Authorization[] @relation("AuthorizationCreator")
+  credentials          Credential[]
+  accessEvents         AccessEvent[]
+
+  @@index([role, isActive])
+}
+
+model AccessLocation {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String
+  description   String?
+  latitude      Decimal  @db.Decimal(9, 6)
+  longitude     Decimal  @db.Decimal(9, 6)
+  radiusMeters  Int      @default(100)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  authorizations Authorization[]
+  accessEvents   AccessEvent[]
+
+  @@index([isActive])
+}
+
+model Authorization {
+  id               String              @id @default(uuid()) @db.Uuid
+  userId           String              @db.Uuid
+  accessLocationId String              @db.Uuid
+  createdById      String?             @db.Uuid
+  status           AuthorizationStatus @default(ACTIVE)
+  validFrom        DateTime
+  validUntil       DateTime
+  maxUses          Int?
+  usesCount        Int                 @default(0)
+  cancelledAt      DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  user         User           @relation("AuthorizationRecipient", fields: [userId], references: [id], onDelete: Restrict)
+  createdBy    User?          @relation("AuthorizationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  accessLocation AccessLocation @relation(fields: [accessLocationId], references: [id], onDelete: Restrict)
+  accessEvents AccessEvent[]
+
+  @@index([userId, status, validFrom, validUntil])
+  @@index([accessLocationId, status])
+  @@index([createdById])
+}
+
+model Credential {
+  id         String         @id @default(uuid()) @db.Uuid
+  userId     String         @db.Uuid
+  type       CredentialType
+  // Armazene somente o hash do token QR ou UID normalizado da tag NFC.
+  valueHash  String         @unique
+  validFrom  DateTime?
+  validUntil DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  accessEvents AccessEvent[]
+
+  @@index([userId, type, revokedAt])
+  @@index([validUntil])
+}
+
+model AccessEvent {
+  id               String        @id @default(uuid()) @db.Uuid
+  userId           String?       @db.Uuid
+  authorizationId  String?       @db.Uuid
+  credentialId     String?       @db.Uuid
+  accessLocationId String?       @db.Uuid
+  method           AccessMethod
+  decision         AccessDecision
+  reason           String?
+  latitude         Decimal?      @db.Decimal(9, 6)
+  longitude        Decimal?      @db.Decimal(9, 6)
+  distanceMeters   Decimal?      @db.Decimal(8, 2)
+  occurredAt       DateTime      @default(now())
+
+  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  authorization  Authorization?  @relation(fields: [authorizationId], references: [id], onDelete: SetNull)
+  credential     Credential?     @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+  accessLocation AccessLocation? @relation(fields: [accessLocationId], references: [id], onDelete: SetNull)
+
+  @@index([occurredAt])
+  @@index([userId, occurredAt])
+  @@index([accessLocationId, occurredAt])
+  @@index([authorizationId])
+}
