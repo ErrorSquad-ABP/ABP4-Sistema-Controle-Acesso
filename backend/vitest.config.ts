@@ -8,7 +8,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
-      exclude: ['src/main/server.ts'],
+      exclude: ['src/main/server.ts', 'src/main/mqtt-consumer.ts', 'src/main/sim-terminal.ts'],
     },
   },
 });
