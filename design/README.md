@@ -19,7 +19,9 @@ Preto e branco, clean; **cor apenas como feedback de estado**. Temas **Claro e E
 
 **Feedback** (igual nos dois temas): sucesso `#16A34A` (soft `#ECFDF3`) · erro `#DC2626` (soft `#FEF2F2`) · atenção `#D97706` (soft `#FFFBEB`).
 
-**Forma**: tipografia **Figtree** (Google Fonts; no Flutter via `google_fonts`) (Display 32 · Título 24 · Cabeçalho 20 · Corpo 16 · Legenda 13 · Micro 11 maiúsculo) · raio 12 (controles) / 16 (cards) / pills (chips) · grid 8pt · botões primários preto↔branco · ícones de linha 1.5px · separação por hairlines (sem sombras pesadas).
+**Uso do feedback**: como texto, sobre o fundo soft correspondente (`successSoft`, `errorSoft`, `warningSoft`), com texto escuro por cima. A cor sólida só como fundo, com texto branco. Nunca usar `success`/`error`/`warning` como texto direto no fundo escuro: o erro sobre `#161616` fica em ~3,7:1 e reprova AA.
+
+**Forma**: tipografia **Figtree** (Google Fonts, licença OFL; no Flutter empacotada em `mobile/assets/fonts/figtree/`, sem download em runtime) (Display 32 · Título 24 · Cabeçalho 20 · Corpo 16 · Legenda 13 · Micro 11 maiúsculo) · raio 12 (controles) / 16 (cards) / pills (chips) · grid 8pt · botões primários preto↔branco · ícones de linha 1.5px · separação por hairlines (sem sombras pesadas).
 
 O tema do Flutter (US-09) espelha estes tokens nos dois modos (ThemeData claro/escuro).
 
