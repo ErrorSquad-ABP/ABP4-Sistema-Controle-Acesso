@@ -3,6 +3,7 @@ import type { HandleAckUseCase } from '../../application/terminal/handle-ack.use
 import { parseTopic } from '../../domain/terminal/topics.js';
 import { parsePayload } from '../../infrastructure/mqtt/payload-parser.js';
 import type { Logger } from '../../shared/logger.js';
+import { maskUid } from '../../shared/redact.js';
 
 export interface TerminalPresenceListener {
   (terminalId: string, online: boolean): void;
@@ -35,7 +36,7 @@ export class TerminalMessageRouter {
         this.logger.info('tentativa de acesso recebida', {
           terminalId,
           type: result.message.type,
-          uid: result.message.uid,
+          uid: maskUid(result.message.uid),
           messageId: result.message.messageId,
         });
         this.onPresence(terminalId, true);

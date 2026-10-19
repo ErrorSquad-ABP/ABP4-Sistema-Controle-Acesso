@@ -125,6 +125,19 @@ describe('terminal use cases', () => {
       expect(pending.size).toBe(0);
     });
 
+    it('nao correlaciona ack vindo de outro terminal', async () => {
+      const output = await accessUseCase().execute(event);
+      if (output.status !== 'commanded') throw new Error('esperava comando');
+
+      const result = new HandleAckUseCase(pending, seen, silentLogger).execute({
+        ...ackFor(output.command.commandId),
+        terminalId: 'terminal-02',
+      });
+
+      expect(result).toEqual({ status: 'unknown' });
+      expect(pending.size).toBe(1);
+    });
+
     it('ignora ack de comando desconhecido', () => {
       const result = new HandleAckUseCase(pending, seen, silentLogger).execute(
         ackFor('c7e4f1a2-6b3d-4c58-9f10-2a8b5d7e9c99'),

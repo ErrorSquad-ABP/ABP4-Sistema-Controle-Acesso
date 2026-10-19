@@ -7,7 +7,7 @@ export class SeenMessages {
 
   constructor(private readonly capacity = 1000) {}
 
-  /** Libera o id para que a retransmissao do broker possa ser processada de novo. */
+  /** Libera o id para que uma republicacao da mesma mensagem seja processada de novo. */
   forget(id: string): void {
     this.ids.delete(id);
   }

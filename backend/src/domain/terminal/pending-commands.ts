@@ -11,9 +11,15 @@ export class PendingCommands {
     this.byId.set(command.commandId, command);
   }
 
-  /** Remove e devolve o comando correlacionado, se ele ainda estiver pendente. */
-  take(commandId: string): CommandMessage | undefined {
+  /**
+   * Remove e devolve o comando correlacionado, se ele ainda estiver pendente.
+   * Com `terminalId`, so devolve quando o ACK veio do terminal que recebeu o comando.
+   */
+  take(commandId: string, terminalId?: string): CommandMessage | undefined {
     const command = this.byId.get(commandId);
+    if (!command || (terminalId !== undefined && command.terminalId !== terminalId)) {
+      return undefined;
+    }
     this.byId.delete(commandId);
     return command;
   }

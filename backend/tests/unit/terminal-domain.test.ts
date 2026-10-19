@@ -15,6 +15,14 @@ describe('topics', () => {
     expect(topicFilterFor('status')).toBe('terminals/+/status');
   });
 
+  it('aceita ate 64 caracteres e rejeita id comecando por hifen ou maior', () => {
+    const id64 = 'a'.repeat(64);
+
+    expect(parseTopic(`terminals/${id64}/acks`)?.terminalId).toBe(id64);
+    expect(parseTopic(`terminals/${id64}a/acks`)).toBeUndefined();
+    expect(parseTopic('terminals/-terminal/acks')).toBeUndefined();
+  });
+
   it.each([
     'terminals/terminal-01',
     'terminals/terminal-01/desconhecido',
@@ -59,6 +67,14 @@ describe('PendingCommands', () => {
 
     expect(pending.take(UUID_CMD)).toEqual(command);
     expect(pending.take(UUID_CMD)).toBeUndefined();
+  });
+
+  it('nao entrega o comando para um terminal diferente do dono', () => {
+    const pending = new PendingCommands();
+    pending.register(command, NOW);
+
+    expect(pending.take(UUID_CMD, 'terminal-02')).toBeUndefined();
+    expect(pending.take(UUID_CMD, 'terminal-01')).toEqual(command);
   });
 
   it('descarta comandos vencidos ha mais que a folga ao registrar o proximo', () => {

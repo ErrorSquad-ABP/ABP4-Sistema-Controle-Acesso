@@ -11,6 +11,10 @@ import {
 import { parseTopic } from '../../domain/terminal/topics.js';
 import { parsePayload } from '../../infrastructure/mqtt/payload-parser.js';
 import type { Logger } from '../../shared/logger.js';
+import { maskUid } from '../../shared/redact.js';
+
+/** Comandos lembrados para responder o mesmo ACK a um comando repetido. */
+const ACKED_CAPACITY = 100;
 
 /**
  * Terminal ESP32 simulado (sem hardware): publica status e leituras NFC e responde
@@ -53,7 +57,7 @@ export class SimulatedTerminal {
       type: 'nfc_read',
       uid,
     });
-    this.logger.info('leitura nfc publicada', { terminalId: this.terminalId, uid });
+    this.logger.info('leitura nfc publicada', { terminalId: this.terminalId, uid: maskUid(uid) });
   }
 
   /** Trata uma mensagem recebida; devolve o ACK publicado, se houver. */
@@ -112,6 +116,10 @@ export class SimulatedTerminal {
       reason,
     };
     this.acked.set(command.commandId, ack);
+    if (this.acked.size > ACKED_CAPACITY) {
+      const oldest = this.acked.keys().next().value;
+      if (oldest !== undefined) this.acked.delete(oldest);
+    }
     await this.bus.publish('acks', ack);
     return ack;
   }

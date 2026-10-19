@@ -22,9 +22,9 @@ export class HandleAckUseCase {
       return { status: 'duplicate' };
     }
 
-    const command = this.pending.take(ack.commandId);
+    const command = this.pending.take(ack.commandId, ack.terminalId);
     if (!command) {
-      this.logger.warn('ack de comando desconhecido', {
+      this.logger.warn('ack de comando desconhecido ou de outro terminal', {
         terminalId: ack.terminalId,
         commandId: ack.commandId,
       });

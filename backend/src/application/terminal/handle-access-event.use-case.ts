@@ -51,7 +51,7 @@ export class HandleAccessEventUseCase {
     try {
       await this.bus.publish('commands', command);
     } catch (err) {
-      // Sem comando no ar: desfaz o estado para a retransmissao (QoS 1) tentar de novo.
+      // Sem comando no ar: desfaz o estado para uma republicacao da tentativa ser tratada de novo.
       this.pending.take(command.commandId);
       this.seen.forget(event.messageId);
       throw err;
