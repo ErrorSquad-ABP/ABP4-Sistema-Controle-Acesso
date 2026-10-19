@@ -39,6 +39,11 @@ abstract final class AppTheme {
       secondary: p.textSecondary,
     );
 
+    // #DC2626 como texto no fundo escuro fica em ~3,7:1 (reprova AA); clareia so o texto.
+    final errorText = brightness == Brightness.dark
+        ? const Color(0xFFF87171)
+        : p.error;
+
     const controlShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(AppRadius.control)),
     );
@@ -113,7 +118,7 @@ abstract final class AppTheme {
         focusedBorder: inputBorder(p.text, 1.5),
         errorBorder: inputBorder(p.error),
         focusedErrorBorder: inputBorder(p.error, 1.5),
-        errorStyle: textTheme.bodySmall?.copyWith(color: p.error),
+        errorStyle: textTheme.bodySmall?.copyWith(color: errorText),
       ),
       cardTheme: CardThemeData(
         color: p.surface,
