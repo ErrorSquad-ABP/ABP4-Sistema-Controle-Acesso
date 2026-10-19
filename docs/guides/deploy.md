@@ -14,6 +14,7 @@ merge na main ─► cd-backend-check (npm ci · lint · typecheck · testes · 
 - O deploy é feito **só pelo workflow** (Vercel CLI). O deploy automático do Git na Vercel deve ficar desligado, para não haver dois caminhos.
 - `APP_VERSION` recebe o SHA curto do commit: o `/health` mostra qual versão está no ar.
 - O smoke test falha o job se o `/health` não responder `status: ok`, `database: ok` e a versão esperada em até ~100 s.
+- O smoke test roda **depois** do deploy de produção: o domínio já aponta para a versão nova quando ele começa. Um smoke vermelho deixa o job vermelho, mas **não desfaz o deploy** — a correção é o rollback manual (seção abaixo) ou um novo merge. Fazer o teste valer como gate exigiria deploy de preview + `vercel promote`, e a URL de preview exige proteção da Vercel; ficou para quando houver `VERCEL_AUTOMATION_BYPASS_SECRET`.
 - Dispare manualmente, se precisar, em **Actions → cd-backend → Run workflow** na branch `main`. Em outra branch só o `cd-backend-check` roda: produção nunca recebe código que não esteja na `main`.
 
 ## Configuração única (manual)

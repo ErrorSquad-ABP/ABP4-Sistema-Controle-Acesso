@@ -93,7 +93,7 @@ jobs:
         id: deploy
         run: |
           # APP_VERSION vira variavel de runtime deste deploy: o /health mostra o commit no ar.
-          url="$(vercel deploy --prebuilt --prod --env APP_VERSION="${GITHUB_SHA::7}" --token "$VERCEL_TOKEN")"
+          url="$(vercel deploy --prebuilt --prod --archive=tgz --env APP_VERSION="${GITHUB_SHA::7}" --token "$VERCEL_TOKEN")"
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deploy: $url"
 
