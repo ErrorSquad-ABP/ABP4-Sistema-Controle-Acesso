@@ -1,0 +1,1198 @@
+# GERADO por `npm run openapi:generate` (backend) — NAO edite a mao.
+# Fonte: backend/src/main/http/contract/ (schemas Zod + operations.ts).
+openapi: 3.1.0
+info:
+  title: ABP4 · Sistema de Controle de Acesso
+  version: 1.0.0
+  description: |-
+    Contrato REST v1 do Sistema de Controle de Acesso (ErrorSquad · FATEC).
+
+    - Autenticacao: `Authorization: Bearer <accessToken>` (obtido em `POST /auth/login`).
+    - Datas em ISO 8601; respostas sempre em UTC.
+    - Erros sempre no formato `{ "error": { "code", "message", "details?" } }`.
+    - Listas paginadas: `{ items, page, pageSize, total }`.
+
+    Rotas ainda nao implementadas respondem **501 NOT_IMPLEMENTED** depois de validar a entrada;
+    o card responsavel aparece em `x-story` de cada operacao.
+servers:
+  - url: /api/v1
+    description: Mesmo host da API
+tags:
+  - name: auth
+    description: Login e sessao (JWT)
+  - name: users
+    description: Cadastro de usuarios (administrador)
+  - name: authorizations
+    description: "Liberacoes de acesso: pessoa + local + janela + usos"
+  - name: access-events
+    description: Solicitacao de acesso por QR e historico de tentativas
+paths:
+  /auth/login:
+    post:
+      operationId: login
+      tags:
+        - auth
+      summary: Entrar com e-mail e senha
+      description: Devolve o JWT e o usuario logado. Credencial invalida ou usuario desativado -> 401.
+      x-story: US-14
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: maria.souza@exemplo.com
+              password: senha-forte-123
+      responses:
+        "200":
+          description: Login realizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags:
+        - auth
+      summary: Usuario da sessao atual
+      x-story: US-14
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Usuario logado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /users:
+    get:
+      operationId: listUsers
+      tags:
+        - users
+      summary: Listar usuarios
+      description: Restrito ao perfil ADMIN.
+      x-story: US-15
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            default: 1
+            type: integer
+            minimum: 1
+          description: Pagina, comecando em 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            default: 20
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Itens por pagina (max. 100)
+        - name: role
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Role"
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+          description: Filtra por ativo (true) ou desativado (false)
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 120
+          description: Busca por nome ou e-mail
+      responses:
+        "200":
+          description: Pagina de usuarios
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createUser
+      tags:
+        - users
+      summary: Cadastrar usuario
+      description: |-
+        E-mail ja cadastrado -> 409.
+
+        Restrito ao perfil ADMIN.
+      x-story: US-15
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+            example:
+              name: Maria Souza
+              email: maria.souza@exemplo.com
+              password: senha-forte-123
+              role: VISITOR
+      responses:
+        "201":
+          description: Usuario criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags:
+        - users
+      summary: Detalhar usuario
+      description: Restrito ao perfil ADMIN.
+      x-story: US-15
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador (UUID)
+      responses:
+        "200":
+          description: Usuario
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateUser
+      tags:
+        - users
+      summary: Atualizar usuario
+      description: |-
+        Atualizacao parcial; `active: false` desativa o usuario. E-mail ja usado por outro -> 409.
+
+        Restrito ao perfil ADMIN.
+      x-story: US-15
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador (UUID)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+            example:
+              role: RESIDENT
+      responses:
+        "200":
+          description: Usuario atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      operationId: deleteUser
+      tags:
+        - users
+      summary: Remover usuario
+      description: |-
+        Exclusao logica: o usuario e desativado e o historico de acessos e preservado.
+
+        Restrito ao perfil ADMIN.
+      x-story: US-15
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador (UUID)
+      responses:
+        "204":
+          description: Usuario removido
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /me/authorizations:
+    get:
+      operationId: listMyAuthorizations
+      tags:
+        - authorizations
+      summary: Minhas autorizacoes
+      description: Autorizacoes do usuario logado (tela "Minhas autorizacoes" do app).
+      x-story: US-18
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            default: 1
+            type: integer
+            minimum: 1
+          description: Pagina, comecando em 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            default: 20
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Itens por pagina (max. 100)
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/AuthorizationStatus"
+      responses:
+        "200":
+          description: Pagina de autorizacoes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthorizationPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /authorizations:
+    get:
+      operationId: listAuthorizations
+      tags:
+        - authorizations
+      summary: Listar autorizacoes
+      description: Restrito ao perfil ADMIN.
+      x-story: US-17
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            default: 1
+            type: integer
+            minimum: 1
+          description: Pagina, comecando em 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            default: 20
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Itens por pagina (max. 100)
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Identificador (UUID)
+        - name: locationId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Identificador (UUID)
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/AuthorizationStatus"
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Inicio do periodo (inclusivo)
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Fim do periodo (inclusivo)
+      responses:
+        "200":
+          description: Pagina de autorizacoes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthorizationPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createAuthorization
+      tags:
+        - authorizations
+      summary: Criar autorizacao
+      description: |-
+        Usuario ou local inexistente -> 422.
+
+        Restrito ao perfil ADMIN.
+      x-story: US-16
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAuthorizationRequest"
+            example:
+              userId: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+              locationId: 1b4e28ba-2fa1-41d2-883f-0016d3cca427
+              startsAt: 2026-10-20T14:00:00-03:00
+              endsAt: 2026-10-20T18:00:00-03:00
+              maxUses: 5
+      responses:
+        "201":
+          description: Autorizacao criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Authorization"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+  /authorizations/{id}:
+    get:
+      operationId: getAuthorization
+      tags:
+        - authorizations
+      summary: Detalhar autorizacao
+      description: ADMIN ve qualquer uma; os demais perfis so as proprias (de outro usuario -> 404).
+      x-story: US-17
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador (UUID)
+      responses:
+        "200":
+          description: Autorizacao
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Authorization"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /authorizations/{id}/cancel:
+    post:
+      operationId: cancelAuthorization
+      tags:
+        - authorizations
+      summary: Cancelar autorizacao
+      description: |-
+        Corpo opcional (so o motivo). Ja cancelada ou expirada -> 409.
+
+        Restrito ao perfil ADMIN.
+      x-story: US-17
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador (UUID)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelAuthorizationRequest"
+            example:
+              reason: Visita remarcada
+      responses:
+        "200":
+          description: Autorizacao cancelada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Authorization"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /access-events/qr:
+    post:
+      operationId: requestQrAccess
+      tags:
+        - access-events
+      summary: Solicitar acesso com o QR do terminal
+      description: "O app envia o token lido do QR, o terminal e a localizacao; o usuario vem do JWT. A API valida o token (formato, terminal e validade de 10 s), a autorizacao (janela, usos, local) e a distancia (ate 100 m); se liberar, envia o comando de abertura ao terminal. `terminalId` diferente do terminal do token -> DENIED com INVALID_CREDENTIAL. Toda tentativa vira um evento: negar acesso devolve 200 com `decision: DENIED` e o motivo."
+      x-story: US-20
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QrAccessRequest"
+            example:
+              qrToken: eyJ0ZXJtaW5hbCI6ImF1cm9yYS1yZWNlcGNhbyJ9.exemplo
+              terminalId: aurora-recepcao
+              position:
+                latitude: -23.1857
+                longitude: -45.8846
+                accuracyMeters: 12
+      responses:
+        "200":
+          description: Decisao do acesso (liberado ou negado)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /me/access-events:
+    get:
+      operationId: listMyAccessEvents
+      tags:
+        - access-events
+      summary: Meu historico de acessos
+      x-story: US-21
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            default: 1
+            type: integer
+            minimum: 1
+          description: Pagina, comecando em 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            default: 20
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Itens por pagina (max. 100)
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Inicio do periodo (inclusivo)
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Fim do periodo (inclusivo)
+      responses:
+        "200":
+          description: Pagina de eventos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessEventPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /access-events:
+    get:
+      operationId: listAccessEvents
+      tags:
+        - access-events
+      summary: Historico de acessos
+      description: |-
+        Todas as tentativas (aceitas e negadas), com filtros.
+
+        Restrito ao perfil ADMIN.
+      x-story: US-21
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            default: 1
+            type: integer
+            minimum: 1
+          description: Pagina, comecando em 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            default: 20
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Itens por pagina (max. 100)
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Identificador (UUID)
+        - name: locationId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Identificador (UUID)
+        - name: method
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/AccessMethod"
+        - name: decision
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/AccessDecision"
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Inicio do periodo (inclusivo)
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Fim do periodo (inclusivo)
+      responses:
+        "200":
+          description: Pagina de eventos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessEventPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+components:
+  schemas:
+    AccessDecision:
+      type: string
+      enum:
+        - GRANTED
+        - DENIED
+    AccessEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador (UUID)
+        occurredAt:
+          type: string
+          format: date-time
+          description: Data/hora ISO 8601
+        method:
+          $ref: "#/components/schemas/AccessMethod"
+        decision:
+          $ref: "#/components/schemas/AccessDecision"
+        reason:
+          anyOf:
+            - $ref: "#/components/schemas/DenialReason"
+            - type: "null"
+          description: null quando GRANTED
+        user:
+          anyOf:
+            - $ref: "#/components/schemas/UserSummary"
+            - type: "null"
+          description: "null quando a credencial nao identifica ninguem (ex.: tag NFC desconhecida)"
+        location:
+          $ref: "#/components/schemas/LocationSummary"
+        authorizationId:
+          anyOf:
+            - type: string
+              format: uuid
+              description: Identificador (UUID)
+            - type: "null"
+        distanceMeters:
+          anyOf:
+            - type: number
+              minimum: 0
+            - type: "null"
+          description: Distancia ate o terminal (so no fluxo QR)
+      required:
+        - id
+        - occurredAt
+        - method
+        - decision
+        - reason
+        - user
+        - location
+        - authorizationId
+        - distanceMeters
+      description: Tentativa de acesso registrada, aceita ou negada
+    AccessEventPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessEvent"
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+          description: Total de itens considerando os filtros
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+    AccessMethod:
+      type: string
+      enum:
+        - QR
+        - NFC
+    AccessResult:
+      type: object
+      properties:
+        decision:
+          $ref: "#/components/schemas/AccessDecision"
+        reason:
+          anyOf:
+            - $ref: "#/components/schemas/DenialReason"
+            - type: "null"
+        message:
+          type: string
+          description: 'Texto para a tela de resultado (ex.: "Autorizacao expirada")'
+        event:
+          $ref: "#/components/schemas/AccessEvent"
+      required:
+        - decision
+        - reason
+        - message
+        - event
+      description: "Resultado da tentativa. Negar acesso NAO e erro HTTP: volta 200 com decision=DENIED"
+    Authorization:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador (UUID)
+        user:
+          $ref: "#/components/schemas/UserSummary"
+        location:
+          $ref: "#/components/schemas/LocationSummary"
+        startsAt:
+          type: string
+          format: date-time
+          description: Data/hora ISO 8601
+        endsAt:
+          type: string
+          format: date-time
+          description: Data/hora ISO 8601
+        maxUses:
+          type: integer
+          minimum: 1
+        usedCount:
+          type: integer
+          minimum: 0
+        remainingUses:
+          type: integer
+          minimum: 0
+        status:
+          $ref: "#/components/schemas/AuthorizationStatus"
+        canceledAt:
+          anyOf:
+            - type: string
+              format: date-time
+              description: Data/hora ISO 8601
+            - type: "null"
+        cancelReason:
+          type:
+            - string
+            - "null"
+        createdAt:
+          type: string
+          format: date-time
+          description: Data/hora ISO 8601
+      required:
+        - id
+        - user
+        - location
+        - startsAt
+        - endsAt
+        - maxUses
+        - usedCount
+        - remainingUses
+        - status
+        - canceledAt
+        - cancelReason
+        - createdAt
+      description: Pessoa + local + janela de horario + numero de utilizacoes + situacao
+    AuthorizationPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Authorization"
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+          description: Total de itens considerando os filtros
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+    AuthorizationStatus:
+      type: string
+      enum:
+        - SCHEDULED
+        - ACTIVE
+        - EXPIRED
+        - CANCELED
+      description: "SCHEDULED: antes da janela · ACTIVE: dentro da janela e com usos · EXPIRED: janela encerrada ou usos esgotados · CANCELED: cancelada pelo administrador"
+    CancelAuthorizationRequest:
+      type: object
+      properties:
+        reason:
+          description: Motivo exibido no historico
+          type: string
+          minLength: 1
+          maxLength: 280
+    CreateAuthorizationRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: Identificador (UUID)
+        locationId:
+          type: string
+          format: uuid
+          description: Identificador (UUID)
+        startsAt:
+          type: string
+          format: date-time
+          description: Data/hora ISO 8601
+        endsAt:
+          type: string
+          format: date-time
+          description: Data/hora ISO 8601
+        maxUses:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: Numero de utilizacoes permitidas na janela
+      required:
+        - userId
+        - locationId
+        - startsAt
+        - endsAt
+        - maxUses
+    CreateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          maxLength: 254
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+          description: Minimo 8 caracteres
+        role:
+          $ref: "#/components/schemas/Role"
+      required:
+        - name
+        - email
+        - password
+        - role
+    DenialReason:
+      type: string
+      enum:
+        - INVALID_CREDENTIAL
+        - CREDENTIAL_EXPIRED
+        - USER_INACTIVE
+        - NO_AUTHORIZATION
+        - AUTHORIZATION_NOT_STARTED
+        - AUTHORIZATION_EXPIRED
+        - AUTHORIZATION_CANCELED
+        - NO_USES_LEFT
+        - OUT_OF_RANGE
+      description: "Motivo da negativa. CREDENTIAL_EXPIRED: QR fora da validade de 10 s · OUT_OF_RANGE: mais de 100 m do terminal"
+    ErrorBody:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: "Codigo estavel do erro (ex.: INVALID_REQUEST, NOT_FOUND)"
+            message:
+              type: string
+              description: Mensagem legivel
+            details:
+              description: Detalhes por campo, quando houver
+          required:
+            - code
+            - message
+      required:
+        - error
+      description: Formato unico de erro da API
+    GeoPoint:
+      type: object
+      properties:
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+        accuracyMeters:
+          description: Precisao informada pelo GPS do aparelho
+          type: number
+          minimum: 0
+      required:
+        - latitude
+        - longitude
+    LocationSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador (UUID)
+        name:
+          type: string
+          description: 'Ex.: "Edificio Aurora · Recepcao"'
+      required:
+        - id
+        - name
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          maxLength: 254
+          format: email
+        password:
+          type: string
+          minLength: 1
+          maxLength: 72
+      required:
+        - email
+        - password
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: "JWT para o header `Authorization: Bearer <token>`"
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          minimum: 1
+          description: Validade do token, em segundos
+        user:
+          $ref: "#/components/schemas/User"
+      required:
+        - accessToken
+        - tokenType
+        - expiresIn
+        - user
+    QrAccessRequest:
+      type: object
+      properties:
+        qrToken:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          description: Conteudo lido do QR exibido no terminal
+        terminalId:
+          type: string
+          pattern: ^[a-z0-9][a-z0-9-]{0,63}$
+          description: 'Identificador do terminal (ex.: "aurora-recepcao"); deve bater com o terminal do token'
+        position:
+          $ref: "#/components/schemas/GeoPoint"
+      required:
+        - qrToken
+        - terminalId
+        - position
+    Role:
+      type: string
+      enum:
+        - ADMIN
+        - RESIDENT
+        - VISITOR
+      description: "Perfil: ADMIN (administrador), RESIDENT (condomino), VISITOR (visitante)"
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          maxLength: 254
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+          description: Minimo 8 caracteres
+        role:
+          $ref: "#/components/schemas/Role"
+        active:
+          type: boolean
+      description: "Atualizacao parcial: envie so os campos que mudam (ao menos um)"
+      minProperties: 1
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador (UUID)
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/Role"
+        active:
+          type: boolean
+          description: Usuario desativado nao faz login nem acessa
+        createdAt:
+          type: string
+          format: date-time
+          description: Data/hora ISO 8601
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data/hora ISO 8601
+      required:
+        - id
+        - name
+        - email
+        - role
+        - active
+        - createdAt
+        - updatedAt
+    UserPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+          description: Total de itens considerando os filtros
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador (UUID)
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+      required:
+        - id
+        - name
+        - role
+  responses:
+    BadRequest:
+      description: Entrada invalida (INVALID_REQUEST, com erros por campo em details) ou JSON malformado (INVALID_JSON)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    Unauthorized:
+      description: Token ausente, invalido ou expirado (UNAUTHORIZED)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    Forbidden:
+      description: Perfil sem permissao para a operacao (FORBIDDEN)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    NotFound:
+      description: Recurso nao encontrado (NOT_FOUND)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    Conflict:
+      description: Conflito com o estado atual (CONFLICT)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    UnprocessableEntity:
+      description: Regra de negocio violada (VALIDATION_ERROR)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -132,6 +132,7 @@ O [`error-handler.ts`](../../backend/src/main/http/middlewares/error-handler.ts)
 | `ZodError` (entrada malformada na borda) | 400 | `INVALID_REQUEST` (+ `details` por campo) |
 | JSON inválido no body | 400 | `INVALID_JSON` |
 | Rota inexistente | 404 | `ROUTE_NOT_FOUND` |
+| Rota do contrato v1 ainda em stub | 501 | `NOT_IMPLEMENTED` (cita o card que a implementa) |
 | Qualquer outro erro | 500 | `INTERNAL_ERROR` — detalhe só no log, nunca na resposta |
 
 Erro de domínio novo: crie a subclasse em `domain/errors/domain-error.ts` com um `code` próprio e registre o status em `STATUS_BY_DOMAIN_CODE` no error handler (sem registro, vira 400).
@@ -149,4 +150,4 @@ Erro de domínio novo: crie a subclasse em `domain/errors/domain-error.ts` com u
 - [ ] Montagem no `composition-root.ts`
 - [ ] Teste unitário do caso de uso com fakes + teste de integração da rota
 - [ ] `npm run lint && npm run typecheck && npm test` verdes
-- [ ] `docs/api/openapi.yaml` atualizado quando a rota for pública (a partir da US-06)
+- [ ] Rota do contrato v1: valide com os schemas de `main/http/contract/schemas/` e monte o router real em `API_V1_PREFIX` **antes** de `apiV1StubRoutes()` no `app.ts` (o Express atende pela primeira rota que casar, então o stub deixa de ser alcançado) e, se o contrato mudar, rode `npm run openapi:generate` e commite o `docs/api/openapi.yaml` (ver [`docs/api/README.md`](../api/README.md))

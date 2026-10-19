@@ -42,7 +42,7 @@ ABP4-Sistema-Controle-Acesso/
 ├─ docs/
 │  ├─ scrum/                 processo, product-backlog, DoD, sprints e templates
 │  ├─ architecture/          visao-geral.md · * contratos-mqtt.md (US-04) · * modelo-dados.md (US-05) · adr/
-│  ├─ api/                   * openapi.yaml (US-06)
+│  ├─ api/                   openapi.yaml (gerado) · README.md — contrato REST v1
 │  └─ guides/                desenvolvimento.md · como-rodar.md
 ├─ infra/                    docker-compose.dev.yml (Mosquitto + Postgres) · mosquitto/
 ├─ design/                   export de assets do Figma
