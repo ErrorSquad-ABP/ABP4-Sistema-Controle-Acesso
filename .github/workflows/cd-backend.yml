@@ -1,0 +1,126 @@
+name: cd-backend
+
+on:
+  # So na main: o deploy sai depois do merge, quando os checks do PR ja passaram.
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/cd-backend.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Deploy em andamento termina; o proximo espera na fila (nao cancela no meio).
+concurrency:
+  group: cd-backend
+  cancel-in-progress: false
+
+env:
+  # Versao exata da CLI, como as demais dependencias do projeto.
+  VERCEL_CLI_VERSION: 64.5.0
+
+jobs:
+  check:
+    name: cd-backend-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Testes
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  deploy:
+    name: cd-backend-deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: check
+    # Dispatch manual a partir de outra branch roda so o check: producao nunca recebe codigo fora da main.
+    if: github.ref == 'refs/heads/main'
+    # A CLI roda na raiz do repo: o Root Directory (backend) fica no projeto da Vercel.
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Validar configuracao do deploy
+        run: |
+          missing=0
+          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!name}" ]; then echo "::error::$name nao configurado (ver docs/guides/deploy.md)"; missing=1; fi
+          done
+          exit "$missing"
+
+      - name: Instalar Vercel CLI
+        run: npm install --global "vercel@${VERCEL_CLI_VERSION}"
+
+      - name: Puxar configuracao do projeto (production)
+        run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+
+      - name: Build
+        run: vercel build --prod --token "$VERCEL_TOKEN"
+
+      - name: Deploy
+        id: deploy
+        run: |
+          # APP_VERSION vira variavel de runtime deste deploy: o /health mostra o commit no ar.
+          url="$(vercel deploy --prebuilt --prod --env APP_VERSION="${GITHUB_SHA::7}" --token "$VERCEL_TOKEN")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deploy: $url"
+
+      - name: Smoke test do /health publico
+        env:
+          # O dominio de producao e publico; a URL unica do deploy pode exigir login na Vercel.
+          HEALTH_BASE_URL: ${{ vars.BACKEND_URL || steps.deploy.outputs.url }}
+        run: |
+          expected="${GITHUB_SHA::7}"
+          for attempt in $(seq 1 20); do
+            body="$(curl -sS --max-time 10 "${HEALTH_BASE_URL%/}/health" || true)"
+            if node -e '
+              const h = JSON.parse(process.argv[1]);
+              process.exit(h.status === "ok" && h.database === "ok" && h.version === process.argv[2] ? 0 : 1);
+            ' "$body" "$expected" 2>/dev/null; then
+              echo "OK (tentativa $attempt): $body"
+              {
+                echo "### Deploy do backend"
+                echo ""
+                echo "- Versao no ar: \`$expected\`"
+                echo "- Healthcheck: ${HEALTH_BASE_URL%/}/health"
+                echo "- Resposta: \`$body\`"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Tentativa $attempt/20 sem sucesso: $body"
+            sleep 5
+          done
+          echo "::error::/health nao ficou ok (status, database e versao $expected) em 100 s"
+          exit 1
