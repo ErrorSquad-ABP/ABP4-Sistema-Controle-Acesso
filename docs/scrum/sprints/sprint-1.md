@@ -11,20 +11,22 @@ Divisão acordada na spec: o **SM** com 3 cards de alicerce (executados em parce
 | US | Título | Dono | Pontos | Status |
 |---|---|---|---|---|
 | US-01 | Repo vivo | SM | — (Planning 1) | **Concluído (15/10)** |
-| US-02 | CI trio + vínculo Trello↔PR | Dev A | — (Planning 1) | Backlog |
-| US-03 | Esqueleto backend | Dev B | — (Planning 1) | Backlog |
+| US-02 | CI trio + vínculo Trello↔PR | Dev A | — (Planning 1) | **Concluído (18/10)** |
+| US-03 | Esqueleto backend | Dev B | — (Planning 1) | **Concluído (18/10)** |
 | US-04 | MQTT v1 + simulador | Dev B | — (Planning 1) | Backlog |
 | US-05 | Modelo de dados v1 | Dev C | — (Planning 1) | Backlog |
 | US-06 | OpenAPI v1 | Dev C | — (Planning 1) | Backlog |
 | US-07 | Esqueleto firmware | Dev D | — (Planning 1) | Backlog |
 | US-08 | Herança do protótipo | Dev D | — (Planning 1) | Backlog |
-| US-09 | Esqueleto Flutter | Dev E | — (Planning 1) | Backlog |
+| US-09 | Esqueleto Flutter | Dev E | — (Planning 1) | **Concluído (18/10)** |
 | US-10 | Login & scanner (esqueleto) | Dev E | — (Planning 1) | Backlog |
 | US-11 | Documentos Scrum | SM | — (Planning 1) | **Concluído (15/10)** |
 | US-12 | Design no Figma (fase 1) | SM | — (Planning 1) | **Concluído (15/10)** |
 | US-13 | CD + deploy inicial | Dev A | — (Planning 1) | Backlog |
 
 **Status**: `Backlog` (na lista `🎯 Sprint Atual`) → `Em andamento` → `Em review` → `Concluído`. Os pontos de todo card ficam `— (Planning 1)` até a estimativa acontecer na Planning 1; nada é chutado aqui.
+
+**Retrato de 18/10**: US-02, US-03 e US-09 também foram concluídas (Trello + `main`). A tabela acima é um retrato desta data; o board do Trello é a fonte viva.
 
 Narrativa e critérios de aceite de cada card: [`product-backlog.md`](../product-backlog.md).
 

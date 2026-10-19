@@ -1,6 +1,6 @@
 # Product Backlog — ErrorSquad ABP 4DSM
 
-Este é o backlog oficial do **Sistema Integrado de Controle de Acesso** (QR Code + NFC + IoT): as 36 user stories do projeto, organizadas por épico. As 13 stories da **Sprint 1** estão detalhadas abaixo (narrativa + critérios de aceite); as outras 23 estão previstas por sprint e são refinadas/estimadas sprint a sprint, a partir da Sprint 2.
+Este é o backlog oficial do **Sistema Integrado de Controle de Acesso** (QR Code + NFC + IoT): as 38 user stories do projeto, organizadas por épico. As 13 stories da **Sprint 1** estão detalhadas abaixo (narrativa + critérios de aceite); as outras 25 estão previstas por sprint e são refinadas/estimadas sprint a sprint, a partir da Sprint 2.
 
 Duas superfícies, dois papéis: o **Trello** (board `ERRORSQUAD ABP 4DSM`) é a fonte viva — onde o card se move durante a sprint; **este documento** é a fonte oficial — o backlog como o time acordou, espelhado nos cards do board.
 
@@ -195,7 +195,7 @@ Pontos:   — (Planning 1)
 
 **Critérios de aceite**:
 
-- [ ] `docs/scrum/` completo: processo, product backlog com as ~35 stories, DoD, sprints 1–3 e templates de review/retro
+- [ ] `docs/scrum/` completo: processo, product backlog com as 38 stories, DoD, sprints 1–3 e templates de review/retro
 - [ ] Conteúdo consistente com a spec aprovada
 
 ### US-12 · Design no Figma (fase 1)
@@ -206,7 +206,7 @@ Pontos:   — (Planning 1)
 
 **Critérios de aceite**:
 
-- [ ] Design system (styles, tipografia Inter, componentes base)
+- [ ] Design system (styles, tipografia Figtree, componentes base)
 - [ ] Fluxo do usuário: login, autorizações, scanner, resultado e estados
 
 ### US-13 · CD + deploy inicial
@@ -224,7 +224,7 @@ Pontos:   — (Planning 1)
 
 ---
 
-## Backlog futuro — US-14 a US-36 (23 stories)
+## Backlog futuro — US-14 a US-38 (25 stories)
 
 Descobertas por sprint. Títulos, épico e sprint alvo conforme previsto; o refinamento fatiar e detalha cada uma antes da sprint em que entra (narrativa + critérios de aceite + pontos).
 
