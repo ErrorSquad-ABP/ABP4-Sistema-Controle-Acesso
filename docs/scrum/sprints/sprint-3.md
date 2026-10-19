@@ -20,9 +20,11 @@ Stories do backlog com **Sprint alvo S3** e com **S2/S3** no [`product-backlog.m
 | US-33 | Revisão de segurança | E5 | S3 |
 | US-34 | Teste em hardware real | E5 | S3 |
 | US-35 | Diagramas e docs de arquitetura finais | E6 | S3 |
-| US-38 | Demo web (Flutter build) na Vercel | E6 | S3 |
+| US-38 | Demo web + identidade de distribuição na Vercel | E6 | S3 |
 
 **US-21 (S2/S3)**: o que não fechou na Sprint 2 é retomado aqui.
+
+**US-38**: além do build web, troca os ícones padrão do Flutter (web e Android) por uma identidade única, com o nome público "Controle de Acesso".
 
 Resumo por épico: **E2** acrescenta a validação por geofence e o histórico completo · **E3** entrega NFC, GPS/heartbeat e a resiliência do terminal · **E4** fecha o admin no app com acessibilidade para o público idoso (RNF04) · **E5** escreve a qualidade (E2E no CI, revisão de segurança, hardware real) · **E6** consolida arquitetura e diagramas.
 

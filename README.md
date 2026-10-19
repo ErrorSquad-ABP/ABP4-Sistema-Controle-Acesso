@@ -10,15 +10,16 @@ Sistema integrado de baixo custo para o controle de acesso em edifícios: um Ter
 
 ```mermaid
 flowchart LR
-  A[App Flutter] -- HTTPS REST --> B[Backend Express/TS]
+  A[App Flutter] -- HTTPS REST --> B[API Express/TS · Vercel]
   A -- camera QR + GPS --> A
   T[Terminal ESP32] -- MQTT --> M[(Broker MQTT)]
-  M -- MQTT --> B
-  B -- QR rotativo / comando --> M
-  B -- regras de acesso --> DB[(PostgreSQL)]
+  M -- MQTT --> W[Processo MQTT · local S1 / Render S2]
+  B -- comando MQTT --> M
+  B -- regras --> DB[(PostgreSQL)]
+  W -- regras --> DB
 ```
 
-Detalhes dos fluxos de acesso (QR e NFC), dos ambientes e do contrato MQTT em [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md).
+Na S1 o processo MQTT roda localmente (US-04); na S2 ele vai para o Render (US-37). A Vercel hospeda só a API. Detalhes dos fluxos de acesso (QR e NFC), dos ambientes e do contrato MQTT em [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md).
 
 ## Estrutura do monorepo
 

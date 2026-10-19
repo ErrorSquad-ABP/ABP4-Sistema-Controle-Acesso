@@ -17,11 +17,11 @@ Duas superfícies, dois papéis: o **Trello** (board `ERRORSQUAD ABP 4DSM`) é a
 
 ## Notas de processo
 
-- **Estimativa**: acontece na **Planning 1**. Até lá, os pontos de todo card ficam `— (Planning 1)` e nenhum valor é chutado aqui.
-- **Prioridade**: definida pelo **PO** (designado pelo time na Planning 1), não pela ordem em que as stories aparecem.
-- **Dono**: nenhuma story nasce com assignee. Na Sprint 1 a divisão é 3 cards de alicerce com o SM e 2 cards para cada um dos 5 devs; cada um puxa o seu card na Planning 1.
+- **Estimativa**: a S1 foi executada sem estimativa registrada; o acompanhamento foi por aceite e demonstração. A estimativa colaborativa volta na Planning 2, antes do compromisso. Nenhuma pontuação retroativa.
+- **Prioridade**: definida pelo **PO**, não pela ordem em que as stories aparecem.
+- **Dono**: a distribuição final da S1 está em [`sprints/sprint-1.md`](sprints/sprint-1.md); a partir da S2, cada um puxa o seu card na Planning.
 - **Formato do card no Trello**: título `US-XX · Título`; descrição com a narrativa ("Como… quero… para…"), critérios de aceite em **checklist**, pontos e épico `(E1…E6)` no sufixo do título. Modelo completo na US-04.
-- **Rastreio**: `US-XX` no card → título da branch → título/corpo do PR → execução.
+- **Rastreio**: `US-XX` no card → título da branch → linha `Card: US-XX` do PR → execução.
 - **Sprint 4** = janela de entrega final (26/11 → data oficial da apresentação); a Sprint 3 termina na Review 3.
 - **Cortes de segurança** da Sprint 1 (se a sprint apertar): US-08 e US-10 podem escorregar para a Sprint 2 sem quebrar a review.
 
@@ -85,10 +85,10 @@ Duas superfícies, dois papéis: o **Trello** (board `ERRORSQUAD ABP 4DSM`) é a
 
 **Critérios de aceite**:
 
-- [ ] `docs/architecture/contratos-mqtt.md` com os tópicos de QR, evento de acesso, comando de abertura e heartbeat/LWT (com QoS e payloads)
-- [ ] Cliente mqtt.js conectando no broker dev
-- [ ] `npm run sim:terminal` publica um evento visível nos logs
-- [ ] Teste unitário do parser de payloads
+- [ ] `docs/architecture/contratos-mqtt.md` com a matriz QR, acesso (NFC/QR), heartbeat/LWT, comando e ACK (QoS, payloads, `messageId`/`terminalId`/`commandId`, expiração)
+- [ ] Cliente mqtt.js + consumidor local (`npm run mqtt:consumer`) conectando no broker dev
+- [ ] `npm run sim:terminal` publica a tentativa, o consumidor loga e o simulador responde ACK correlacionado
+- [ ] Teste unitário do parser de payloads (inclui comando expirado)
 
 **Card-exemplo de formato (Trello)** — modelo para todas as stories:
 
@@ -102,11 +102,11 @@ Descrição:
   hardware físico.
 
 Checklist (Critérios de aceite):
-  [ ] docs/architecture/contratos-mqtt.md (tópicos QR, evento de acesso,
-      comando de abertura, heartbeat/LWT; QoS/payloads)
-  [ ] Cliente mqtt.js conectando no broker dev
-  [ ] npm run sim:terminal publica evento visível nos logs
-  [ ] Teste unitário do parser
+  [ ] docs/architecture/contratos-mqtt.md (QR, acesso NFC/QR, heartbeat/LWT,
+      comando, ACK; QoS, ids e expiração)
+  [ ] Cliente mqtt.js + consumidor local (npm run mqtt:consumer) no broker dev
+  [ ] npm run sim:terminal publica tentativa; consumidor loga; ACK correlacionado
+  [ ] Teste unitário do parser (inclui comando expirado)
 
 Pontos:   — (Planning 1)
 Épico:    E5 — Integração & Confiabilidade
@@ -133,6 +133,7 @@ Pontos:   — (Planning 1)
 **Critérios de aceite**:
 
 - [ ] `docs/api/openapi.yaml` cobrindo auth, users, authorizations e access-events
+- [ ] Contrato REST do pedido de acesso QR (`qrToken`, `terminalId`, posição e identidade autenticada), sem endpoints de NFC/heartbeat/ACK
 - [ ] Rotas stub validadas com Zod (respondendo 501)
 - [ ] Contrato congelado para o mobile
 
@@ -147,6 +148,7 @@ Pontos:   — (Planning 1)
 - [ ] Projeto PlatformIO com os módulos do terminal
 - [ ] `config.example.h` (WiFi/broker/tópicos) sem segredos
 - [ ] Simulação Wokwi conectando no Mosquitto do `docker-compose.dev.yml`
+- [ ] Remover o skip do `ci-firmware` quando o `platformio.ini` entrar
 
 ### US-08 · Herança do protótipo
 
@@ -254,7 +256,10 @@ Descobertas por sprint. Títulos, épico e sprint alvo conforme previsto; o refi
 | US-35 | Diagramas e docs de arquitetura finais | E6 | S3 |
 | US-36 | Relatório ABNT e apresentação final | E6 | S4 |
 | US-37 | Worker MQTT persistente no Render | E1 | S2 |
-| US-38 | Demo web (Flutter build) na Vercel | E6 | S3 |
+| US-38 | Demo web + identidade de distribuição na Vercel | E6 | S3 |
+
+**US-37**: publica no Render o processo MQTT local da US-04, sem recriar a integração.
+**US-38**: além do build web, troca os ícones padrão do Flutter (web e Android) por uma identidade única, com o nome público "Controle de Acesso".
 
 **Distribuição por épico** (cada story conta **uma vez**, pelo épico primário): E1 com 4 (3 na Sprint 1 + US-37) · E2 com 11 · E3 com 7 · E4 com 7 · E5 com 4 · E6 com 5 **(US-12 = E4/E6 compartilhada; contada em E6)** — **38 stories no total**, sendo 13 detalhadas na Sprint 1 e 25 futuras.
 
