@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TERMINAL_ID_PATTERN } from '../../../../shared/terminal-id.js';
 import { named } from '../registry.js';
 import { LocationSummary } from './authorizations.schemas.js';
 import { DateTime, Id, PaginationQuery, PeriodQuery, page, refinePeriod } from './common.schemas.js';
@@ -36,7 +37,7 @@ export const GeoPoint = named(
 /** Mesmo id usado nos topicos MQTT `terminals/{id}/...` (ver contratos-mqtt.md, US-04). */
 export const TerminalId = z
   .string()
-  .regex(/^[a-z0-9][a-z0-9-]{0,63}$/, 'Use letras minusculas, numeros e hifen (ate 64)')
+  .regex(TERMINAL_ID_PATTERN, 'Use letras minusculas, numeros e hifen (ate 64)')
   .describe('Identificador do terminal (ex.: "aurora-recepcao"); deve bater com o terminal do token');
 
 export const AccessEvent = named(

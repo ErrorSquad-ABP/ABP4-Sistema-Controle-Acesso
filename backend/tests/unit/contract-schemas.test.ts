@@ -93,6 +93,9 @@ describe('QrAccessRequest', () => {
   it('exige terminalId em formato de id de topico MQTT', () => {
     expect(issuePaths(QrAccessRequest.safeParse({ ...valid, terminalId: undefined }))).toEqual(['terminalId']);
     expect(issuePaths(QrAccessRequest.safeParse({ ...valid, terminalId: 'Recepcao/1' }))).toEqual(['terminalId']);
+    expect(QrAccessRequest.safeParse({ ...valid, terminalId: 'a'.repeat(64) }).success).toBe(true);
+    expect(QrAccessRequest.safeParse({ ...valid, terminalId: 'a'.repeat(65) }).success).toBe(false);
+    expect(QrAccessRequest.safeParse({ ...valid, terminalId: '-terminal' }).success).toBe(false);
   });
 
   it('rejeita coordenadas fora da faixa e token vazio', () => {
