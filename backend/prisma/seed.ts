@@ -1,6 +1,7 @@
-import { createHash, scryptSync } from "node:crypto";
+import { createHash } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client.js";
+import { demoPasswordSalt, hashPassword } from "../src/shared/password-hasher.js";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -24,16 +25,9 @@ const demoUsers = {
     name: "Usuário Demonstração",
     email: "usuario@abp4.local",
     password: "DemoUser123!",
-    role: "USER" as const,
+    role: "RESIDENT" as const,
   },
 };
-
-function hashPassword(password: string, userId: string): string {
-  // Scrypt com salt determinístico torna a seed idempotente e os hashes únicos por usuário.
-  const salt = createHash("sha256").update(`abp4-demo:${userId}`).digest("hex").slice(0, 32);
-  const hash = scryptSync(password, salt, 64).toString("hex");
-  return `scrypt$16384$8$1$${salt}$${hash}`;
-}
 
 function hashCredential(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -41,20 +35,21 @@ function hashCredential(value: string): string {
 
 async function main(): Promise<void> {
   for (const user of Object.values(demoUsers)) {
+    const passwordHash = hashPassword(user.password, demoPasswordSalt(user.id));
     await prisma.user.upsert({
       where: { id: user.id },
       update: {
         name: user.name,
         email: user.email,
-        passwordHash: hashPassword(user.password, user.id),
+        passwordHash,
         role: user.role,
-        isActive: true,
+        active: true,
       },
       create: {
         id: user.id,
         name: user.name,
         email: user.email,
-        passwordHash: hashPassword(user.password, user.id),
+        passwordHash,
         role: user.role,
       },
     });
@@ -86,25 +81,24 @@ async function main(): Promise<void> {
     where: { id: authorizationId },
     update: {
       userId: demoUsers.member.id,
-      accessLocationId: locationId,
+      locationId,
       createdById: demoUsers.admin.id,
-      status: "ACTIVE",
-      validFrom: new Date("2026-01-01T00:00:00.000Z"),
-      validUntil: new Date("2030-12-31T23:59:59.000Z"),
+      startsAt: new Date("2026-01-01T00:00:00.000Z"),
+      endsAt: new Date("2030-12-31T23:59:59.000Z"),
       maxUses: 20,
-      usesCount: 1,
-      cancelledAt: null,
+      usedCount: 1,
+      canceledAt: null,
+      cancelReason: null,
     },
     create: {
       id: authorizationId,
       userId: demoUsers.member.id,
-      accessLocationId: locationId,
+      locationId,
       createdById: demoUsers.admin.id,
-      status: "ACTIVE",
-      validFrom: new Date("2026-01-01T00:00:00.000Z"),
-      validUntil: new Date("2030-12-31T23:59:59.000Z"),
+      startsAt: new Date("2026-01-01T00:00:00.000Z"),
+      endsAt: new Date("2030-12-31T23:59:59.000Z"),
       maxUses: 20,
-      usesCount: 1,
+      usedCount: 1,
     },
   });
 
@@ -152,26 +146,28 @@ async function main(): Promise<void> {
       userId: demoUsers.member.id,
       authorizationId,
       credentialId: credentialIds.qr,
-      accessLocationId: locationId,
+      locationId,
       method: "QR",
-      decision: "ALLOWED",
+      decision: "GRANTED",
       reason: null,
       latitude: -23.2237,
       longitude: -45.9009,
       distanceMeters: 0,
-      occurredAt: new Date(),
+      // Data fixa: rodar a seed de novo nao muda o historico.
+      occurredAt: new Date("2026-10-19T12:00:00.000Z"),
     },
     create: {
       id: "a1000000-0000-4000-8000-000000000007",
       userId: demoUsers.member.id,
       authorizationId,
       credentialId: credentialIds.qr,
-      accessLocationId: locationId,
+      locationId,
       method: "QR",
-      decision: "ALLOWED",
+      decision: "GRANTED",
       latitude: -23.2237,
       longitude: -45.9009,
       distanceMeters: 0,
+      occurredAt: new Date("2026-10-19T12:00:00.000Z"),
     },
   });
 

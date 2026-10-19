@@ -8,13 +8,9 @@ datasource db {
 }
 
 enum UserRole {
-  USER
   ADMIN
-}
-
-enum AuthorizationStatus {
-  ACTIVE
-  CANCELLED
+  RESIDENT
+  VISITOR
 }
 
 enum CredentialType {
@@ -28,26 +24,26 @@ enum AccessMethod {
 }
 
 enum AccessDecision {
-  ALLOWED
+  GRANTED
   DENIED
 }
 
 model User {
-  id           String       @id @default(uuid()) @db.Uuid
+  id           String   @id @default(uuid()) @db.Uuid
   name         String
-  email        String       @unique
+  email        String   @unique
   passwordHash String
-  role         UserRole     @default(USER)
-  isActive     Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  role         UserRole
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  authorizations       Authorization[] @relation("AuthorizationRecipient")
+  authorizations        Authorization[] @relation("AuthorizationRecipient")
   createdAuthorizations Authorization[] @relation("AuthorizationCreator")
-  credentials          Credential[]
-  accessEvents         AccessEvent[]
+  credentials           Credential[]
+  accessEvents          AccessEvent[]
 
-  @@index([role, isActive])
+  @@index([role, active])
 }
 
 model AccessLocation {
@@ -68,26 +64,26 @@ model AccessLocation {
 }
 
 model Authorization {
-  id               String              @id @default(uuid()) @db.Uuid
-  userId           String              @db.Uuid
-  accessLocationId String              @db.Uuid
-  createdById      String?             @db.Uuid
-  status           AuthorizationStatus @default(ACTIVE)
-  validFrom        DateTime
-  validUntil       DateTime
-  maxUses          Int?
-  usesCount        Int                 @default(0)
-  cancelledAt      DateTime?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  locationId   String    @db.Uuid
+  createdById  String?   @db.Uuid
+  startsAt     DateTime
+  endsAt       DateTime
+  maxUses      Int
+  usedCount    Int       @default(0)
+  canceledAt   DateTime?
+  cancelReason String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   user         User           @relation("AuthorizationRecipient", fields: [userId], references: [id], onDelete: Restrict)
   createdBy    User?          @relation("AuthorizationCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  accessLocation AccessLocation @relation(fields: [accessLocationId], references: [id], onDelete: Restrict)
+  location     AccessLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
   accessEvents AccessEvent[]
 
-  @@index([userId, status, validFrom, validUntil])
-  @@index([accessLocationId, status])
+  @@index([userId, startsAt, endsAt])
+  @@index([locationId])
   @@index([createdById])
 }
 
@@ -103,7 +99,7 @@ model Credential {
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
-  user        User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
   accessEvents AccessEvent[]
 
   @@index([userId, type, revokedAt])
@@ -111,26 +107,26 @@ model Credential {
 }
 
 model AccessEvent {
-  id               String        @id @default(uuid()) @db.Uuid
-  userId           String?       @db.Uuid
-  authorizationId  String?       @db.Uuid
-  credentialId     String?       @db.Uuid
-  accessLocationId String?       @db.Uuid
-  method           AccessMethod
-  decision         AccessDecision
-  reason           String?
-  latitude         Decimal?      @db.Decimal(9, 6)
-  longitude        Decimal?      @db.Decimal(9, 6)
-  distanceMeters   Decimal?      @db.Decimal(8, 2)
-  occurredAt       DateTime      @default(now())
+  id              String         @id @default(uuid()) @db.Uuid
+  userId          String?        @db.Uuid
+  authorizationId String?        @db.Uuid
+  credentialId    String?        @db.Uuid
+  locationId      String?        @db.Uuid
+  method          AccessMethod
+  decision        AccessDecision
+  reason          String?
+  latitude        Decimal?       @db.Decimal(9, 6)
+  longitude       Decimal?       @db.Decimal(9, 6)
+  distanceMeters  Decimal?       @db.Decimal(8, 2)
+  occurredAt      DateTime       @default(now())
 
-  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
-  authorization  Authorization?  @relation(fields: [authorizationId], references: [id], onDelete: SetNull)
-  credential     Credential?     @relation(fields: [credentialId], references: [id], onDelete: SetNull)
-  accessLocation AccessLocation? @relation(fields: [accessLocationId], references: [id], onDelete: SetNull)
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  authorization Authorization? @relation(fields: [authorizationId], references: [id], onDelete: SetNull)
+  credential    Credential?    @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+  location      AccessLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
   @@index([occurredAt])
   @@index([userId, occurredAt])
-  @@index([accessLocationId, occurredAt])
+  @@index([locationId, occurredAt])
   @@index([authorizationId])
 }

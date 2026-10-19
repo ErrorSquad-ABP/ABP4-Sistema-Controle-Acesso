@@ -1,6 +1,8 @@
 # Modelo de dados v1
 
-Diagrama entidade-relacionamento do backend, alinhado ao [`schema.prisma`](../../backend/prisma/schema.prisma). IDs são UUIDs; datas são armazenadas como `DateTime` no PostgreSQL. Campos marcados como FK representam as relações entre entidades.
+Diagrama entidade-relacionamento do backend, alinhado ao [`schema.prisma`](../../backend/prisma/schema.prisma) e ao contrato REST v1 (US-06). IDs são UUIDs; datas são armazenadas como `DateTime` no PostgreSQL. Campos marcados como FK representam as relações entre entidades.
+
+Os nomes de tabela e de campo acompanham o contrato REST (ex.: `active`, `startsAt`, `usedCount`, `locationId`, `canceledAt`) para o mapeamento entre API e banco não depender de tradução.
 
 ```mermaid
 erDiagram
@@ -10,7 +12,7 @@ erDiagram
         String email UK
         String passwordHash
         UserRole role
-        Boolean isActive
+        Boolean active
         DateTime createdAt
         DateTime updatedAt
     }
@@ -30,14 +32,14 @@ erDiagram
     AUTHORIZATION {
         UUID id PK
         UUID userId FK
-        UUID accessLocationId FK
+        UUID locationId FK
         UUID createdById FK "opcional"
-        AuthorizationStatus status
-        DateTime validFrom
-        DateTime validUntil
-        Integer maxUses "opcional"
-        Integer usesCount
-        DateTime cancelledAt "opcional"
+        DateTime startsAt
+        DateTime endsAt
+        Integer maxUses
+        Integer usedCount
+        DateTime canceledAt "opcional"
+        String cancelReason "opcional"
         DateTime createdAt
         DateTime updatedAt
     }
@@ -59,7 +61,7 @@ erDiagram
         UUID userId FK "opcional"
         UUID authorizationId FK "opcional"
         UUID credentialId FK "opcional"
-        UUID accessLocationId FK "opcional"
+        UUID locationId FK "opcional"
         AccessMethod method
         AccessDecision decision
         String reason "opcional"
@@ -79,14 +81,27 @@ erDiagram
     ACCESS_LOCATION o|--o{ ACCESS_EVENT : "ocorre em"
 ```
 
+## Situação da autorização
+
+`SCHEDULED`, `ACTIVE`, `EXPIRED` e `CANCELED` **não são colunas**: a situação é derivada de `canceledAt`, `startsAt`/`endsAt` e `maxUses`/`usedCount`, na ordem abaixo.
+
+1. `canceledAt` preenchido → `CANCELED`.
+2. `usedCount >= maxUses` ou agora depois de `endsAt` → `EXPIRED`.
+3. agora antes de `startsAt` → `SCHEDULED`.
+4. caso contrário → `ACTIVE`.
+
+Persistir só os fatos (janela, contador e cancelamento) evita linha `ACTIVE` vencida no banco e dispensa rotina agendada para virar `EXPIRED`.
+
 ## Regras e enums
 
 - Cada autorização pertence a um usuário e a um local. `createdById` registra o administrador que a criou quando conhecido.
-- Uma autorização pode ter limite de usos (`maxUses`); `usesCount` começa em zero. A validade fica entre `validFrom` e `validUntil`.
+- `maxUses` é obrigatório (limite de utilizações na janela); `usedCount` começa em zero. `CancelAuthorizationRequest.reason` é gravado em `cancelReason`.
 - Cada credencial pertence a um usuário. `valueHash` guarda o hash do token QR ou do UID NFC, e nunca o valor original.
-- Eventos preservam o resultado (`ALLOWED` ou `DENIED`), método (`QR` ou `NFC`), motivo e coordenadas recebidas. As relações com usuário, autorização, credencial e local são opcionais para registrar tentativas sem identificação completa.
+- A senha é gravada no formato `scrypt$N$r$p$salt$hash` ([`password-hasher.ts`](../../backend/src/shared/password-hasher.ts)). Cadastro real usa salt aleatório; a seed usa salt determinístico para poder ser reexecutada.
+- Eventos preservam o resultado (`GRANTED` ou `DENIED`), método (`QR` ou `NFC`), motivo e coordenadas recebidas. As relações com usuário, autorização, credencial e local são opcionais para registrar tentativas sem identificação completa. O motivo segue o enum `DenialReason` do contrato e é `null` quando o acesso é concedido.
+- `locationId` do evento é opcional no banco. A API só grava evento com local quando consegue resolver o terminal para um `AccessLocation` (US-19/US-20); o contrato REST devolve `location` obrigatório, então evento sem local é falha de dados, não um caso de uso.
 - Exclusão de usuário, local e credencial referenciados por autorizações é restringida. Ao excluir uma entidade referenciada por um evento, a FK do evento é anulada para preservar o histórico.
-- `UserRole`: `USER`, `ADMIN` · `AuthorizationStatus`: `ACTIVE`, `CANCELLED` · `CredentialType` e `AccessMethod`: `QR`, `NFC` · `AccessDecision`: `ALLOWED`, `DENIED`.
+- `UserRole`: `ADMIN`, `RESIDENT`, `VISITOR` · `CredentialType` e `AccessMethod`: `QR`, `NFC` · `AccessDecision`: `GRANTED`, `DENIED`.
 
 ## Campos espaciais
 
