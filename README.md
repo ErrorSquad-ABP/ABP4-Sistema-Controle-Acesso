@@ -19,7 +19,7 @@ flowchart LR
   W -- regras --> DB
 ```
 
-Na S1 o processo MQTT roda localmente (US-04); na S2 ele vai para o Render (US-37). A Vercel hospeda só a API. Detalhes dos fluxos de acesso (QR e NFC), dos ambientes e do contrato MQTT em [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md).
+Na S1 o processo MQTT roda localmente (US-04); na S2 ele vai para o Render (US-37). A Vercel hospeda só a API. Detalhes dos fluxos de acesso (QR e NFC), dos ambientes e da matriz de transporte em [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md); tópicos, payloads, QoS e expiração do MQTT em [`docs/architecture/contratos-mqtt.md`](docs/architecture/contratos-mqtt.md).
 
 ## Estrutura do monorepo
 
@@ -29,7 +29,7 @@ Itens marcados com `*` são previstos (ainda não existem) e entram pelos cards 
 ABP4-Sistema-Controle-Acesso/
 ├─ backend/                  Node + Express + TypeScript
 │  ├─ src/                   domain · application · infrastructure · main · shared
-│  ├─ prisma/                * US-05: schema.prisma · migrations · seed.ts
+│  ├─ prisma/                schema.prisma · migrations · seed.ts
 │  └─ tests/                 unit/ · integration/
 ├─ mobile/                   Flutter
 │  ├─ lib/                   core/ · features/ (auth, authorizations, scanner, admin — previstas)
@@ -41,7 +41,7 @@ ABP4-Sistema-Controle-Acesso/
 │  └─ platformio.ini         *
 ├─ docs/
 │  ├─ scrum/                 processo, product-backlog, DoD, sprints e templates
-│  ├─ architecture/          visao-geral.md · * contratos-mqtt.md (US-04) · * modelo-dados.md (US-05) · adr/
+│  ├─ architecture/          visao-geral.md · contratos-mqtt.md · modelo-dados.md · adr/
 │  ├─ api/                   openapi.yaml (gerado) · README.md — contrato REST v1
 │  └─ guides/                desenvolvimento.md · como-rodar.md
 ├─ infra/                    docker-compose.dev.yml (Mosquitto + Postgres) · mosquitto/
@@ -72,7 +72,8 @@ Passo a passo de ambiente, infraestrutura e execução em [`docs/guides/como-rod
 ## Documentação
 
 - [`docs/scrum/README.md`](docs/scrum/README.md) — como o time aplica Scrum (backlog, DoD, sprints e templates).
-- [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md) — arquitetura, fluxos de acesso e contrato MQTT.
+- [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md) — arquitetura, fluxos de acesso e matriz de transporte.
+- [`docs/architecture/contratos-mqtt.md`](docs/architecture/contratos-mqtt.md) — contrato MQTT v1 (tópicos, payloads, QoS, ids e expiração).
 - [`docs/architecture/modelo-dados.md`](docs/architecture/modelo-dados.md) — diagrama ER do modelo Prisma v1.
 - [`docs/guides/desenvolvimento.md`](docs/guides/desenvolvimento.md) — branches, commits, PRs, review e CI.
 - [`docs/architecture/caso-de-uso-modelo.md`](docs/architecture/caso-de-uso-modelo.md) — como estender o backend (camadas, erros, env, testes).
