@@ -33,6 +33,12 @@ export const GeoPoint = named(
   }),
 );
 
+/** Mesmo id usado nos topicos MQTT `terminals/{id}/...` (ver contratos-mqtt.md, US-04). */
+export const TerminalId = z
+  .string()
+  .regex(/^[a-z0-9][a-z0-9-]{0,63}$/, 'Use letras minusculas, numeros e hifen (ate 64)')
+  .describe('Identificador do terminal (ex.: "aurora-recepcao"); deve bater com o terminal do token');
+
 export const AccessEvent = named(
   'AccessEvent',
   z.object({
@@ -55,6 +61,7 @@ export const QrAccessRequest = named(
   'QrAccessRequest',
   z.object({
     qrToken: z.string().min(1).max(2048).describe('Conteudo lido do QR exibido no terminal'),
+    terminalId: TerminalId,
     // Sem .describe(): ele cria uma copia fora do registry e o $ref se perde.
     position: GeoPoint,
   }),

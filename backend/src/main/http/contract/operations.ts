@@ -50,8 +50,11 @@ export interface Operation {
   query?: z.ZodObject;
   body?: z.ZodType;
   success: { status: 200 | 201 | 204; description: string; schema?: z.ZodType };
-  /** Erros de regra de negocio alem dos padroes (400/401/403/404). */
-  businessErrors?: (409 | 422)[];
+  /**
+   * Respostas de erro alem das derivadas de `access`/params/body. Rota publica
+   * que pode negar credencial (login) declara 401 aqui.
+   */
+  extraErrors?: (401 | 409 | 422)[];
   /** Requisicao valida de exemplo: vira exemplo no OpenAPI e e usada nos testes. */
   example: { params?: Record<string, string>; query?: Record<string, string>; body?: unknown };
 }
@@ -75,6 +78,7 @@ export const operations: readonly Operation[] = [
     access: 'public',
     body: LoginRequest,
     success: { status: 200, description: 'Login realizado', schema: LoginResponse },
+    extraErrors: [401],
     example: { body: { email: 'maria.souza@exemplo.com', password: 'senha-forte-123' } },
   },
   {
@@ -113,7 +117,7 @@ export const operations: readonly Operation[] = [
     access: 'admin',
     body: CreateUserRequest,
     success: { status: 201, description: 'Usuario criado', schema: User },
-    businessErrors: [409],
+    extraErrors: [409],
     example: {
       body: { name: 'Maria Souza', email: 'maria.souza@exemplo.com', password: 'senha-forte-123', role: 'VISITOR' },
     },
@@ -142,7 +146,7 @@ export const operations: readonly Operation[] = [
     params: IdParams,
     body: UpdateUserRequest,
     success: { status: 200, description: 'Usuario atualizado', schema: User },
-    businessErrors: [409],
+    extraErrors: [409],
     example: { params: { id: EXAMPLE_IDS.user }, body: { role: 'RESIDENT' } },
   },
   {
@@ -196,7 +200,7 @@ export const operations: readonly Operation[] = [
     access: 'admin',
     body: CreateAuthorizationRequest,
     success: { status: 201, description: 'Autorizacao criada', schema: Authorization },
-    businessErrors: [422],
+    extraErrors: [422],
     example: {
       body: {
         userId: EXAMPLE_IDS.user,
@@ -226,13 +230,13 @@ export const operations: readonly Operation[] = [
     path: '/authorizations/:id/cancel',
     tag: 'authorizations',
     summary: 'Cancelar autorizacao',
-    description: 'Ja cancelada ou expirada -> 409.',
+    description: 'Corpo opcional (so o motivo). Ja cancelada ou expirada -> 409.',
     story: 'US-17',
     access: 'admin',
     params: IdParams,
     body: CancelAuthorizationRequest,
     success: { status: 200, description: 'Autorizacao cancelada', schema: Authorization },
-    businessErrors: [409],
+    extraErrors: [409],
     example: { params: { id: EXAMPLE_IDS.authorization }, body: { reason: 'Visita remarcada' } },
   },
 
@@ -244,16 +248,19 @@ export const operations: readonly Operation[] = [
     tag: 'access-events',
     summary: 'Solicitar acesso com o QR do terminal',
     description:
-      'O app envia o QR lido e a localizacao. A API valida credencial (10 s), janela, usos, local e ' +
-      'distancia (ate 100 m); se liberar, envia o comando de abertura ao terminal. Toda tentativa ' +
-      'vira um evento — negar acesso devolve 200 com `decision: DENIED` e o motivo.',
+      'O app envia o token lido do QR, o terminal e a localizacao; o usuario vem do JWT. A API valida ' +
+      'o token (formato, terminal e validade de 10 s), a autorizacao (janela, usos, local) e a distancia ' +
+      '(ate 100 m); se liberar, envia o comando de abertura ao terminal. `terminalId` diferente do ' +
+      'terminal do token -> DENIED com INVALID_CREDENTIAL. Toda tentativa vira um evento: negar ' +
+      'acesso devolve 200 com `decision: DENIED` e o motivo.',
     story: 'US-20',
     access: 'authenticated',
     body: QrAccessRequest,
     success: { status: 200, description: 'Decisao do acesso (liberado ou negado)', schema: AccessResult },
     example: {
       body: {
-        qrToken: 'eyJ0ZXJtaW5hbCI6InJlY2VwY2FvIn0.exemplo',
+        qrToken: 'eyJ0ZXJtaW5hbCI6ImF1cm9yYS1yZWNlcGNhbyJ9.exemplo',
+        terminalId: 'aurora-recepcao',
         position: { latitude: -23.1857, longitude: -45.8846, accuracyMeters: 12 },
       },
     },

@@ -56,7 +56,8 @@ export const UpdateUserRequest = named(
     .refine((v) => Object.values(v).some((field) => field !== undefined), {
       message: 'Informe ao menos um campo para atualizar',
     }),
-  'Atualizacao parcial: envie so os campos que mudam',
+  'Atualizacao parcial: envie so os campos que mudam (ao menos um)',
+  { minProperties: 1 },
 );
 
 export const ListUsersQuery = PaginationQuery.extend({

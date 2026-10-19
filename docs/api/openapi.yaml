@@ -54,6 +54,8 @@ paths:
                 $ref: "#/components/schemas/LoginResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /auth/me:
     get:
       operationId: getCurrentUser
@@ -477,7 +479,7 @@ paths:
         - authorizations
       summary: Cancelar autorizacao
       description: |-
-        Ja cancelada ou expirada -> 409.
+        Corpo opcional (so o motivo). Ja cancelada ou expirada -> 409.
 
         Restrito ao perfil ADMIN.
       x-story: US-17
@@ -492,7 +494,7 @@ paths:
             format: uuid
           description: Identificador (UUID)
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -522,7 +524,7 @@ paths:
       tags:
         - access-events
       summary: Solicitar acesso com o QR do terminal
-      description: "O app envia o QR lido e a localizacao. A API valida credencial (10 s), janela, usos, local e distancia (ate 100 m); se liberar, envia o comando de abertura ao terminal. Toda tentativa vira um evento — negar acesso devolve 200 com `decision: DENIED` e o motivo."
+      description: "O app envia o token lido do QR, o terminal e a localizacao; o usuario vem do JWT. A API valida o token (formato, terminal e validade de 10 s), a autorizacao (janela, usos, local) e a distancia (ate 100 m); se liberar, envia o comando de abertura ao terminal. `terminalId` diferente do terminal do token -> DENIED com INVALID_CREDENTIAL. Toda tentativa vira um evento: negar acesso devolve 200 com `decision: DENIED` e o motivo."
       x-story: US-20
       security:
         - bearerAuth: []
@@ -533,7 +535,8 @@ paths:
             schema:
               $ref: "#/components/schemas/QrAccessRequest"
             example:
-              qrToken: eyJ0ZXJtaW5hbCI6InJlY2VwY2FvIn0.exemplo
+              qrToken: eyJ0ZXJtaW5hbCI6ImF1cm9yYS1yZWNlcGNhbyJ9.exemplo
+              terminalId: aurora-recepcao
               position:
                 latitude: -23.1857
                 longitude: -45.8846
@@ -739,6 +742,7 @@ components:
         - location
         - authorizationId
         - distanceMeters
+      description: Tentativa de acesso registrada, aceita ou negada
     AccessEventPage:
       type: object
       properties:
@@ -785,6 +789,7 @@ components:
         - reason
         - message
         - event
+      description: "Resultado da tentativa. Negar acesso NAO e erro HTTP: volta 200 com decision=DENIED"
     Authorization:
       type: object
       properties:
@@ -842,6 +847,7 @@ components:
         - canceledAt
         - cancelReason
         - createdAt
+      description: Pessoa + local + janela de horario + numero de utilizacoes + situacao
     AuthorizationPage:
       type: object
       properties:
@@ -871,6 +877,7 @@ components:
         - ACTIVE
         - EXPIRED
         - CANCELED
+      description: "SCHEDULED: antes da janela · ACTIVE: dentro da janela e com usos · EXPIRED: janela encerrada ou usos esgotados · CANCELED: cancelada pelo administrador"
     CancelAuthorizationRequest:
       type: object
       properties:
@@ -944,6 +951,7 @@ components:
         - AUTHORIZATION_CANCELED
         - NO_USES_LEFT
         - OUT_OF_RANGE
+      description: "Motivo da negativa. CREDENTIAL_EXPIRED: QR fora da validade de 10 s · OUT_OF_RANGE: mais de 100 m do terminal"
     ErrorBody:
       type: object
       properties:
@@ -963,6 +971,7 @@ components:
             - message
       required:
         - error
+      description: Formato unico de erro da API
     GeoPoint:
       type: object
       properties:
@@ -1036,10 +1045,15 @@ components:
           minLength: 1
           maxLength: 2048
           description: Conteudo lido do QR exibido no terminal
+        terminalId:
+          type: string
+          pattern: ^[a-z0-9][a-z0-9-]{0,63}$
+          description: 'Identificador do terminal (ex.: "aurora-recepcao"); deve bater com o terminal do token'
         position:
           $ref: "#/components/schemas/GeoPoint"
       required:
         - qrToken
+        - terminalId
         - position
     Role:
       type: string
@@ -1047,6 +1061,7 @@ components:
         - ADMIN
         - RESIDENT
         - VISITOR
+      description: "Perfil: ADMIN (administrador), RESIDENT (condomino), VISITOR (visitante)"
     UpdateUserRequest:
       type: object
       properties:
@@ -1067,6 +1082,8 @@ components:
           $ref: "#/components/schemas/Role"
         active:
           type: boolean
+      description: "Atualizacao parcial: envie so os campos que mudam (ao menos um)"
+      minProperties: 1
     User:
       type: object
       properties:
