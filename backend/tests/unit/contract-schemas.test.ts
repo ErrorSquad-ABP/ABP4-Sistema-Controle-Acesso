@@ -80,13 +80,23 @@ describe('CreateAuthorizationRequest', () => {
 });
 
 describe('QrAccessRequest', () => {
-  it('aceita token + posicao', () => {
-    const result = QrAccessRequest.safeParse({ qrToken: 'abc', position: { latitude: -23.18, longitude: -45.88 } });
-    expect(result.success).toBe(true);
+  const valid = {
+    qrToken: 'abc',
+    terminalId: 'aurora-recepcao',
+    position: { latitude: -23.18, longitude: -45.88 },
+  };
+
+  it('aceita token + terminal + posicao', () => {
+    expect(QrAccessRequest.safeParse(valid).success).toBe(true);
+  });
+
+  it('exige terminalId em formato de id de topico MQTT', () => {
+    expect(issuePaths(QrAccessRequest.safeParse({ ...valid, terminalId: undefined }))).toEqual(['terminalId']);
+    expect(issuePaths(QrAccessRequest.safeParse({ ...valid, terminalId: 'Recepcao/1' }))).toEqual(['terminalId']);
   });
 
   it('rejeita coordenadas fora da faixa e token vazio', () => {
-    const result = QrAccessRequest.safeParse({ qrToken: '', position: { latitude: 91, longitude: -181 } });
+    const result = QrAccessRequest.safeParse({ ...valid, qrToken: '', position: { latitude: 91, longitude: -181 } });
     expect(issuePaths(result)).toEqual(
       expect.arrayContaining(['qrToken', 'position.latitude', 'position.longitude']),
     );
