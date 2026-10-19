@@ -10,42 +10,45 @@ Sistema integrado de baixo custo para o controle de acesso em edifícios: um Ter
 
 ```mermaid
 flowchart LR
-  A[App Flutter] -- HTTPS REST --> B[Backend Express/TS]
+  A[App Flutter] -- HTTPS REST --> B[API Express/TS · Vercel]
   A -- camera QR + GPS --> A
   T[Terminal ESP32] -- MQTT --> M[(Broker MQTT)]
-  M -- MQTT --> B
-  B -- QR rotativo / comando --> M
-  B -- regras de acesso --> DB[(PostgreSQL)]
+  M -- MQTT --> W[Processo MQTT · local S1 / Render S2]
+  B -- comando MQTT --> M
+  B -- regras --> DB[(PostgreSQL)]
+  W -- regras --> DB
 ```
 
-Detalhes dos fluxos de acesso (QR e NFC), dos ambientes e do contrato MQTT em [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md).
+Na S1 o processo MQTT roda localmente (US-04); na S2 ele vai para o Render (US-37). A Vercel hospeda só a API. Detalhes dos fluxos de acesso (QR e NFC), dos ambientes e do contrato MQTT em [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md).
 
 ## Estrutura do monorepo
+
+Itens marcados com `*` são previstos (ainda não existem) e entram pelos cards indicados.
 
 ```text
 ABP4-Sistema-Controle-Acesso/
 ├─ backend/                  Node + Express + TypeScript
 │  ├─ src/                   domain · application · infrastructure · main · shared
-│  ├─ prisma/                schema.prisma · migrations · seed.ts
+│  ├─ prisma/                * US-05: schema.prisma · migrations · seed.ts
 │  └─ tests/                 unit/ · integration/
 ├─ mobile/                   Flutter
-│  ├─ lib/                   core/ · features/ (auth, authorizations, scanner, admin)
+│  ├─ lib/                   core/ · features/ (auth, authorizations, scanner, admin — previstas)
 │  └─ test/ · pubspec.yaml
-├─ firmware/                 ESP32 · PlatformIO (C++)
-│  ├─ src/                   main.cpp + módulos (mqtt, display, nfc, gps, feedback, door)
-│  ├─ include/               config.example.h (WiFi/broker/tópicos — sem segredos)
-│  ├─ wokwi/                 diagram.json + simulação
-│  └─ platformio.ini
+├─ firmware/                 * US-07/08: ESP32 · PlatformIO (C++)
+│  ├─ src/                   * main.cpp + módulos (mqtt, display, nfc, gps, feedback, door)
+│  ├─ include/               * config.example.h (WiFi/broker/tópicos — sem segredos)
+│  ├─ wokwi/                 * diagram.json + simulação
+│  └─ platformio.ini         *
 ├─ docs/
 │  ├─ scrum/                 processo, product-backlog, DoD, sprints e templates
-│  ├─ architecture/          visao-geral.md · contratos-mqtt.md · modelo-dados.md · adr/
-│  ├─ api/                   openapi.yaml
+│  ├─ architecture/          visao-geral.md · * contratos-mqtt.md (US-04) · * modelo-dados.md (US-05) · adr/
+│  ├─ api/                   * openapi.yaml (US-06)
 │  └─ guides/                desenvolvimento.md · como-rodar.md
 ├─ infra/                    docker-compose.dev.yml (Mosquitto + Postgres) · mosquitto/
 ├─ design/                   export de assets do Figma
 ├─ .github/
 │  ├─ workflows/             ci-backend.yml · ci-mobile.yml · ci-firmware.yml ·
-│  │                         cd-backend.yml · trello-link.yml
+│  │                         * cd-backend.yml (US-13) · trello-link.yml
 │  └─ CODEOWNERS · PULL_REQUEST_TEMPLATE.md · ISSUE_TEMPLATE/
 └─ README.md · .gitignore · .editorconfig
 ```
@@ -75,4 +78,4 @@ Passo a passo de ambiente, infraestrutura e execução em [`docs/guides/como-rod
 
 ## Equipe
 
-**ErrorSquad** · ABP 2026-2 · 4DSM · FATEC Jacareí — Scrum Master: João Victor Lopes Rosa. Os demais integrantes entram nesta lista quando forem adicionados ao projeto.
+**ErrorSquad** · ABP 2026-2 · 4DSM · FATEC Jacareí — SM: João Victor Lopes Rosa ([@JV-L0pes](https://github.com/JV-L0pes)) · PO: Felipe Pacheco ([@FelipePacheco30](https://github.com/FelipePacheco30)) · Devs: [@Carlos-Santo](https://github.com/Carlos-Santo), [@Caiuuutecnologico](https://github.com/Caiuuutecnologico), [@Leo-Slv](https://github.com/Leo-Slv), [@ArtFacchinetti](https://github.com/ArtFacchinetti).

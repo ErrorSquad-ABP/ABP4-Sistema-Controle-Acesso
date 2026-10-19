@@ -1,10 +1,8 @@
 name: ci-backend
 
 on:
+  # Em PR roda sempre: os checks sao obrigatorios na main.
   pull_request:
-    paths:
-      - 'backend/**'
-      - '.github/workflows/ci-backend.yml'
   push:
     branches: [main]
     paths:
@@ -25,7 +23,7 @@ defaults:
 
 jobs:
   check:
-    name: lint + typecheck + test + build
+    name: ci-backend-check
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -65,7 +63,7 @@ jobs:
         run: npm run build
 
   docker:
-    name: docker build
+    name: ci-backend-docker
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: check

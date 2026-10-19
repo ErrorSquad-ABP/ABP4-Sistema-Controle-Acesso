@@ -4,6 +4,14 @@ import 'package:controle_acesso/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+double _contrast(Color a, Color b) {
+  final la = a.computeLuminance();
+  final lb = b.computeLuminance();
+  final lighter = la > lb ? la : lb;
+  final darker = la > lb ? lb : la;
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 void main() {
   group('AppTheme', () {
     test('claro usa os tokens do design system', () {
@@ -65,6 +73,14 @@ void main() {
 
       expect(card.elevation, 0);
       expect(shape.borderRadius, BorderRadius.circular(AppRadius.card));
+    });
+
+    test('texto de erro nos campos passa AA nos dois temas', () {
+      for (final theme in [AppTheme.light(), AppTheme.dark()]) {
+        final color = theme.inputDecorationTheme.errorStyle!.color!;
+        final ratio = _contrast(color, theme.scaffoldBackgroundColor);
+        expect(ratio, greaterThanOrEqualTo(4.5));
+      }
     });
   });
 }

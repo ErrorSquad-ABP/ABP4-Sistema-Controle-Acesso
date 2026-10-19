@@ -18,7 +18,10 @@ RNF06 exige banco em nuvem; RP11 pede deploy automatizado; RP12 pede containers 
 - A Vercel é **serverless**: não mantém processos de longa duração. Um cliente MQTT "sempre ligado" **não roda lá**. Por isso:
   - **Terminal → backend**: HTTP(S) direto do ESP32 (busca do QR a cada 10s, envio de leituras NFC, heartbeat).
   - **Backend → terminal**: publicação MQTT **pontual** por comando (conecta → publica → desconecta), o que é seguro em serverless.
-  - O **worker MQTT persistente** (conexão sempre ativa: assina os tópicos do terminal e publica comandos) roda no **Render** como web service pequeno — mesmo repositório e domínio da API, com entry point próprio (`worker.ts`), compartilhando o Neon e o HiveMQ. A API permanece 100% na Vercel. *(Decidido em 16/10 — card US-37.)*
+  - O **worker MQTT persistente** (conexão sempre ativa: assina os tópicos do terminal e publica comandos) roda no **Render** como web service pequeno — mesmo repositório da API, com entry point próprio (`worker.ts`), URL própria no Render e compartilhando o Neon e o HiveMQ. A API permanece 100% na Vercel. *(Decidido em 16/10 — card US-37.)*
+
+> **Adendo (18/10/2026) — transporte do terminal:** a decisão de usar HTTP(S) direto do ESP32 para QR/NFC/heartbeat foi revista antes da implementação. O terminal fala **MQTT bidirecional** com o backend (QR, eventos, heartbeat, ACK) e o app fala HTTPS com a API. A API continua serverless na Vercel e publica comandos MQTT pontuais; o processo MQTT que assina os tópicos roda localmente na S1 (US-04) e no Render a partir da S2 (US-37). O worker **não compartilha o domínio da API** (URL própria no Render). A matriz detalhada fica em `docs/architecture/visao-geral.md`; o contrato, em `docs/architecture/contratos-mqtt.md` (US-04).
+
 - O Docker segue obrigatório no desenvolvimento (compose) e continua disponível como caminho alternativo de deploy, atendendo RP12.
 
 ## Limites dos planos gratuitos (verificados em 16/10/2026)
