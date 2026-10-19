@@ -1,0 +1,149 @@
+# Contrato MQTT v1
+
+Contrato das mensagens entre o **Terminal de Acesso** (ESP32) e o **backend** (processo MQTT). A matriz de transporte e o porquê de cada canal estão em [`visao-geral.md`](visao-geral.md); aqui ficam tópicos, payloads, QoS, ids e expiração. Esta é a fonte da verdade: o parser do backend ([`payload-parser.ts`](../../backend/src/infrastructure/mqtt/payload-parser.ts)), o simulador e o firmware (US-07) seguem este documento.
+
+O pedido de acesso por QR **não** passa por MQTT: o app o envia à API por HTTPS REST (US-06). O MQTT cobre o QR rotativo publicado ao terminal, a leitura NFC, o heartbeat, o comando e o ACK.
+
+## Tópicos
+
+`{id}` é o `terminalId` (ex.: `terminal-01`): 1 a 64 caracteres, só minúsculas, dígitos e hífen, começando por letra ou número (regra única em `backend/src/shared/terminal-id.ts`).
+
+| Tópico | Sentido | QoS | Retain | Mensagem |
+|---|---|---|---|---|
+| `terminals/{id}/qr` | backend → terminal | 0 | não | QR rotativo |
+| `terminals/{id}/access-events` | terminal → backend | 1 | não | tentativa de acesso (leitura NFC) |
+| `terminals/{id}/status` | terminal → backend | 1 | **sim** | heartbeat e LWT |
+| `terminals/{id}/commands` | backend → terminal | 1 | não | comando de abertura ou negação |
+| `terminals/{id}/acks` | terminal → backend | 1 | não | ACK de execução |
+
+- O QR usa QoS 0 porque renova a cada 10 s: perder um token é irrelevante, o próximo chega logo.
+- O `status` é retido para que um consumidor que entra depois veja o último estado conhecido (online ou offline).
+- Comandos nunca são retidos: um comando antigo entregue a um terminal que reconecta seria perigoso.
+- O backend assina `terminals/+/access-events`, `terminals/+/status` e `terminals/+/acks`.
+
+## Envelope comum
+
+Todo payload é JSON UTF-8 com estes campos:
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `v` | inteiro | versão do contrato (`1`) |
+| `messageId` | UUID | identifica a mensagem; o consumidor **deduplica** por ele |
+| `terminalId` | string | deve coincidir com o `{id}` do tópico |
+| `timestamp` | ISO 8601 UTC | instante em que o produtor gerou a mensagem |
+
+Mensagem com `v` desconhecida, `terminalId` diferente do tópico ou campo faltando é **descartada** e logada, sem resposta.
+
+## Mensagens
+
+### QR rotativo — `terminals/{id}/qr`
+
+```json
+{
+  "v": 1,
+  "messageId": "3f0c2c7e-8a41-4a47-9b0e-6a8f5d2f1c10",
+  "terminalId": "terminal-01",
+  "timestamp": "2026-10-19T19:30:00.000Z",
+  "token": "b1c2d3e4f5a6",
+  "expiresAt": "2026-10-19T19:30:10.000Z"
+}
+```
+
+`expiresAt` é `timestamp` + 10 s. O terminal só exibe o token; quem valida formato, terminal e expiração é a API quando o app o envia. O token real e sua assinatura nascem na US-19; na S1 o consumidor publica um token de teste só para exercitar o canal.
+
+### Tentativa de acesso — `terminals/{id}/access-events`
+
+```json
+{
+  "v": 1,
+  "messageId": "9a6d1b52-3d0e-4d8e-a2b5-1c7f0e4a8b21",
+  "terminalId": "terminal-01",
+  "timestamp": "2026-10-19T19:30:03.120Z",
+  "type": "nfc_read",
+  "uid": "04A1B2C3"
+}
+```
+
+`type` é `nfc_read` na v1; `uid` é hexadecimal maiúsculo (4 a 20 caracteres). O backend decide; o terminal só aguarda o comando.
+
+### Heartbeat e LWT — `terminals/{id}/status`
+
+```json
+{
+  "v": 1,
+  "messageId": "0b8e5f43-7c1a-4b6e-8d92-3a4f9c6e7d10",
+  "terminalId": "terminal-01",
+  "timestamp": "2026-10-19T19:29:50.000Z",
+  "state": "online",
+  "firmware": "0.1.0"
+}
+```
+
+- `state`: `online` ou `offline`. `firmware` é opcional.
+- O terminal publica `online` ao conectar e a cada 30 s (heartbeat), sempre com retain.
+- **LWT** (last will): ao conectar, o terminal registra no broker um `state: "offline"` no mesmo tópico, QoS 1 e retain. Se a conexão cair sem desconexão limpa, o broker publica esse payload. Por ser registrado antes da queda, o `timestamp` do LWT é o da conexão.
+
+### Comando — `terminals/{id}/commands`
+
+```json
+{
+  "v": 1,
+  "messageId": "5d7c9a10-2b3e-4f61-a8d4-9e0b1c2d3f45",
+  "terminalId": "terminal-01",
+  "timestamp": "2026-10-19T19:30:03.400Z",
+  "commandId": "c7e4f1a2-6b3d-4c58-9f10-2a8b5d7e9c01",
+  "expiresAt": "2026-10-19T19:30:13.400Z",
+  "action": "open",
+  "reason": "nfc_authorized"
+}
+```
+
+- `action`: `open` (liberar) ou `deny` (negar, com feedback de erro no LED/buzzer).
+- `commandId` correlaciona o comando ao ACK; `expiresAt` é o prazo de execução (padrão: `timestamp` + 10 s).
+- **O terminal rejeita comando expirado** (`expiresAt` ≤ agora) e responde ACK `expired`, sem acionar o servo.
+- O terminal **deduplica** por `commandId`: um comando repetido não abre a porta duas vezes (responde o ACK anterior).
+
+### ACK — `terminals/{id}/acks`
+
+```json
+{
+  "v": 1,
+  "messageId": "e2a1b0c9-4d3f-4e5a-b6c7-8d9e0f1a2b3c",
+  "terminalId": "terminal-01",
+  "timestamp": "2026-10-19T19:30:04.050Z",
+  "commandId": "c7e4f1a2-6b3d-4c58-9f10-2a8b5d7e9c01",
+  "status": "executed"
+}
+```
+
+- `status`: `executed` (comando cumprido), `rejected` (recusado, com `reason`) ou `expired` (chegou vencido).
+- O ACK **não concede acesso**: só confirma que o terminal executou, recusou ou ignorou um comando. O backend correlaciona pelo `commandId`; ACK de comando desconhecido é logado e ignorado.
+
+## Ids e idempotência
+
+| Id | Gerado por | Uso |
+|---|---|---|
+| `messageId` | produtor da mensagem | dedup do consumidor (janela das últimas mensagens recebidas) |
+| `commandId` | backend | correlação comando ↔ ACK e dedup no terminal |
+| `terminalId` | configuração do terminal | roteamento e conferência com o tópico |
+
+QoS 1 pode entregar a mesma mensagem mais de uma vez; por isso a dedup por `messageId`/`commandId` é obrigatória dos dois lados.
+
+## Fluxo de exemplo (NFC)
+
+1. O terminal publica `status online` (retido) ao conectar.
+2. O terminal lê a tag e publica `nfc_read` em `access-events`.
+3. O backend valida a tentativa e publica um `command` (`open` ou `deny`) em `commands`.
+4. O terminal executa (servo, LED, buzzer) e publica o `ack` com o mesmo `commandId`.
+5. O backend loga o ACK correlacionado.
+
+## Versionamento
+
+A `v` só sobe em mudança incompatível (campo removido ou com outro significado). Campos novos opcionais mantêm a `v: 1`; consumidores ignoram campos que não conhecem. Uma mudança de contrato atualiza este documento, o parser e o simulador no mesmo PR.
+
+## Ambientes
+
+| | Dev | Prod |
+|---|---|---|
+| Broker | Mosquitto do compose, `mqtt://localhost:1884`, sem TLS e sem credenciais | HiveMQ Cloud, `mqtts://…:8883`, usuário e senha |
+| Variáveis | `MQTT_URL` (default já aponta para o dev) | `MQTT_URL`, `MQTT_USERNAME`, `MQTT_PASSWORD` |

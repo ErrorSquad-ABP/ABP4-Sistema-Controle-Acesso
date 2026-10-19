@@ -53,4 +53,4 @@ flowchart LR
 | Pedido de acesso QR | HTTPS REST | app → API | API valida token, usuário, autorização e geolocalização |
 | Evento de acesso | PostgreSQL | caso de uso → banco | backend registra tentativa e resultado |
 
-Contrato mínimo: `messageId`, `terminalId`, versão e timestamp; comandos também com `commandId` e `expiresAt`. Comandos sem retenção e QoS 1; o consumidor deduplica e rejeita comando expirado. O detalhamento (payloads, QoS e LWT) fica em [`contratos-mqtt.md`](contratos-mqtt.md), criado na US-04.
+Contrato mínimo: `messageId`, `terminalId`, versão e timestamp; comandos também com `commandId` e `expiresAt`. Comandos sem retenção e QoS 1; o consumidor deduplica e rejeita comando expirado. O detalhamento (payloads, QoS e LWT) fica em [`contratos-mqtt.md`](contratos-mqtt.md).
