@@ -8,8 +8,8 @@ API REST do Sistema de Controle de Acesso — Node 24 + Express 5 + TypeScript, 
 src/
 ├─ domain/          entidades, erros de domínio e ports (interfaces) — sem dependências externas
 ├─ application/     casos de uso (importam só domain)
-├─ infrastructure/  adapters que implementam os ports (relógio hoje; Prisma/MQTT nos próximos cards)
-├─ main/            env.ts, app Express, rotas, middlewares, composition root e server
+├─ infrastructure/  adapters que implementam os ports (relógio, ids, mqtt.js e parser de payloads; Prisma)
+├─ main/            env.ts, app Express, rotas, middlewares, composition roots, server, consumidor MQTT e simulador
 │  └─ http/contract/ contrato REST v1: schemas Zod + operations.ts → rotas e OpenAPI (US-06)
 └─ shared/          utilitários sem regra de negócio (logger, hash de senha)
 prisma/              schema.prisma · migrations · seed.ts
@@ -49,6 +49,8 @@ O Postgres de dev sobe pelo compose (`docker compose -f infra/docker-compose.dev
 | `npm test` | Vitest (unit + integração) |
 | `npm run test:coverage` | testes com cobertura |
 | `npm run openapi:generate` | regera `docs/api/openapi.yaml` a partir do contrato em `src/main/http/contract/` |
+| `npm run mqtt:consumer` | consumidor MQTT local: assina os tópicos dos terminais, loga e responde com comando (US-04) |
+| `npm run sim:terminal` | simulador de terminal: publica uma leitura NFC e responde o comando com ACK (`-- --keep-alive` mantém ativo) |
 
 ## Variáveis de ambiente
 
@@ -61,6 +63,10 @@ Validadas em [`src/main/config/env.ts`](src/main/config/env.ts); modelo em [`.en
 | `LOG_LEVEL` | `info` | `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` \| `silent` |
 | `APP_VERSION` | `dev` | versão exibida no `/health` (no CI/CD, o SHA do commit) |
 | `DATABASE_URL` | — | Postgres (`postgres://` ou `postgresql://`); compose no dev, Neon com `-pooler` em produção |
+| `MQTT_URL` | `mqtt://localhost:1884` | broker MQTT (`mqtt://` ou `mqtts://`); dev = Mosquitto do compose |
+| `MQTT_USERNAME` / `MQTT_PASSWORD` | — | credenciais do broker (HiveMQ Cloud em produção; vazias no dev) |
+| `SIM_TERMINAL_ID` | `terminal-01` | id do terminal simulado |
+| `SIM_NFC_UID` | `04A1B2C3` | UID NFC que o simulador lê |
 
 ## Endpoints
 
