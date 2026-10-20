@@ -34,11 +34,11 @@ ABP4-Sistema-Controle-Acesso/
 ├─ mobile/                   Flutter
 │  ├─ lib/                   core/ · features/ (auth, authorizations, scanner, admin — previstas)
 │  └─ test/ · pubspec.yaml
-├─ firmware/                 * US-07/08: ESP32 · PlatformIO (C++)
-│  ├─ src/                   * main.cpp + módulos (mqtt, display, nfc, gps, feedback, door)
-│  ├─ include/               * config.example.h (WiFi/broker/tópicos — sem segredos)
-│  ├─ wokwi/                 * diagram.json + simulação
-│  └─ platformio.ini         *
+├─ firmware/                 ESP32 · PlatformIO (C++); periféricos físicos na US-08
+│  ├─ src/                   main.cpp + modules/ (mqtt, display, nfc, gps, feedback, door)
+│  ├─ include/               config.example.h (WiFi/broker/tópicos — sem segredos)
+│  ├─ wokwi/                 diagram.json + wokwi.toml
+│  └─ platformio.ini
 ├─ docs/
 │  ├─ scrum/                 processo, product-backlog, DoD, sprints e templates
 │  ├─ architecture/          visao-geral.md · * contratos-mqtt.md (US-04) · * modelo-dados.md (US-05) · adr/
