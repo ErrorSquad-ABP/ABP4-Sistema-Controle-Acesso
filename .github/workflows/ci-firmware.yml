@@ -29,42 +29,29 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Ate o esqueleto do firmware (US-07) existir, o job passa avisando que nao ha o que compilar.
-      - name: Detectar projeto PlatformIO
-        id: detect
-        working-directory: .
-        run: |
-          if [ -f firmware/platformio.ini ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=ci-firmware::firmware/platformio.ini ainda nao existe (US-07) - build pulado."
-          fi
-
       - uses: actions/setup-python@v7
-        if: steps.detect.outputs.exists == 'true'
         with:
           python-version: '3.13'
 
       - uses: actions/cache@v6
-        if: steps.detect.outputs.exists == 'true'
         with:
           path: ~/.platformio
           key: pio-${{ runner.os }}-${{ hashFiles('firmware/platformio.ini') }}
           restore-keys: pio-${{ runner.os }}-
 
       - name: Instalar PlatformIO
-        if: steps.detect.outputs.exists == 'true'
-        run: pip install --upgrade platformio
+        run: pip install platformio==6.1.18
+
+      - name: Testar intervalos de reconexao
+        run: |
+          g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_retry.cpp -o "$RUNNER_TEMP/abp4-test-retry"
+          "$RUNNER_TEMP/abp4-test-retry"
+          g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src tests/test_mqtt.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt"
+          "$RUNNER_TEMP/abp4-test-mqtt"
 
       # config.h tem segredos (WiFi/broker) e nao e versionado; no CI compila com o exemplo.
       - name: Preparar config.h a partir do exemplo
-        if: steps.detect.outputs.exists == 'true'
-        run: |
-          if [ ! -f include/config.h ] && [ -f include/config.example.h ]; then
-            cp include/config.example.h include/config.h
-          fi
+        run: cp include/config.example.h include/config.h
 
       - name: Build
-        if: steps.detect.outputs.exists == 'true'
         run: pio run
