@@ -19,6 +19,7 @@ build/
 .pio/
 .pioenvs/
 .piolibdeps/
+firmware/include/config.h
 
 # Python (utilitarios locais/Wokwi)
 __pycache__/
