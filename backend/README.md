@@ -8,11 +8,14 @@ API REST do Sistema de Controle de Acesso — Node 24 + Express 5 + TypeScript, 
 src/
 ├─ domain/          entidades, erros de domínio e ports (interfaces) — sem dependências externas
 ├─ application/     casos de uso (importam só domain)
-├─ infrastructure/  adapters que implementam os ports (relógio hoje; Prisma/MQTT nos próximos cards)
-├─ main/            env.ts, app Express, rotas, middlewares, composition root e server
-└─ shared/          utilitários sem regra de negócio (logger)
+├─ infrastructure/  adapters que implementam os ports (relógio, ids, mqtt.js e parser de payloads; Prisma)
+├─ main/            env.ts, app Express, rotas, middlewares, composition roots, server, consumidor MQTT e simulador
+│  └─ http/contract/ contrato REST v1: schemas Zod + operations.ts → rotas e OpenAPI (US-06)
+└─ shared/          utilitários sem regra de negócio (logger, hash de senha)
+prisma/              schema.prisma · migrations · seed.ts
+scripts/             generate-openapi.ts (gera docs/api/openapi.yaml)
 tests/
-├─ unit/            casos de uso e env, sem HTTP
+├─ unit/            casos de uso, env, schemas do contrato e documento OpenAPI (sem HTTP)
 └─ integration/     rotas via Supertest em createApp()
 ```
 
@@ -24,18 +27,30 @@ A regra de dependência entre camadas é verificada pelo ESLint. Para adicionar 
 cd backend
 cp .env.example .env     # opcional: sem .env valem os defaults
 npm ci
+npm run db:generate      # gera o Prisma Client em src/generated/prisma
+npm run db:migrate:deploy  # aplica a migration no Postgres do compose
+npm run db:seed          # dados de demonstração (idempotente)
 npm run dev              # http://localhost:3000/health
 ```
+
+O Postgres de dev sobe pelo compose (`docker compose -f infra/docker-compose.dev.yml up -d postgres`) e a `DATABASE_URL` do `.env.example` já aponta para ele. Sem banco, a API sobe e o `/health` responde `database: not_configured`.
 
 | Script | O que faz |
 |---|---|
 | `npm run dev` | servidor com reload (tsx watch), lê `.env` se existir |
 | `npm run build` | compila para `dist/` |
 | `npm start` | roda o build (`node dist/main/server.js`) |
+| `npm run db:generate` | gera o Prisma Client (necessário após `npm ci` e ao mudar o schema) |
+| `npm run db:migrate` | cria/aplica migration em desenvolvimento (`prisma migrate dev`) |
+| `npm run db:migrate:deploy` | aplica migrations pendentes (CI e produção) |
+| `npm run db:seed` | popula os dados de demonstração (pode rodar de novo) |
 | `npm run lint` | ESLint, incluindo a regra de camadas |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` | Vitest (unit + integração) |
 | `npm run test:coverage` | testes com cobertura |
+| `npm run openapi:generate` | regera `docs/api/openapi.yaml` a partir do contrato em `src/main/http/contract/` |
+| `npm run mqtt:consumer` | consumidor MQTT local: assina os tópicos dos terminais, loga e responde com comando (US-04) |
+| `npm run sim:terminal` | simulador de terminal: publica uma leitura NFC e responde o comando com ACK (`-- --keep-alive` mantém ativo) |
 
 ## Variáveis de ambiente
 
@@ -47,12 +62,23 @@ Validadas em [`src/main/config/env.ts`](src/main/config/env.ts); modelo em [`.en
 | `PORT` | `3000` | porta HTTP |
 | `LOG_LEVEL` | `info` | `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` \| `silent` |
 | `APP_VERSION` | `dev` | versão exibida no `/health` (no CI/CD, o SHA do commit) |
+| `DATABASE_URL` | — | Postgres (`postgres://` ou `postgresql://`); compose no dev, Neon com `-pooler` em produção. Sem ela o `/health` informa `not_configured` |
+| `MQTT_URL` | `mqtt://localhost:1884` | broker MQTT (`mqtt://` ou `mqtts://`); dev = Mosquitto do compose |
+| `MQTT_USERNAME` / `MQTT_PASSWORD` | — | credenciais do broker (HiveMQ Cloud em produção; vazias no dev) |
+| `SIM_TERMINAL_ID` | `terminal-01` | id do terminal simulado |
+| `SIM_NFC_UID` | `04A1B2C3` | UID NFC que o simulador lê |
 
 ## Endpoints
 
-- `GET /health` → `200 { status, version, uptimeSeconds, timestamp }`
+- `GET /health` → `200 { status, version, uptimeSeconds, timestamp, database }`. `database` é `ok`, `not_configured` (sem `DATABASE_URL`) ou `unavailable`; neste último caso a resposta é `503` com `status: "error"` (o motivo fica só no log).
+- `GET /docs` → Swagger UI do contrato v1 · `GET /openapi.json` → o documento OpenAPI
+- `/api/v1/...` → rotas do contrato v1 (auth, users, authorizations, access-events). Por enquanto são stubs: validam a entrada com Zod e respondem `501 NOT_IMPLEMENTED` citando o card que as implementa. Detalhes em [`docs/api/README.md`](../docs/api/README.md).
 
 Erros seguem sempre `{ "error": { "code", "message", "details?" } }` — tabela completa no guia do caso de uso modelo.
+
+## Deploy
+
+O deploy na Vercel é automático após o merge na `main` (`cd-backend.yml`); a entrada serverless é `src/index.ts`. Configuração e rollback em [`docs/guides/deploy.md`](../docs/guides/deploy.md).
 
 ## Docker
 

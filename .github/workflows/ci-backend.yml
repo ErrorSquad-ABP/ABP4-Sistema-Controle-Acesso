@@ -26,6 +26,23 @@ jobs:
     name: ci-backend-check
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Postgres efemero do job: valida migration e seed, que o build sozinho nao cobre.
+      DATABASE_URL: postgresql://abp4:abp4@localhost:5432/abp4?schema=public
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: abp4
+          POSTGRES_PASSWORD: abp4
+          POSTGRES_DB: abp4
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U abp4"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
 
@@ -37,6 +54,18 @@ jobs:
 
       - name: Instalar dependencias
         run: npm ci
+
+      - name: Gerar Prisma Client
+        run: npm run db:generate
+
+      - name: Validar schema Prisma
+        run: npx prisma validate
+
+      - name: Aplicar migration no Postgres do job
+        run: npm run db:migrate:deploy
+
+      - name: Seed idempotente (roda duas vezes)
+        run: npm run db:seed && npm run db:seed
 
       - name: Lint (inclui regra de camadas)
         run: npm run lint

@@ -6,11 +6,13 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# ---- build: compila TypeScript -> dist ----
+# ---- build: gera o Prisma Client e compila TypeScript -> dist ----
 FROM deps AS build
 COPY tsconfig.json tsconfig.build.json ./
+COPY prisma7.config.ts ./
+COPY prisma ./prisma
 COPY src ./src
-RUN npm run build
+RUN npm run db:generate && npm run build
 
 # ---- runtime: so dist + dependencias de producao ----
 FROM node:24-alpine AS runtime

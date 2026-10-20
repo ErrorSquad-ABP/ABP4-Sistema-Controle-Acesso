@@ -30,6 +30,7 @@ Cada stack tem seu workflow. **Em PR os três rodam sempre** (são os checks obr
 | [`ci-backend.yml`](../../.github/workflows/ci-backend.yml) | `backend/` | `ci-backend-check` · `ci-backend-docker` | `npm ci` → lint (inclui regra de camadas) → typecheck → testes com cobertura → build → imagem Docker + smoke test do `/health` |
 | [`ci-mobile.yml`](../../.github/workflows/ci-mobile.yml) | `mobile/` | `ci-mobile-check` | `flutter pub get` → `flutter analyze` → `flutter test` |
 | [`ci-firmware.yml`](../../.github/workflows/ci-firmware.yml) | `firmware/` | `ci-firmware-build` | testes C++ host → `pio run` (com `config.h` copiado do `config.example.h`) |
+| [`cd-backend.yml`](../../.github/workflows/cd-backend.yml) | `backend/` | `cd-backend-check` · `cd-backend-deploy` (não obrigatórios) | **só push na `main`**: lint → typecheck → testes → build → deploy na Vercel → smoke test do `/health` público (guia em [`deploy.md`](deploy.md)) |
 | [`trello-link.yml`](../../.github/workflows/trello-link.yml) | — | — | anexa o PR ao card da linha `Card: US-XX` e comenta o status |
 
 - O `ci-firmware-build` sempre exige os testes host e o build; ausência de `firmware/platformio.ini` ou do exemplo de configuração falha o check, sem skip.
