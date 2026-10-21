@@ -9,12 +9,7 @@ Stories do backlog com **Sprint alvo S2** no [`product-backlog.md`](../product-b
 
 ### Carregados da Sprint 1
 
-Entram na Planning 2 como prioridade de fechamento, com os mesmos donos; não são escopo novo.
-
-| US | Situação na S1 | Dono | Primeiro passo |
-|---|---|---|---|
-| US-08 | Não iniciada (sem branch/PR) | Caio | Portar servo/LED/buzzer/LCD sobre o esqueleto já validado da US-07 |
-| US-10 | Apenas o login mock entregue (PR #13) | Art | Fatiar: login vira base da US-27; scanner/geolocalização na US-29 |
+**Nenhum.** US-08 e US-10 foram concluídas em 21/10 (PRs #19 e #20) e não há carry-over para a S2.
 
 | US | Título | Épico | Sprint alvo |
 |---|---|---|---|

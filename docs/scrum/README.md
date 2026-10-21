@@ -36,7 +36,7 @@ Somos um time pequeno de 6 pessoas tocando o Sistema Integrado de Controle de Ac
 | Sprint 3 | 12/11 → 25/11 | 25/11 | NFC + geofence ≤100m + histórico + qualidade + polish |
 | Entrega final | 26/11 → data oficial | — | Relatório ABNT, apresentação, hardening |
 
-**Fechamento da Sprint 1 (21/10)**: 11 de 13 cards concluídos; US-08 e US-10 seguiram para a S2. Resultado em [`sprints/sprint-1-review.md`](sprints/sprint-1-review.md), retro em [`sprints/sprint-1-retro.md`](sprints/sprint-1-retro.md) e documento de entrega em [`../entrega/review-1.md`](../entrega/review-1.md).
+**Fechamento da Sprint 1 (21/10)**: 13 de 13 cards concluídos, sem carry-over. Resultado em [`sprints/sprint-1-review.md`](sprints/sprint-1-review.md), retro em [`sprints/sprint-1-retro.md`](sprints/sprint-1-retro.md) e documento de entrega em [`../entrega/review-1.md`](../entrega/review-1.md).
 
 ## Rastreio
 
