@@ -23,3 +23,29 @@
 #define MQTT_TOPIC_STATUS MQTT_TOPIC_PREFIX "/status"
 #define MQTT_TOPIC_COMMANDS MQTT_TOPIC_PREFIX "/commands"
 #define MQTT_TOPIC_ACKS MQTT_TOPIC_PREFIX "/acks"
+
+// O prazo (`expiresAt`) do comando so pode ser conferido com relogio UTC real.
+#define NTP_SERVER_PRIMARY "pool.ntp.org"
+#define NTP_SERVER_SECONDARY "time.nist.gov"
+
+// Atuacao herdada do prototipo (teste-servo). Servo de rotacao continua: os
+// valores escolhem sentido e velocidade, nao uma posicao angular.
+#define DOOR_SERVO_PIN 14
+#define DOOR_SERVO_OPEN 180
+#define DOOR_SERVO_STOP 90
+#define DOOR_SERVO_CLOSE 0
+#define DOOR_MOVE_MS 1800U
+#define DOOR_HOLD_OPEN_MS 3000U
+
+// LED RGB de anodo comum: nivel LOW acende.
+#define FEEDBACK_RED_LED_PIN 5
+#define FEEDBACK_GREEN_LED_PIN 18
+#define FEEDBACK_BUZZER_PIN 19
+#define FEEDBACK_LED_ACTIVE_LOW 1
+
+// LCD 1602 com expansor I2C (PCF8574 no endereco 0x27).
+#define DISPLAY_SDA_PIN 21
+#define DISPLAY_SCL_PIN 22
+#define DISPLAY_I2C_ADDRESS 0x27
+#define DISPLAY_COLUMNS 16
+#define DISPLAY_ROWS 2

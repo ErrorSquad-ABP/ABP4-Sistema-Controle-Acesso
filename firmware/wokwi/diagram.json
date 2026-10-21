@@ -9,11 +9,61 @@
       "top": 0,
       "left": 0,
       "attrs": {}
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo1",
+      "top": 170,
+      "left": 320,
+      "rotate": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledRed",
+      "top": -60,
+      "left": 210,
+      "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledGreen",
+      "top": -60,
+      "left": 250,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer1",
+      "top": -70,
+      "left": 300,
+      "attrs": { "volume": "0.1" }
+    },
+    {
+      "type": "wokwi-lcd1602",
+      "id": "lcd1",
+      "top": 60,
+      "left": 380,
+      "attrs": { "pins": "i2c" },
+      "rotate": 0
     }
   ],
   "connections": [
     ["esp:TX", "$serialMonitor:RX", "", []],
-    ["esp:RX", "$serialMonitor:TX", "", []]
+    ["esp:RX", "$serialMonitor:TX", "", []],
+    ["servo1:PWM", "esp:14", "green", []],
+    ["servo1:V+", "esp:5V", "red", []],
+    ["servo1:GND", "esp:GND.2", "black", []],
+    ["ledRed:A", "esp:5", "red", []],
+    ["ledRed:C", "esp:GND.1", "black", []],
+    ["ledGreen:A", "esp:18", "green", []],
+    ["ledGreen:C", "esp:GND.1", "black", []],
+    ["buzzer1:1", "esp:19", "orange", []],
+    ["buzzer1:2", "esp:GND.2", "black", []],
+    ["lcd1:GND", "esp:GND.1", "black", []],
+    ["lcd1:VCC", "esp:3V3", "red", []],
+    ["lcd1:SDA", "esp:21", "blue", []],
+    ["lcd1:SCL", "esp:22", "yellow", []]
   ],
   "serialMonitor": { "display": "always", "newline": "lf" }
 }
