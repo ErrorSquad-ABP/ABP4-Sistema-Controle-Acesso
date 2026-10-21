@@ -34,6 +34,8 @@ Entram na Planning 2 como prioridade de fechamento, com os mesmos donos; não s�
 
 **US-21 (S2/S3)** entra fatiada: a fatia da S2 fecha na Review 2; o restante segue na Sprint 3.
 
+**US-20 (ponto de atenção para a Planning 2)**: o fluxo QR ponta-a-ponta depende da decisão de acesso da US-20, cujo endpoint ainda responde 501 e está previsto para a S3. Sem uma fatia dela, a S2 entrega credencial e leitura, mas não a decisão. A Planning 2 deve incluir a fatia ou reduzir explicitamente a promessa do foco.
+
 Resumo por épico: **E2** (identidade, autorizações, QR e eventos) concentra o fluxo real · **E3** (display do QR e abertura do servo) fecha o ciclo no terminal · **E4** (login, minhas autorizações e scanner) entrega o app usando o contrato da S1.
 
 ## Sprint Goal

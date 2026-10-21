@@ -13,7 +13,7 @@
 | Indicador | Resultado |
 |---|---|
 | Cards concluídos | 11/13 |
-| PRs mergeados na `main` | 11 (#2 a #12) |
+| PRs mergeados na `main` | 12 (#2 a #13) |
 | Testes de backend | 122 passando |
 | Testes de mobile | 12 passando |
 | Checks obrigatórios | 4 (backend, backend-docker, mobile, firmware) + CodeQL |
@@ -37,7 +37,7 @@
 | US-03 | Backend Express/TS em 4 camadas, `env.ts`, `/health`, error handler, Dockerfile, caso de uso modelo | `backend/src/`, `docs/architecture/caso-de-uso-modelo.md` |
 | US-04 | Contrato MQTT v1 (tópicos, payloads, QoS, expiração), consumidor local e simulador de terminal | `docs/architecture/contratos-mqtt.md`, `backend/src/infrastructure/mqtt/` |
 | US-05 | `schema.prisma` (User, AccessLocation, Authorization, AccessEvent, Credential), migration, seed e diagrama ER | `backend/prisma/`, `docs/architecture/modelo-dados.md` |
-| US-06 | OpenAPI 3.1 v1 e rotas stub validadas com Zod (501) | `docs/api/openapi.yaml`, `backend/src/infrastructure/http/` |
+| US-06 | OpenAPI 3.1 v1 e rotas stub validadas com Zod (501) | `docs/api/openapi.yaml`, `backend/src/main/http/` |
 | US-07 | Esqueleto ESP32 em PlatformIO com módulos mqtt/display/nfc/gps/feedback/door; demo Wokwi → Mosquitto com comando e reconexão | `firmware/`, `.github/workflows/ci-firmware.yml`, [evidência](evidencias/us-07-wokwi.md) |
 | US-09 | App Flutter com Riverpod, go_router, tema claro/escuro alinhado ao design system | `mobile/lib/core/` |
 | US-11 | Processo Scrum, product backlog (38 stories), DoD, sprints 1–3 e templates | `docs/scrum/` |
