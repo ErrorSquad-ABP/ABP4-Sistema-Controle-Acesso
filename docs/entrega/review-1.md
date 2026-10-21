@@ -98,7 +98,7 @@ Usar o código da `main` de referência, dependências instaladas e os ambientes
 
 4. **Mobile (US-10):** em `mobile/`, executar `flutter run -d chrome`. Entrar em **modo demonstração** (não autentica), abrir **Escanear QR**, permitir localização/câmera e apontar para um QR. Mostrar QR + coordenadas e o aviso de que nenhum acesso é liberado.
 
-**São provas separadas:** o simulador Node exercita o contrato v1; o Wokwi comprova transporte, comando, atuação e ACK do ESP32; o mobile comprova leitura e posição sem liberar acesso.
+**São provas separadas:** o simulador Node exercita o contrato v1; o Wokwi comprova transporte, comando, atuação e ACK do ESP32; o mobile exercita o fluxo de scanner e posição com doubles, sem liberar acesso. A leitura com câmera real está na DT-12.
 
 ## 6. O que não entrou e por quê
 

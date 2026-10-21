@@ -19,7 +19,7 @@ Divisão acordada na spec: o **SM** com 3 cards de alicerce (executados em parce
 | US-07 | Esqueleto firmware | Art | **Concluído (21/10)** — demo Wokwi→broker validada |
 | US-08 | Herança do protótipo | Caio | **Concluído (21/10)** — servo, LEDs, buzzer e LCD no Wokwi |
 | US-09 | Esqueleto Flutter | Carlos | **Concluído (18/10)** |
-| US-10 | Login & scanner (esqueleto) | Art | **Concluído (21/10)** — scanner QR, GPS e pt-BR |
+| US-10 | Login & scanner (esqueleto) | Art | **Concluído (21/10)** — scanner QR, GPS e pt-BR; validação física na DT-12 |
 | US-11 | Documentos Scrum | SM | **Concluído (15/10)** |
 | US-12 | Design no Figma (fase 1) | SM | **Concluído (15/10)** |
 | US-13 | CD + deploy inicial | Leo | **Concluído (19/10)** |
