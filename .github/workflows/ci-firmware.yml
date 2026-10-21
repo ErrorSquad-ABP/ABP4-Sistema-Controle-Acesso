@@ -42,12 +42,30 @@ jobs:
       - name: Instalar PlatformIO
         run: pip install platformio==6.1.18
 
-      - name: Testar intervalos de reconexao
+      # Os testes host do modulo MQTT usam o ArduinoJson real, resolvido pelo LDF.
+      - name: Baixar dependencias do firmware
+        run: pio pkg install -e esp32dev
+
+      - name: Testes host (logica pura)
         run: |
           g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_retry.cpp -o "$RUNNER_TEMP/abp4-test-retry"
           "$RUNNER_TEMP/abp4-test-retry"
-          g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src tests/test_mqtt.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt"
+          g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_door_machine.cpp -o "$RUNNER_TEMP/abp4-test-door"
+          "$RUNNER_TEMP/abp4-test-door"
+          g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_command.cpp -o "$RUNNER_TEMP/abp4-test-command"
+          "$RUNNER_TEMP/abp4-test-command"
+          g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_feedback_pattern.cpp -o "$RUNNER_TEMP/abp4-test-feedback"
+          "$RUNNER_TEMP/abp4-test-feedback"
+          g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_display_text.cpp -o "$RUNNER_TEMP/abp4-test-display"
+          "$RUNNER_TEMP/abp4-test-display"
+
+      - name: Testes host (modulo MQTT com broker simulado)
+        run: |
+          JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
+          g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt"
           "$RUNNER_TEMP/abp4-test-mqtt"
+          g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_command.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-command"
+          "$RUNNER_TEMP/abp4-test-mqtt-command"
 
       # config.h tem segredos (WiFi/broker) e nao e versionado; no CI compila com o exemplo.
       - name: Preparar config.h a partir do exemplo
