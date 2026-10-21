@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/router/app_router.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/feedback_banner.dart';
 import 'login_contract.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -153,25 +155,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ),
                               const SizedBox(height: AppSpacing.md),
                               if (_message != null) ...[
-                                Semantics(
-                                  liveRegion: true,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(
-                                      AppSpacing.sm,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: context.palette.warningSoft,
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadius.control,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      _message!,
-                                      style: text.bodySmall?.copyWith(
-                                        color: context.palette.onSoft,
-                                      ),
-                                    ),
-                                  ),
+                                FeedbackBanner(
+                                  tone: FeedbackTone.warning,
+                                  message: _message!,
                                 ),
                                 const SizedBox(height: AppSpacing.md),
                               ],
@@ -234,6 +220,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             ],
                           ),
                         ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      const Divider(),
+                      const SizedBox(height: AppSpacing.md),
+                      OutlinedButton.icon(
+                        onPressed: _loading
+                            ? null
+                            : () => context.go(AppRoutes.home),
+                        icon: const Icon(Icons.visibility_outlined),
+                        label: const Text('Entrar em modo demonstração'),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Abre a Home sem autenticar: nenhuma sessão é criada.',
+                        style: text.bodySmall,
+                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: AppSpacing.lg),
                     ],
