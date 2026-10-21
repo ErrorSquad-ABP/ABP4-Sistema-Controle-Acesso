@@ -32,10 +32,12 @@ class FakeLocationGateway implements LocationGateway {
   Completer<GeoCoordinate>? pending;
   int permissionRequests = 0;
   int positionReads = 0;
+  bool permissionFails = false;
 
   @override
   Future<ScannerPermission> requestPermission() async {
     permissionRequests++;
+    if (permissionFails) throw Exception('plugin indisponivel');
     return permission;
   }
 

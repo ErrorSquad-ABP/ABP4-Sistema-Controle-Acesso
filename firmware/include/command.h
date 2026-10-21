@@ -123,7 +123,12 @@ class Handler {
 
     AckStatus previous;
     if (history_.lookup(command.commandId, previous)) {
-      return record(command.commandId, previous, "duplicate");
+      // Nao reinserir a duplicata: ela empurraria um comando distinto para fora
+      // da janela e permitiria uma segunda atuacao do mesmo comando.
+      ack_.commandId = command.commandId;
+      ack_.status = statusName(previous);
+      ack_.reason = "duplicate";
+      return &ack_;
     }
     if (!clockValid) return record(command.commandId, AckStatus::rejected, "clock_unsynced");
 

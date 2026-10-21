@@ -20,6 +20,8 @@ abstract final class ScannerMessages {
       'continuar.';
   static const positionUnavailable =
       'Não foi possível ler a posição do aparelho. Tente novamente.';
+  static const permissionUnavailable =
+      'Não foi possível verificar a permissão de localização. Tente novamente.';
 }
 
 sealed class ScannerState {
@@ -76,30 +78,39 @@ final scannerControllerProvider =
     NotifierProvider<ScannerController, ScannerState>(ScannerController.new);
 
 class ScannerController extends Notifier<ScannerState> {
+  int _operation = 0;
+
   @override
   ScannerState build() => const ScannerRequestingPermission();
 
   Future<void> requestPermission() async {
+    final operation = ++_operation;
     state = const ScannerRequestingPermission();
-    final permission = await ref
-        .read(locationGatewayProvider)
-        .requestPermission();
-    if (!ref.mounted) return;
-    state = switch (permission) {
-      ScannerPermission.granted => const ScannerScanning(),
-      ScannerPermission.denied => const ScannerPermissionDenied(),
-      ScannerPermission.deniedForever => const ScannerPermissionDenied(
-        permanent: true,
-      ),
-      ScannerPermission.serviceDisabled => const ScannerFailure(
-        ScannerMessages.serviceDisabled,
-      ),
-    };
+    try {
+      final permission = await ref
+          .read(locationGatewayProvider)
+          .requestPermission();
+      if (!ref.mounted || operation != _operation) return;
+      state = switch (permission) {
+        ScannerPermission.granted => const ScannerScanning(),
+        ScannerPermission.denied => const ScannerPermissionDenied(),
+        ScannerPermission.deniedForever => const ScannerPermissionDenied(
+          permanent: true,
+        ),
+        ScannerPermission.serviceDisabled => const ScannerFailure(
+          ScannerMessages.serviceDisabled,
+        ),
+      };
+    } catch (_) {
+      if (!ref.mounted || operation != _operation) return;
+      state = const ScannerFailure(ScannerMessages.permissionUnavailable);
+    }
   }
 
   /// Repete a etapa que falhou: pede a permissão de novo ou volta a escanear.
   Future<void> retry() async {
     if (state is ScannerPermissionDenied) return requestPermission();
+    ++_operation;
     state = const ScannerScanning();
   }
 
@@ -107,20 +118,21 @@ class ScannerController extends Notifier<ScannerState> {
     final qrValue = value.trim();
     if (qrValue.isEmpty || state is! ScannerScanning) return;
 
+    final operation = _operation;
     state = ScannerLocating(qrValue);
     try {
       final point = await ref.read(locationGatewayProvider).currentPosition();
-      if (!ref.mounted) return;
+      if (!ref.mounted || operation != _operation) return;
       state = ScannerResult(
         qrValue: qrValue,
         latitude: point.latitude,
         longitude: point.longitude,
       );
     } on LocationFailure catch (failure) {
-      if (!ref.mounted) return;
+      if (!ref.mounted || operation != _operation) return;
       state = ScannerFailure(_messageFor(failure.reason));
     } catch (_) {
-      if (!ref.mounted) return;
+      if (!ref.mounted || operation != _operation) return;
       state = const ScannerFailure(ScannerMessages.positionUnavailable);
     }
   }
