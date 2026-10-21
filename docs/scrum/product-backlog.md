@@ -23,7 +23,7 @@ Duas superfícies, dois papéis: o **Trello** (board `ERRORSQUAD ABP 4DSM`) é a
 - **Formato do card no Trello**: título `US-XX · Título`; descrição com a narrativa ("Como… quero… para…"), critérios de aceite em **checklist**, pontos e épico `(E1…E6)` no sufixo do título. Modelo completo na US-04.
 - **Rastreio**: `US-XX` no card → título da branch → linha `Card: US-XX` do PR → execução.
 - **Sprint 4** = janela de entrega final (26/11 → data oficial da apresentação); a Sprint 3 termina na Review 3.
-- **Cortes de segurança** da Sprint 1: US-08 e US-10 escorregaram para a Sprint 2, com os mesmos donos (corte aplicado em 21/10). A US-07 ficou em review até a demo Wokwi e foi concluída no mesmo dia.
+- **Cortes de segurança** da Sprint 1: o corte chegou a ser aplicado em 21/10, mas US-08 e US-10 foram concluídas no mesmo dia. **Nenhum carry-over** para a S2.
 
 ---
 
