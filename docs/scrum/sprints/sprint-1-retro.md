@@ -5,6 +5,7 @@
 ## O que funcionou bem
 
 - **Fundação pronta antes do código**: repo, CI trio, deploy, contratos (OpenAPI e MQTT) e board no ar desde os primeiros dias.
+- **Demo Wokwi fechada no dia da review**: esqueleto do firmware conectou no Mosquitto, recebeu comando e reconectou após restart do broker (US-07).
 - **CI e CD confiáveis**: os quatro checks obrigatórios + CodeQL rodaram em todos os PRs; o backend está no ar na Vercel com Neon e `/health` respondendo (`database: ok`).
 - **Rastreabilidade**: card → branch → PR → execução funcionou; o `trello-link` anexa e comenta sozinho.
 - **Entrega técnica**: 10 cards concluídos, 122 testes de backend e 12 de mobile verdes, 23 assets de design exportados.
@@ -18,7 +19,7 @@
 
 ## Impedimentos recorrentes
 
-- **Validação de hardware/Wokwi** depende de licença e ambiente local — não roda no CI.
+- **Validação de hardware/Wokwi** depende de licença e ambiente local — a licença da extensão expirou em 15/10 e foi renovada em 21/10; não roda no CI.
 - **Android SDK ausente** no ambiente de um dev: build APK não foi validado.
 
 ## Ações combinadas (dono + card no Trello)
@@ -26,13 +27,13 @@
 | # | Ação | Dono | Verificação |
 |---|---|---|---|
 | 1 | Planning 2 com estimativa e escopo fatiado antes do compromisso | Felipe (PO) + SM | 22/10 |
-| 2 | Validar Wokwi→broker e fechar a US-07 como primeiro passo da S2 | Art | 23/10 |
+| 2 | Validar Wokwi→broker e fechar a US-07 | Art + SM | **Concluída em 21/10** |
 | 3 | Fatiar US-10: login vira base da US-27; scanner/GPS entram na US-29 | Art + SM | Planning 2 |
 | 4 | Atualizar checklist do Trello no mesmo dia do merge (gate de review) | SM | contínuo |
 | 5 | Documentar instalação do Android SDK e build APK | Carlos | S2 |
 
 ## O que revisar na próxima retro
 
-- As ações 1–5 foram cumpridas? (levar evidência, não impressão)
+- As ações 1, 3, 4 e 5 foram cumpridas? (levar evidência, não impressão)
 - O corte de escopo da S2 foi respeitado ou entrou trabalho novo no meio?
 - A validação Wokwi/hardware deixou de ser bloqueio?

@@ -2,7 +2,7 @@
 
 - **Participantes**: ErrorSquad (6) · Prof. Leandro Toss Hoffmann (banca)
 - **Goal da sprint**: "Fundação no ar + esqueleto conversando ponta-a-ponta, simulado"
-- **Cards concluídos**: **10/13** — US-07, US-08 e US-10 seguem para a S2
+- **Cards concluídos**: **11/13** — US-08 e US-10 seguem para a S2
 
 > Roteiro preparado em 21/10. Feedback do stakeholder e ações devem ser preenchidos durante a review.
 
@@ -16,7 +16,7 @@
 | US-04 | Contrato MQTT v1, consumidor e simulador de terminal | `docs/architecture/contratos-mqtt.md`, `npm run sim:terminal` |
 | US-05 | Modelo de dados, migration e seed | `docs/architecture/modelo-dados.md`, `backend/prisma/` |
 | US-06 | OpenAPI v1 e rotas stub (501) | `docs/api/openapi.yaml`, `GET /api/v1/...` |
-| US-07 | Build PlatformIO + testes host (demo Wokwi pendente) | CI `ci-firmware-build`, `firmware/README.md` |
+| US-07 | Wokwi ao vivo: terminal conecta no Mosquitto, recebe comando e reconecta | serial `[mqtt] conectado e inscrito` + cliente `terminal-dev-01` no broker |
 | US-09 | App Flutter com tema do design system | `flutter run`, `mobile/lib/core/` |
 | US-10 | Tela de login mock e estados de erro | `flutter run` → `/login` |
 | US-11 | Processo, backlog, DoD e sprints | `docs/scrum/` |
@@ -25,9 +25,8 @@
 
 ## O que não entra na entrega
 
-- **US-07** — esqueleto pronto e CI verde; falta a demonstração Wokwi→Mosquitto. PR #12 com mudanças pedidas.
 - **US-10** — apenas o login mock (PR #13); scanner QR, geolocalização e pt-BR não foram entregues.
-- **US-08** — não iniciada (sem branch/PR); dependia do esqueleto da US-07.
+- **US-08** — não iniciada (sem branch/PR); começa sobre o esqueleto da US-07, já validado.
 
 ## Feedback do stakeholder (professores/focal point)
 

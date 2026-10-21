@@ -13,8 +13,7 @@ Entram na Planning 2 como prioridade de fechamento, com os mesmos donos; não s�
 
 | US | Situação na S1 | Dono | Primeiro passo |
 |---|---|---|---|
-| US-07 | Esqueleto e CI verdes; demo Wokwi→broker pendente (PR #12) | Art | Rodar o roteiro do `firmware/README.md`, registrar serial + log do broker e fechar o aceite |
-| US-08 | Não iniciada (sem branch/PR) | Caio | Portar servo/LED/buzzer/LCD após a validação da US-07 |
+| US-08 | Não iniciada (sem branch/PR) | Caio | Portar servo/LED/buzzer/LCD sobre o esqueleto já validado da US-07 |
 | US-10 | Apenas o login mock entregue (PR #13) | Art | Fatiar: login vira base da US-27; scanner/geolocalização na US-29 |
 
 | US | Título | Épico | Sprint alvo |
