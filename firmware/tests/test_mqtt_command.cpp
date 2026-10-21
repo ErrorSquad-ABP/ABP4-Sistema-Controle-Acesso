@@ -16,7 +16,7 @@ namespace {
 
 const char* kCommandsTopic = "terminals/terminal-dev-01/commands";
 const char* kOpenCommand =
-    R"({"v":1,"messageId":"5d7c9a10-2b3e-4f61-a8d4-9e0b1c2d3f45","terminalId":"terminal-dev-01","timestamp":"2026-10-19T19:30:03.400Z","commandId":"c7e4f1a2-6b3d-4c58-9f10-2a8b5d7e9c01","expiresAt":"2026-10-19T19:30:13.400Z","action":"open","reason":"nfc_authorized"})";
+    R"({"v":1,"messageId":"5d7c9a10-2b3e-4f61-a8d4-9e0b1c2d3f45","terminalId":"terminal-dev-01","timestamp":"2026-10-19T19:30:03.400Z","commandId":"c7e4f1a2-6b3d-4c58-9f10-2a8b5d7e9c01","expiresAt":"2026-10-19T19:30:14.400Z","action":"open","reason":"nfc_authorized"})";
 
 uint64_t testClock = 1792438213ULL;  // 2026-10-19T19:30:13Z
 uint64_t fakeClock() { return testClock; }
@@ -107,7 +107,7 @@ int main() {
 
   // `deny` nao move a cancela, mas executa o feedback de negado.
   deliver(
-      R"({"v":1,"messageId":"0b8e5f43-7c1a-4b6e-8d92-3a4f9c6e7d10","terminalId":"terminal-dev-01","timestamp":"2026-10-19T19:30:03.400Z","commandId":"a1b2c3d4-0000-4000-8000-000000000002","expiresAt":"2026-10-19T19:30:13.400Z","action":"deny","reason":"nfc_denied"})");
+      R"({"v":1,"messageId":"0b8e5f43-7c1a-4b6e-8d92-3a4f9c6e7d10","terminalId":"terminal-dev-01","timestamp":"2026-10-19T19:30:03.400Z","commandId":"a1b2c3d4-0000-4000-8000-000000000002","expiresAt":"2026-10-19T19:30:14.400Z","action":"deny","reason":"nfc_denied"})");
   assert(actions == 2);
   assert(lastAction == terminal_command::Action::deny);
   expectPublish("\"status\":\"executed\"");
