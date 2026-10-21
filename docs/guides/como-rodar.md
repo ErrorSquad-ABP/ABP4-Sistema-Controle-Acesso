@@ -65,7 +65,23 @@ Conferindo: abre a tela inicial "Controle de acesso" em Figtree, no tema claro o
 
 ## 4) Firmware
 
-Ainda não há código executável: o esqueleto chega pelo card **US-07** (`firmware/`), compilado pelo PlatformIO ou simulado no Wokwi. Quando entrar, o `README.md` da pasta e este guia são atualizados com os comandos reais.
+O esqueleto **US-07** compila para ESP32 com PlatformIO Core 6.1.18:
+
+```bash
+cd firmware
+cp include/config.example.h include/config.h  # PowerShell: Copy-Item; apenas na primeira vez
+pio run
+```
+
+No VS Code, selecione `firmware/wokwi/wokwi.toml` pela ação **Wokwi: Select Config File**
+e execute **Wokwi: Start Simulator** (requer licença ativada pelo usuário).
+O exemplo usa `Wokwi-GUEST` e `host.wokwi.internal:1884` para acessar o Mosquitto
+do compose pelo gateway integrado da extensão. O gateway público do navegador
+não alcança localhost. Não exponha o broker na internet.
+
+O firmware conecta e se inscreve no tópico de comandos; os módulos físicos são
+esqueletos sem atuação. Instalação, testes host, smoke test MQTT e limitações
+em [`firmware/README.md`](../../firmware/README.md).
 
 ## 5) Parar tudo
 
