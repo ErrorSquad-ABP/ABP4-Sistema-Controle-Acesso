@@ -8,7 +8,7 @@
 - **Demo Wokwi fechada no dia da review**: esqueleto do firmware conectou no Mosquitto, recebeu comando e reconectou após restart do broker (US-07).
 - **CI e CD confiáveis**: os quatro checks obrigatórios + CodeQL rodaram em todos os PRs; o backend está no ar na Vercel com Neon e `/health` respondendo (`database: ok`).
 - **Rastreabilidade**: card → branch → PR → execução funcionou; o `trello-link` anexa e comenta sozinho.
-- **Entrega técnica**: 10 cards concluídos, 122 testes de backend e 12 de mobile verdes, 23 assets de design exportados.
+- **Entrega técnica**: 11 cards concluídos, 122 testes de backend e 12 de mobile verdes, 23 assets de design exportados.
 
 ## O que atrapalhou
 
