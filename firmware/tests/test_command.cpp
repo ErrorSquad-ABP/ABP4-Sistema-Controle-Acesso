@@ -1,4 +1,4 @@
-#include <assert.h>
+﻿#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -191,6 +191,26 @@ void testHandler() {
   assert(handler.handle(anonymous, 1000, true) == nullptr);  // sem commandId nao ha ACK
 }
 
+void testDuplicateWindow() {
+  Handler handler;
+  handler.configure("terminal-dev-01", actuator);
+  actuations = 0;
+
+  char ids[8][8];
+  for (int i = 0; i < 8; ++i) {
+    snprintf(ids[i], sizeof ids[i], "dup-%d", i);
+    const terminal_command::Ack* ack = handler.handle(command(ids[i], Action::open, 5000), 1000, true);
+    assert(strcmp(ack->status, "executed") == 0);
+  }
+  assert(actuations == 8);
+
+  const terminal_command::Ack* ack = handler.handle(command(ids[0], Action::open, 5000), 1000, true);
+  assert(strcmp(ack->reason, "duplicate") == 0);
+  ack = handler.handle(command(ids[1], Action::open, 5000), 1000, true);
+  assert(strcmp(ack->reason, "duplicate") == 0);
+  assert(actuations == 8);  // a duplicata nao pode expulsar ids[1]
+}
+
 }  // namespace
 
 int main() {
@@ -198,5 +218,6 @@ int main() {
   testDecision();
   testHistory();
   testHandler();
+  testDuplicateWindow();
   puts("command: iso8601, decisao, dedup por commandId e ACK OK");
 }

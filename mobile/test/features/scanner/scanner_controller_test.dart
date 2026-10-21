@@ -62,6 +62,16 @@ void main() {
     expect(denied.message, contains('configurações'));
   });
 
+  test('falha ao pedir permissão vira erro recuperável', () async {
+    location.permissionFails = true;
+    await controller().requestPermission();
+    expect(state(), isA<ScannerFailure>());
+
+    location.permissionFails = false;
+    await controller().retry();
+    expect(state(), isA<ScannerScanning>());
+  });
+
   test('GPS desligado vira erro com opção de tentar novamente', () async {
     location.permission = ScannerPermission.serviceDisabled;
     await controller().requestPermission();

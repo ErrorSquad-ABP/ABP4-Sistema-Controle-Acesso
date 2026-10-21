@@ -41,7 +41,10 @@
 #define FEEDBACK_RED_LED_PIN 5
 #define FEEDBACK_GREEN_LED_PIN 18
 #define FEEDBACK_BUZZER_PIN 19
-#define FEEDBACK_LED_ACTIVE_LOW 1
+// Wokwi/teste: anodo no GPIO (HIGH acende). No hardware legado common-anode, use 1.
+#define FEEDBACK_LED_ACTIVE_LOW 0
+// tone() usa LEDC; o canal 0 e do servo (ESP32Servo). Reserve outro canal.
+#define FEEDBACK_TONE_CHANNEL 4
 
 // LCD 1602 com expansor I2C (PCF8574 no endereco 0x27).
 #define DISPLAY_SDA_PIN 21

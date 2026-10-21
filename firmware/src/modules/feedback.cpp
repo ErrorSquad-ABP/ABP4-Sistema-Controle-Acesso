@@ -26,6 +26,7 @@ void applyLed(uint8_t pin, bool lit, bool& applied) {
 namespace terminal_feedback {
 
 void begin() {
+  setToneChannel(FEEDBACK_TONE_CHANNEL);
   pinMode(FEEDBACK_RED_LED_PIN, OUTPUT);
   pinMode(FEEDBACK_GREEN_LED_PIN, OUTPUT);
   pinMode(FEEDBACK_BUZZER_PIN, OUTPUT);
