@@ -151,6 +151,7 @@ A [Sprint 2](../scrum/sprints/sprint-2.md) lista 13 histórias futuras, além do
 - [Product backlog e critérios de aceite](../scrum/product-backlog.md).
 - [Fechamento da Sprint 1](../scrum/sprints/sprint-1.md) e [Definition of Done](../scrum/definition-of-done.md).
 - [Roteiro da Review](../scrum/sprints/sprint-1-review.md) e [rascunho da retrospectiva](../scrum/sprints/sprint-1-retro.md); feedback da banca e ações finais devem ser registrados após a cerimônia.
+- [Roteiro de apresentação](apresentacao-review-1.md) — falas, ordem das demos, comandos e perguntas prováveis.
 - [Evidência Wokwi da US-07](evidencias/us-07-wokwi.md), produzida no commit `268637f`.
 - Rastreio de implementação: card `US-XX` → branch → linha `Card: US-XX` do PR → checks e merge. [PRs do projeto](https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso/pulls?q=is%3Apr+is%3Amerged).
 - O Trello acompanha o estado vivo; o repositório preserva contratos, código e registros da entrega.
