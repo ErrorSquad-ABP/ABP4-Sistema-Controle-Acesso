@@ -6,27 +6,27 @@
 
 ## Divisão dos cards
 
-Divisão acordada na spec: o **SM** com 3 cards de alicerce (executados em parceria com o OpenCode) e **2 cards para cada um dos 5 devs**. A distribuição real ficou: Felipe (US-02/03, concluídas), Carlos (US-06 + US-09 concluída), Caio (US-05/08), Leo (US-04/13) e Art (US-07/10 — convite do board pendente). **Atualização (18/10)**: os 3 cards do SM e US-02/US-03/US-09 estão concluídos.
+Divisão acordada na spec: o **SM** com 3 cards de alicerce (executados em parceria com o OpenCode) e **2 cards para cada um dos 5 devs**. A distribuição real ficou: Felipe (US-02/03), Carlos (US-06 + US-09), Caio (US-05/08), Leo (US-04/13) e Art (US-07/10).
 
-| US | Título | Dono | Pontos | Status |
-|---|---|---|---|---|
-| US-01 | Repo vivo | SM | — (Planning 1) | **Concluído (15/10)** |
-| US-02 | CI trio + vínculo Trello↔PR | Felipe | — (Planning 1) | **Concluído (18/10)** |
-| US-03 | Esqueleto backend | Felipe | — (Planning 1) | **Concluído (18/10)** |
-| US-04 | MQTT v1 + simulador | Leo | — (Planning 1) | Backlog |
-| US-05 | Modelo de dados v1 | Caio | — (Planning 1) | Backlog |
-| US-06 | OpenAPI v1 | Carlos | — (Planning 1) | Backlog |
-| US-07 | Esqueleto firmware | Art* | — (Planning 1) | Backlog |
-| US-08 | Herança do protótipo | Caio | — (Planning 1) | Backlog |
-| US-09 | Esqueleto Flutter | Carlos | — (Planning 1) | **Concluído (18/10)** |
-| US-10 | Login & scanner (esqueleto) | Art* | — (Planning 1) | Backlog |
-| US-11 | Documentos Scrum | SM | — (Planning 1) | **Concluído (15/10)** |
-| US-12 | Design no Figma (fase 1) | SM | — (Planning 1) | **Concluído (15/10)** |
-| US-13 | CD + deploy inicial | Leo | — (Planning 1) | Backlog |
+| US | Título | Dono | Status |
+|---|---|---|---|
+| US-01 | Repo vivo | SM | **Concluído (15/10)** |
+| US-02 | CI trio + vínculo Trello↔PR | Felipe | **Concluído (18/10)** |
+| US-03 | Esqueleto backend | Felipe | **Concluído (18/10)** |
+| US-04 | MQTT v1 + simulador | Leo | **Concluído (19/10)** |
+| US-05 | Modelo de dados v1 | Caio | **Concluído (19/10)** |
+| US-06 | OpenAPI v1 | Carlos | **Concluído (19/10)** |
+| US-07 | Esqueleto firmware | Art | **Em review (PR #12)** — demo Wokwi pendente; segue para a S2 |
+| US-08 | Herança do protótipo | Caio | **Não iniciada** — corte aplicado; segue para a S2 |
+| US-09 | Esqueleto Flutter | Carlos | **Concluído (18/10)** |
+| US-10 | Login & scanner (esqueleto) | Art | **Parcial (PR #13)** — só login; segue para a S2 |
+| US-11 | Documentos Scrum | SM | **Concluído (15/10)** |
+| US-12 | Design no Figma (fase 1) | SM | **Concluído (15/10)** |
+| US-13 | CD + deploy inicial | Leo | **Concluído (19/10)** |
 
-**Status**: `Backlog` (na lista `🎯 Sprint Atual`) → `Em andamento` → `Em review` → `Concluído`. A S1 **não tem estimativa registrada**; o acompanhamento é por aceite e demonstração. Nenhuma pontuação retroativa: a estimativa colaborativa volta na Planning 2.
+**Fechamento (21/10)**: **10 de 13 cards concluídos**. US-07, US-08 e US-10 não entram em Concluído — nenhum atende ao aceite completo — e seguem para a Sprint 2 com os mesmos donos. O board do Trello (listas `🎯 Sprint 1` e `🎯 Sprint 2`) é a fonte viva; o resultado está em [`sprint-1-review.md`](sprint-1-review.md), a retro em [`sprint-1-retro.md`](sprint-1-retro.md) e o documento da Review 1 em [`../../entrega/review-1.md`](../../entrega/review-1.md).
 
-**Retrato de 18/10**: US-02, US-03 e US-09 também foram concluídas (Trello + `main`). A tabela acima é um retrato desta data; o board do Trello é a fonte viva. `*` Art ainda não está no board; responsável registrado, convite pendente.
+**Status**: `Backlog` (na lista `🎯 Sprint 1`) → `Em andamento` → `Em review` → `Concluído`. A S1 **não tem estimativa registrada**; o acompanhamento é por aceite e demonstração. Nenhuma pontuação retroativa: a estimativa colaborativa volta na Planning 2.
 
 Narrativa e critérios de aceite de cada card: [`product-backlog.md`](../product-backlog.md).
 
@@ -34,7 +34,7 @@ Narrativa e critérios de aceite de cada card: [`product-backlog.md`](../product
 
 Se a sprint apertar (7 dias até a Review 1), **US-08** (herança do protótipo) e **US-10** (login & scanner) podem escorregar para a Sprint 2 **sem quebrar a review**. Todo o resto da fundação permanece na Sprint 1.
 
-**Corte fechado (18/10)**: em **20/10 às 19h30**, US-08 e US-10 sem PR demonstrável e checks verdes saem do compromisso da S1 e vão para a S2, mantendo o responsável. Não entram parcialmente em Concluído.
+**Corte aplicado (21/10)**: US-08 (não iniciada) e US-10 (apenas o login entregue) saem do compromisso da S1 e vão para a S2, mantendo os responsáveis. **US-07** acompanha por falta da demonstração Wokwi↔broker, mesmo com o esqueleto e o CI verdes. Nenhum dos três entra parcialmente em Concluído.
 
 ## Burndown
 
