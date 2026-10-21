@@ -1,82 +1,158 @@
 # Review 1 — Documento de entrega · Sprint 1
 
-- **Curso**: Desenvolvimento de Software Multiplataforma (4DSM) — FATEC Jacareí
-- **Projeto**: ABP 2026-2 · Sistema Integrado de Controle de Acesso (QR Code + NFC + IoT)
-- **Equipe**: ErrorSquad — SM: João Victor Lopes Rosa · PO: Felipe Pacheco · Devs: Carlos Santo, Caio Araujo, Leo Silva, Arthur Facchinetti
-- **Sprint**: 1 (15/10 → 21/10/2026) · **Review**: 21/10/2026, 19h30
-- **Goal**: "Fundação no ar + esqueleto conversando ponta-a-ponta, simulado"
+## 1. Identificação, equipe e links
 
-## 1. Resultado
+- **Curso:** Desenvolvimento de Software Multiplataforma (4DSM) — FATEC Jacareí.
+- **Projeto:** ABP 2026-2 · Sistema Integrado de Controle de Acesso.
+- **Equipe:** ErrorSquad — João Victor Lopes Rosa (SM), Felipe Pacheco (PO), Carlos Santo, Caio Araujo, Leo Silva e Arthur Facchinetti.
+- **Sprint 1:** 15 a 21/10/2026 · **Review:** 21/10/2026, 19h30.
+- **Referência da entrega:** branch `main`, commit `18d9fe7`.
 
-**11 de 13 cards concluídos (85%)**, com a fundação e os três esqueletos no ar. Nenhuma história incompleta foi marcada como concluída: US-08 e US-10 foram movidas para a Sprint 2 com os mesmos donos.
-
-| Indicador | Resultado |
+| Referência | Link |
 |---|---|
-| Cards concluídos | 11/13 |
-| PRs mergeados na `main` | 12 (#2 a #13) |
+| Repositório | [ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso](https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso) |
+| Board | [ErrorSquad ABP 4DSM](https://trello.com/b/AxZZyPyN/errorsquad-abp-4dsm) |
+| Design | [Figma](https://www.figma.com/design/nddGhlwJIi5rMzhvsK5Rkl) |
+| API publicada | [/health](https://abp-4-sistema-controle-acesso.vercel.app/health) |
+
+## 2. Objetivo e resultado
+
+**Objetivo:** “Fundação no ar + esqueleto conversando ponta-a-ponta, simulado”.
+
+A sprint entregou a estrutura do projeto, contratos REST/MQTT, modelo de dados, automação de qualidade, API publicada e esqueletos de app e terminal. Foram concluídos **11 dos 13 cards**. US-08 e US-10 não atendem ao aceite completo e seguem para a S2.
+
+**O resultado é uma fundação demonstrável, não um controle de acesso operacional:** não há autenticação real, leitura QR/NFC, geofence ou abertura física integrada.
+
+| Indicador | Resultado no fechamento |
+|---|---|
+| Cards concluídos | 11/13 — aproximadamente 85% por contagem de cards |
+| PRs mergeados até `18d9fe7` | 14 — #2 a #15; inclui os dois PRs de documentação do fechamento |
 | Testes de backend | 122 passando |
 | Testes de mobile | 12 passando |
-| Checks obrigatórios | 4 (backend, backend-docker, mobile, firmware) + CodeQL |
-| Deploy | API no ar com banco em nuvem (`database: ok`) |
+| Firmware | Build PlatformIO, testes host e demo Wokwi→Mosquitto registrados |
+| Integração contínua | 4 checks obrigatórios: backend, backend-docker, mobile e firmware; CodeQL adicional |
+| Proteção da `main` | 1 aprovação obrigatória |
+| Deploy registrado | API Vercel, Neon com `database: ok`, versão `d5a0ac0` |
+| Design | 23 PNGs exportados |
 
-## 2. O que está no ar
+A S1 não teve estimativa registrada; esses números não representam velocidade por pontos. Os resultados de testes são os registrados no fechamento, não uma nova execução deste documento.
 
-| Superfície | Link |
-|---|---|
-| API (produção) | https://abp-4-sistema-controle-acesso.vercel.app/health |
-| Repositório | https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso |
-| Board (fonte viva) | https://trello.com/b/AxZZyPyN/errorsquad-abp-4dsm |
-| Design (Figma) | https://www.figma.com/design/nddGhlwJIi5rMzhvsK5Rkl |
+## 3. O que está no ar
 
-## 3. Entregas por card
+- **API na Vercel:** `/health` público com conectividade ao Neon. A versão publicada `d5a0ac0` é distinta do commit de referência do repositório.
+- **Contrato REST:** [Swagger UI](https://abp-4-sistema-controle-acesso.vercel.app/docs) e [OpenAPI JSON](https://abp-4-sistema-controle-acesso.vercel.app/openapi.json). As rotas de negócio validam a entrada e retornam `501 NOT_IMPLEMENTED`.
+- **MQTT:** consumidor e simulador executados localmente; worker no Render permanece previsto para a S2.
+- **Mobile:** executado localmente, sem publicação. O login valida campos, mostra carregamento e termina no aviso de indisponibilidade; não autentica nem cria sessão.
+- **Firmware:** executado no Wokwi, conectando ao Mosquitto local. Recebe a mensagem, registra tópico/tamanho na serial e a descarta, sem parser v1, atuação ou ACK.
 
-| US | Entrega | Evidência |
+## 4. Entregas por card
+
+Os 11 cards abaixo foram concluídos. US-10 aparece apenas como entrega parcial na seção 6.
+
+| Card | Entrega efetiva | Evidência no repositório |
 |---|---|---|
-| US-01 | Monorepo, README, guias, templates, `CODEOWNERS`, branch protegida, compose Mosquitto + Postgres | `main`, `infra/docker-compose.dev.yml` |
-| US-02 | CI trio (backend, mobile, firmware) + CodeQL + workflow que anexa PR ao card do Trello | `.github/workflows/` |
-| US-03 | Backend Express/TS em 4 camadas, `env.ts`, `/health`, error handler, Dockerfile, caso de uso modelo | `backend/src/`, `docs/architecture/caso-de-uso-modelo.md` |
-| US-04 | Contrato MQTT v1 (tópicos, payloads, QoS, expiração), consumidor local e simulador de terminal | `docs/architecture/contratos-mqtt.md`, `backend/src/infrastructure/mqtt/` |
-| US-05 | `schema.prisma` (User, AccessLocation, Authorization, AccessEvent, Credential), migration, seed e diagrama ER | `backend/prisma/`, `docs/architecture/modelo-dados.md` |
-| US-06 | OpenAPI 3.1 v1 e rotas stub validadas com Zod (501) | `docs/api/openapi.yaml`, `backend/src/main/http/` |
-| US-07 | Esqueleto ESP32 em PlatformIO com módulos mqtt/display/nfc/gps/feedback/door; demo Wokwi → Mosquitto com comando e reconexão | `firmware/`, `.github/workflows/ci-firmware.yml`, [evidência](evidencias/us-07-wokwi.md) |
-| US-09 | App Flutter com Riverpod, go_router, tema claro/escuro alinhado ao design system | `mobile/lib/core/` |
-| US-11 | Processo Scrum, product backlog (38 stories), DoD, sprints 1–3 e templates | `docs/scrum/` |
-| US-12 | Design system (Figtree), fluxo do usuário e estados; 23 assets exportados | `design/figma/`, `design/README.md` |
-| US-13 | CD do backend na Vercel com Neon; `/health` público conectado ao banco | `.github/workflows/cd-backend.yml`, `/health` |
+| US-01 | Monorepo, guias, templates, `CODEOWNERS` e compose Mosquitto/Postgres | [`README`](../../README.md), [`infra/`](../../infra/), [`.github/`](../../.github/) |
+| US-02 | CI das três stacks e vínculo automático Trello↔PR | [Workflows](../../.github/workflows/), PR #3 |
+| US-03 | Backend em camadas, ambiente validado, healthcheck, erros e Dockerfile | [`backend/src/`](../../backend/src/), [guia de extensão](../architecture/caso-de-uso-modelo.md), PR #2 |
+| US-04 | Contrato MQTT v1, consumidor local e simulador Node com tentativa, comando e ACK | [Contrato](../architecture/contratos-mqtt.md), [`mqtt-consumer.ts`](../../backend/src/main/mqtt-consumer.ts), PR #7 |
+| US-05 | Modelo Prisma, migration, seed demonstrativa e diagrama ER | [`backend/prisma/`](../../backend/prisma/), [modelo de dados](../architecture/modelo-dados.md), PR #6 |
+| US-06 | OpenAPI 3.1 e rotas stub com validação Zod | [OpenAPI](../api/openapi.yaml), [`main/http/`](../../backend/src/main/http/), PR #5 |
+| US-07 | Esqueleto modular ESP32, retentativas de conexão e demo Wokwi→Mosquitto | [`firmware/`](../../firmware/), [evidência da demo](evidencias/us-07-wokwi.md), PR #12 |
+| US-09 | Flutter com Riverpod, go_router e temas claro/escuro | [`mobile/lib/core/`](../../mobile/lib/core/), PR #4 |
+| US-11 | Processo Scrum, backlog de 38 histórias, DoD, sprints e templates | [`docs/scrum/`](../scrum/) |
+| US-12 | Design system com Figtree, fluxo do usuário e estados | [`design/`](../../design/), 23 PNGs em `design/figma/` |
+| US-13 | CD da API na Vercel e healthcheck conectado ao Neon | [`cd-backend.yml`](../../.github/workflows/cd-backend.yml), [guia de deploy](../guides/deploy.md), PR #8 e correções #10/#11 |
 
-## 4. Estado técnico
+## 5. Qualidade e reprodução da demo
 
-- **Backend**: Node + Express + TypeScript, Clean Architecture pragmática, Prisma/PostgreSQL (Neon), Zod, mqtt.js, Vitest. Deploy serverless na Vercel.
-- **Mobile**: Flutter + Riverpod + go_router; login mock com contrato para a API (US-06) e tema derivado do design system. Scanner e geolocalização ficam para a S2.
-- **Firmware**: ESP32 + PlatformIO, módulos de mqtt/display/nfc/gps/feedback/door, `config.example.h` sem segredos, testes host no CI e demo Wokwi → Mosquitto validada (comando e reconexão).
-- **Infra dev**: Docker Compose com Eclipse Mosquitto e PostgreSQL, espelhando o ambiente legado.
-- **Qualidade**: PR obrigatório com 1 review, checks obrigatórios na `main`, CodeQL em todo PR, convenções de commit e rastreio `US-XX`.
+Os workflows, testes e roteiros estão versionados. A evidência da US-07 registra build, testes host, recebimento de mensagem e reconexão; build verde sozinho não comprova a comunicação Wokwi→broker.
 
-## 5. O que não entrou na Sprint 1
+### Preparação
 
-| US | Situação | Destino |
+Usar o código da `main` de referência, dependências instaladas e os ambientes descritos no [guia local](../guides/como-rodar.md), no [README mobile](../../mobile/README.md) e no [README firmware](../../firmware/README.md). Para Wokwi, são necessários VS Code, extensão/licença ativa e firmware compilado.
+
+### Roteiro
+
+1. **API publicada:** abrir `/health` e mostrar `database: ok`; abrir `/docs` e distinguir contrato de implementação.
+2. **MQTT v1 simulado:** subir o broker na raiz:
+
+   ```bash
+   docker compose -f infra/docker-compose.dev.yml up -d mosquitto
+   ```
+
+   Em dois terminais, a partir de `backend/`:
+
+   ```bash
+   npm run mqtt:consumer
+   ```
+
+   ```bash
+   npm run sim:terminal
+   ```
+
+   Mostrar tentativa NFC **sintética**, comando e ACK correlacionado. O decisor da S1 é provisório e libera qualquer UID; isso não demonstra autorização real.
+
+3. **Wokwi:** seguir a preparação em `firmware/README.md`, selecionar `wokwi/wokwi.toml` e iniciar o simulador. Na raiz, publicar:
+
+   ```bash
+   docker compose -f infra/docker-compose.dev.yml exec mosquitto mosquitto_pub -h localhost -p 1883 -t terminals/terminal-dev-01/commands -m smoke-us07 -q 1
+   ```
+
+   Mostrar o recebimento na serial. Reiniciar o broker com `docker compose -f infra/docker-compose.dev.yml restart mosquitto`, aguardar reconexão e repetir a publicação.
+
+4. **Mobile:** em `mobile/`, executar `flutter run -d chrome`. Mostrar validação de campos e carregamento; uma entrada válida termina no aviso de login indisponível, sem navegação de sucesso.
+
+**São provas separadas:** o simulador Node exercita o contrato v1; o Wokwi comprova transporte e reconexão do esqueleto ESP32, sem interpretar ou executar o comando.
+
+## 6. O que não entrou e por quê
+
+| Card | Estado no fechamento | Continuidade |
 |---|---|---|
-| US-10 · Login & scanner | Apenas o login mock (PR #13); scanner, geolocalização, sessão e pt-BR não foram entregues | S2 com Art — login vira base da US-27; scanner na US-29 |
-| US-08 · Herança do protótipo | Não iniciada (sem branch/PR) | S2 com Caio, sobre o esqueleto da US-07 já validado |
+| US-08 — Herança do protótipo | Não iniciada; servo, LED, buzzer e LCD não foram portados | S2 com **Caio**, sobre o esqueleto da US-07 |
+| US-10 — Login & scanner | Apenas login mock, PR #13; sem scanner, geolocalização, sessão ou configuração completa de localização Material pt-BR | S2 com **Art**; refinar aproveitamento nas US-27/29 |
 
-**Causa comum**: a US-10 chegou no último dia e a US-08 não começou; ambas dependiam de tempo que a sprint curta não teve. O corte foi aplicado conforme a política registrada em `docs/scrum/sprints/sprint-1.md`.
+A sprint curta terminou com a US-08 sem início e a US-10 parcial. Aplicou-se o corte de segurança já previsto na [Sprint 1](../scrum/sprints/sprint-1.md), sem contabilizar histórias incompletas como concluídas.
 
-## 6. Riscos e mitigação
+## 7. Dívida técnica e prioridades da S2
 
-| Risco | Mitigação |
+Foram mapeados 11 cards na lista **“🧱 Dívida Técnica”** do Trello. Sprint alvo, responsáveis e compromisso serão definidos na Planning 2.
+
+| Prioridade de tratamento | Cards |
 |---|---|
-| Validação de hardware/Wokwi não roda no CI | Roteiro documentado em `firmware/README.md` + evidência registrada; licença do Wokwi renovada até 20/11 |
-| Escopo maior que a sprint (S2 tem 13 stories) | Estimativa na Planning 2 e fatiamento explícito; US-21 entra fatiada |
-| Android SDK ausente em ambiente de dev | Instalação documentada na S2; build web já validado |
-| Broker/credenciais em produção | HiveMQ Cloud com TLS e tópicos namespaceados; segredos só em GitHub Secrets |
+| Antes da demo QR com atuação | **DT-01:** bloquear decisor fail-open; **DT-02:** comandos/ACK entre API e worker; **DT-03:** terminal→local; **DT-04:** evento sem local no contrato; **DT-06:** TLS no firmware |
+| Confiabilidade antes de atuação real | **DT-05:** idempotência e frescor, incluindo retentativa após falha do decisor |
+| Antes do deploy do fluxo real | **DT-07:** proteger seed/dados demo; **DT-09:** migrations no CD |
+| Antes da entrega Android | **DT-10:** build Android no CI |
+| Conforme superfície e planejamento | **DT-08:** CORS com allowlist, necessário para web entre origens; **DT-11:** pinagem de actions por SHA |
 
-## 7. Próxima sprint (S2 · 22/10 → 11/11)
+Esses cards não representam correções já entregues.
 
-Foco: **fluxo QR real ponta-a-ponta + admin + deploy + design admin/terminal** (13 stories previstas em `docs/scrum/sprints/sprint-2.md`). A Planning 2 fecha o goal, a estimativa e os cortes; a US-08 começa sobre o esqueleto da US-07 já validado.
+## 8. Riscos
 
-## 8. Rastreabilidade
+| Risco | Tratamento previsto |
+|---|---|
+| Confundir transporte demonstrado com acesso autorizado | Manter explícitos os limites dos mocks e das duas demos MQTT |
+| Wokwi depender de licença e ambiente local | Preservar [evidência registrada](evidencias/us-07-wokwi.md) e roteiro; a licença registrada vence em 20/11/2026 |
+| APK ainda não validado | Preparar Android SDK e tratar DT-10; widgets verdes não comprovam empacotamento Android |
+| Broker dev sem TLS e com acesso anônimo | Restringir à rede de desenvolvimento; não expor à internet |
+| Escopo S2 exceder a capacidade | Estimar, fatiar e definir cortes antes do compromisso, incluindo os dois cards carregados e as dívidas |
+| Deploy saudável mascarar integração incompleta | Não interpretar `/health` como prova de migrations, autorização ou fluxo QR operacional |
 
-- Processo e fechamento: `docs/scrum/sprints/sprint-1.md` · `sprint-1-review.md` · `sprint-1-retro.md`
-- Evidência da US-07: [`evidencias/us-07-wokwi.md`](evidencias/us-07-wokwi.md)
-- Backlog e aceite: `docs/scrum/product-backlog.md`
-- Cada card do Trello tem o checklist de aceite, o PR anexado e o status atualizado.
+## 9. Próxima sprint
+
+A **S2 ocorre de 22/10 a 11/11/2026**, com Review em 11/11, às 19h30. O foco previsto é o fluxo QR real, backend administrativo, app, terminal e worker MQTT no Render.
+
+A [Sprint 2](../scrum/sprints/sprint-2.md) lista 13 histórias futuras, além dos dois cards carregados. O compromisso final depende da Planning 2.
+
+**Dependência obrigatória de planejamento:** a decisão de acesso está na **US-20**, ainda prevista para S3 e com endpoint stub. Para prometer QR ponta-a-ponta na S2, é necessário antecipar uma fatia dela; caso contrário, reduzir explicitamente o objetivo. A fatia da US-21 e as dívidas técnicas também precisam de aceite e prioridade definidos.
+
+## 10. Rastreabilidade
+
+- [Product backlog e critérios de aceite](../scrum/product-backlog.md).
+- [Fechamento da Sprint 1](../scrum/sprints/sprint-1.md) e [Definition of Done](../scrum/definition-of-done.md).
+- [Roteiro da Review](../scrum/sprints/sprint-1-review.md) e [rascunho da retrospectiva](../scrum/sprints/sprint-1-retro.md); feedback da banca e ações finais devem ser registrados após a cerimônia.
+- [Evidência Wokwi da US-07](evidencias/us-07-wokwi.md), produzida no commit `268637f`.
+- Rastreio de implementação: card `US-XX` → branch → linha `Card: US-XX` do PR → checks e merge. [PRs do projeto](https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso/pulls?q=is%3Apr+is%3Amerged).
+- O Trello acompanha o estado vivo; o repositório preserva contratos, código e registros da entrega.
+
+> **Nota de conferência:** no commit `18d9fe7`, já estão mergeados os PRs de documentação #14 e #15. Portanto, o total é **14 PRs (#2 a #15)**; os **12 PRs (#2 a #13)** informados correspondem ao recorte anterior ao fechamento documental.
