@@ -6,7 +6,7 @@
 
 - **Fundação pronta antes do código**: repo, CI trio, deploy, contratos (OpenAPI e MQTT) e board no ar desde os primeiros dias.
 - **Demo Wokwi fechada no dia da review**: esqueleto do firmware conectou no Mosquitto, recebeu comando e reconectou após restart do broker (US-07).
-- **Carry-over zerado no mesmo dia**: US-08 (servo/LED/buzzer/LCD) e US-10 (scanner/GPS/pt-BR) foram implementadas e validadas em 21/10, sem deixar card para a S2.
+- **Carry-over zerado no mesmo dia**: US-08 (servo/LED/buzzer/LCD) e US-10 (scanner/GPS/pt-BR) foram implementadas em 21/10; a validação física de câmera/APK ficou na DT-12.
 - **CI e CD confiáveis**: os quatro checks obrigatórios + CodeQL rodaram em todos os PRs; o backend está no ar na Vercel com Neon e `/health` respondendo (`database: ok`).
 - **Rastreabilidade**: card → branch → PR → execução funcionou; o `trello-link` anexa e comenta sozinho.
 - **Entrega técnica**: 13 cards concluídos, 122 testes de backend e 33 de mobile verdes, 23 assets de design exportados.
@@ -32,6 +32,7 @@
 | 3 | Fatiar US-10: login vira base da US-27; scanner/GPS entram na US-29 | Art + SM | **Concluída em 21/10** (scanner/GPS entregues) |
 | 4 | Atualizar checklist do Trello no mesmo dia do merge (gate de review) | SM | contínuo |
 | 5 | Documentar instalação do Android SDK e build APK | Carlos | S2 |
+| 6 | Validar câmera real e APK em dispositivo (DT-12/DT-10) | Art + Carlos | S2 |
 
 ## O que revisar na próxima retro
 
