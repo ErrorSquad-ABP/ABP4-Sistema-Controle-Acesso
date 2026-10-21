@@ -25,7 +25,7 @@
 
 ## O que não entra na entrega
 
-- **Nenhum card ficou para a S2.** A leitura com câmera real da US-10 deve ser validada na demo (navegador/aparelho); o código, os testes e o build web estão verdes.
+- **Nenhum card ficou para a S2.** A leitura com câmera real da US-10 deve ser validada na demo (navegador/aparelho) e está registrada na **DT-12**; o build/instalação do APK está na **DT-10**. O código, os testes e o build web estão verdes.
 - O fluxo de liberação de acesso (backend + QR/NFC + geofence) segue fora desta entrega, nas US-19/20/29.
 
 ## Feedback do stakeholder (professores/focal point)

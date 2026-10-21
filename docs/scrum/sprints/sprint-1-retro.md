@@ -32,6 +32,7 @@
 | 3 | Fatiar US-10: login vira base da US-27; scanner/GPS entram na US-29 | Art + SM | **Concluída em 21/10** (scanner/GPS entregues) |
 | 4 | Atualizar checklist do Trello no mesmo dia do merge (gate de review) | SM | contínuo |
 | 5 | Documentar instalação do Android SDK e build APK | Carlos | S2 |
+| 6 | Validar câmera real e APK em dispositivo (DT-12/DT-10) | Art + Carlos | S2 |
 
 ## O que revisar na próxima retro
 

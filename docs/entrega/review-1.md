@@ -104,18 +104,18 @@ Usar o código da `main` de referência, dependências instaladas e os ambientes
 
 **Nenhum card ficou para a S2.** A US-08 e a US-10 foram concluídas em 21/10 e não há carry-over.
 
-Ressalva de validação: a leitura com câmera real da US-10 deve ser confirmada na demo (navegador/aparelho); o código, os 33 testes e o build web estão verdes. O APK Android não foi gerado (sem SDK no ambiente) e está na dívida DT-10.
+Ressalva de validação: a leitura com câmera real da US-10 deve ser confirmada na demo (navegador/aparelho); o código, os 33 testes e o build web estão verdes. O APK Android não foi gerado (sem SDK no ambiente) e está na dívida DT-10; a validação em câmera/dispositivo está na DT-12.
 
 ## 7. Dívida técnica e prioridades da S2
 
-Foram mapeados 11 cards na lista **“🧱 Dívida Técnica”** do Trello. Sprint alvo, responsáveis e compromisso serão definidos na Planning 2.
+Foram mapeados 12 cards na lista **“🧱 Dívida Técnica”** do Trello. Sprint alvo, responsáveis e compromisso serão definidos na Planning 2.
 
 | Prioridade de tratamento | Cards |
 |---|---|
 | Antes da demo QR com atuação | **DT-01:** bloquear decisor fail-open; **DT-02:** comandos/ACK entre API e worker; **DT-03:** terminal→local; **DT-04:** evento sem local no contrato; **DT-06:** TLS no firmware |
 | Confiabilidade antes de atuação real | **DT-05:** idempotência e frescor, incluindo retentativa após falha do decisor |
 | Antes do deploy do fluxo real | **DT-07:** proteger seed/dados demo; **DT-09:** migrations no CD |
-| Antes da entrega Android | **DT-10:** build Android no CI |
+| Antes da entrega Android | **DT-10:** build Android no CI; **DT-12:** validar câmera real e APK em dispositivo |
 | Conforme superfície e planejamento | **DT-08:** CORS com allowlist, necessário para web entre origens; **DT-11:** pinagem de actions por SHA |
 
 Esses cards não representam correções já entregues.
