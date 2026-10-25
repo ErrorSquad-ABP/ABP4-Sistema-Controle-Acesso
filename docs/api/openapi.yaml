@@ -916,6 +916,7 @@ components:
         - startsAt
         - endsAt
         - maxUses
+      additionalProperties: false
     CreateUserRequest:
       type: object
       properties:

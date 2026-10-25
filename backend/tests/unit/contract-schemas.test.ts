@@ -77,6 +77,11 @@ describe('CreateAuthorizationRequest', () => {
     const result = CreateAuthorizationRequest.safeParse({ ...valid, maxUses: 0, userId: '42' });
     expect(issuePaths(result)).toEqual(expect.arrayContaining(['maxUses', 'userId']));
   });
+
+  it.each(['usedCount', 'createdById', 'status'])('rejeita campo gerenciado pelo servidor: %s', (field) => {
+    const result = CreateAuthorizationRequest.safeParse({ ...valid, [field]: field === 'status' ? 'ACTIVE' : 1 });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('QrAccessRequest', () => {

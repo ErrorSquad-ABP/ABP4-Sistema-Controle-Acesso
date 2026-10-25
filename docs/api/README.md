@@ -30,6 +30,10 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 
 **Hoje todas são stubs**: validam a entrada com Zod (inválida → `400 INVALID_REQUEST`) e respondem `501 NOT_IMPLEMENTED` citando o card. Quando o card da rota for entregue, ela passa a responder de verdade, sem mudar o contrato.
 
+### Status da US-16
+
+As regras de domínio, o caso de uso e o adapter Prisma da US-16 estão implementados e testados em suas camadas. `POST /api/v1/authorizations` permanece no stub: valida a entrada e responde `501 NOT_IMPLEMENTED`. A integração HTTP aguarda a US-14 fornecer autenticação JWT reutilizável com identidade verificada. Ao retomá-la, monte o router real antes das rotas stub, aplique a autorização `ADMIN` nessa identidade e derive `createdById` da sessão autenticada. Ainda não há resposta HTTP `201` funcional nem testes de autenticação `401`/`403` para esta rota.
+
 ## Convenções
 
 - **Autenticação**: `Authorization: Bearer <accessToken>` (de `POST /auth/login`).

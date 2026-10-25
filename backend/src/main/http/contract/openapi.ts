@@ -43,7 +43,7 @@ Rotas ainda nao implementadas respondem **501 NOT_IMPLEMENTED** depois de valida
 o card responsavel aparece em \`x-story\` de cada operacao.`;
 
 /** Remove ruido que o Zod gera e o OpenAPI nao precisa. */
-function clean(schema: JsonSchema): JsonSchema {
+function clean(schema: JsonSchema, io: Io): JsonSchema {
   const visit = (node: unknown): unknown => {
     if (Array.isArray(node)) return node.map(visit);
     if (node === null || typeof node !== 'object') return node;
@@ -52,9 +52,9 @@ function clean(schema: JsonSchema): JsonSchema {
       if (key === '$schema' || key === '$id') continue;
       // `format` (uuid, email, date-time) ja descreve; o regex do Zod so polui o documento.
       if (key === 'pattern' && 'format' in node) continue;
-      // O modo output fecha todo objeto; num contrato isso faria o cliente rejeitar
-      // campo novo na resposta, que precisa continuar sendo mudanca compativel.
-      if (key === 'additionalProperties' && value === false) continue;
+      // Respostas permanecem abertas para clientes tolerarem campos futuros;
+      // entradas strict preservam a rejeicao de campos que o servidor controla.
+      if (key === 'additionalProperties' && value === false && io === 'output') continue;
       out[key] = visit(value);
     }
     // Limites de Number.MAX_SAFE_INTEGER que o Zod poe em todo inteiro.
@@ -116,7 +116,7 @@ function createConverter(registry: ContractRegistry) {
       ...options(io),
       uri: (id) => `${REF_PREFIX}${id}`,
     }) as { schemas: Record<string, JsonSchema> };
-    return Object.fromEntries(Object.entries(schemas).map(([id, schema]) => [id, clean(schema)]));
+    return Object.fromEntries(Object.entries(schemas).map(([id, schema]) => [id, clean(schema, io)]));
   };
 
   const input = convertAll('input');
@@ -153,7 +153,7 @@ function createConverter(registry: ContractRegistry) {
     /** `$ref` para schema nomeado (mesmo envolto em optional/default); senao o JSON Schema inline. */
     schemaFor(schema: z.ZodType, io: Io): JsonSchema {
       const id = registry.get(unwrap(schema))?.id;
-      if (!id) return clean(z.toJSONSchema(schema, options(io)) as JsonSchema);
+      if (!id) return clean(z.toJSONSchema(schema, options(io)) as JsonSchema, io);
 
       const ref: JsonSchema = { $ref: `${REF_PREFIX}${nameFor(id, io)}` };
       if (schema instanceof z.ZodDefault) ref.default = schema.def.defaultValue;

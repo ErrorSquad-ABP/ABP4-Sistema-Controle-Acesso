@@ -49,6 +49,7 @@ export const CreateAuthorizationRequest = named(
       endsAt: DateTime,
       maxUses: z.int().min(1).max(1000).describe('Numero de utilizacoes permitidas na janela'),
     })
+    .strict()
     .refine((v) => Date.parse(v.endsAt) > Date.parse(v.startsAt), {
       path: ['endsAt'],
       message: '`endsAt` deve ser posterior a `startsAt`',

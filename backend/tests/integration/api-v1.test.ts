@@ -1,4 +1,5 @@
 import request from 'supertest';
+import type { OpenAPIV3_1 } from 'openapi-types';
 import { describe, expect, it } from 'vitest';
 import { buildContainer } from '../../src/main/composition-root.js';
 import { loadEnv } from '../../src/main/config/env.js';
@@ -60,6 +61,43 @@ describe('rotas stub do contrato v1', () => {
 
     expect(res.status).toBe(501);
   });
+
+  describe('US-16 POST /authorizations (integracao HTTP pendente da US-14)', () => {
+    const body = {
+      userId: EXAMPLE_IDS.user,
+      locationId: EXAMPLE_IDS.location,
+      startsAt: '2026-10-20T14:00:00-03:00',
+      endsAt: '2026-10-20T18:00:00-03:00',
+      maxUses: 5,
+    };
+
+    it('valida uma entrada correta e mantem a resposta 501 enquanto nao ha auth real', async () => {
+      const res = await request(app).post(`${API_V1_PREFIX}/authorizations`).send(body);
+
+      expect(res.status).toBe(501);
+      expect(res.body.error.code).toBe('NOT_IMPLEMENTED');
+      expect(res.body.error.message).toContain('US-16');
+    });
+
+    it('entrada invalida -> 400 INVALID_REQUEST', async () => {
+      const res = await request(app)
+        .post(`${API_V1_PREFIX}/authorizations`)
+        .send({ ...body, endsAt: '2026-10-20T13:00:00-03:00' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('INVALID_REQUEST');
+      expect(res.body.error.details).toHaveProperty('endsAt');
+    });
+
+    it.each(['usedCount', 'createdById', 'status'])('rejeita campo interno %s com 400', async (field) => {
+      const res = await request(app)
+        .post(`${API_V1_PREFIX}/authorizations`)
+        .send({ ...body, [field]: field === 'status' ? 'ACTIVE' : 1 });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('INVALID_REQUEST');
+    });
+  });
 });
 
 describe('publicacao do contrato', () => {
@@ -77,5 +115,17 @@ describe('publicacao do contrato', () => {
     expect(res.headers['content-type']).toContain('text/html');
     expect(res.text).toContain('swagger-ui-dist@');
     expect(res.text).toContain("url: './openapi.json'");
+  });
+
+  it('documenta US-16 como ADMIN com 201, 400, 401, 403 e 422', () => {
+    const document = buildOpenApiDocument() as unknown as OpenAPIV3_1.Document;
+    const operation = document.paths?.['/authorizations']?.post as OpenAPIV3_1.OperationObject | undefined;
+
+    expect(operation?.security).toEqual([{ bearerAuth: [] }]);
+    expect(operation?.responses).toHaveProperty('201');
+    expect(operation?.responses).toHaveProperty('400');
+    expect(operation?.responses).toHaveProperty('401');
+    expect(operation?.responses).toHaveProperty('403');
+    expect(operation?.responses).toHaveProperty('422');
   });
 });

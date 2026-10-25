@@ -83,8 +83,10 @@ describe('documento OpenAPI v1', () => {
     }
   });
 
-  it('nao fecha objetos de resposta (campo novo na resposta segue compativel)', () => {
-    expect(JSON.stringify(document)).not.toContain('"additionalProperties":false');
+  it('fecha a entrada estrita da US-16 e mantem objetos de resposta abertos', () => {
+    const schemas = document.components?.schemas ?? {};
+    expect(schemas.CreateAuthorizationRequest).toMatchObject({ additionalProperties: false });
+    expect(schemas.Authorization).not.toHaveProperty('additionalProperties', false);
   });
 
   it('docs/api/openapi.yaml esta em dia com o codigo (rode `npm run openapi:generate`)', async () => {
