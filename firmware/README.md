@@ -175,6 +175,7 @@ Os testes host rodam sem Arduino, com tempo e periféricos simulados:
 | `test_feedback_pattern` | passos de LED/buzzer de liberado e negado, interrupção e fim do padrão |
 | `test_display_text` | textos de 16 colunas e exclusividade por status |
 | `test_qr_token` | validade do QR (limite de expiração, relógio ausente e token vazio) |
+| `test_clock_policy` | janela de hora confiável (epoch zero, antes e depois de 2025-01-01) |
 | `test_mqtt` | módulo MQTT real com doubles: offline, retentativas, inscrição, reconexão |
 | `test_mqtt_command` | JSON v1 de ponta a ponta: ACK publicado, dedup, prazo, `deny`, recusas e QR |
 
@@ -188,6 +189,7 @@ g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_command.cpp -o /tmp/t
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_feedback_pattern.cpp -o /tmp/t-feedback && /tmp/t-feedback
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_display_text.cpp -o /tmp/t-display && /tmp/t-display
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_qr_token.cpp -o /tmp/t-qr && /tmp/t-qr
+g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_clock_policy.cpp -o /tmp/t-clock && /tmp/t-clock
 JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
 g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt && /tmp/t-mqtt
 g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_command.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt-command && /tmp/t-mqtt-command

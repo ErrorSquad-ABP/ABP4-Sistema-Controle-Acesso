@@ -14,7 +14,7 @@ import { PostgresDatabaseProbe } from '../infrastructure/database/postgres-datab
 import { PrismaAccessEventRepository } from '../infrastructure/repositories/prisma-access-event-repository.js';
 import { PrismaUserRepository } from '../infrastructure/repositories/prisma-user-repository.js';
 import { createLogger, type Logger } from '../shared/logger.js';
-import type { Env } from './config/env.js';
+import { InvalidEnvError, type Env } from './config/env.js';
 
 /**
  * Injecao de dependencia manual: unico lugar que instancia adapters
@@ -46,6 +46,10 @@ export interface ContainerOverrides {
 }
 
 export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Container {
+  // Guarda de auth no ponto que monta o token: o worker MQTT nao emite JWT e nao precisa do segredo.
+  if (env.NODE_ENV === 'production' && env.JWT_SECRET.startsWith('dev-only')) {
+    throw new InvalidEnvError('JWT_SECRET: defina um segredo proprio em producao');
+  }
   const clock = new SystemClock();
   const logger = createLogger(env.LOG_LEVEL);
   const databaseProbe =

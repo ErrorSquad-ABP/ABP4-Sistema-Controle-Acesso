@@ -7,7 +7,7 @@
 namespace qr_token {
 
 struct State {
-  char token[65] = {0};
+  char token[129] = {0};
   uint64_t expiresAt = 0;
   bool hasToken = false;
 };

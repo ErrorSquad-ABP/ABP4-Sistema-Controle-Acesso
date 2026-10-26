@@ -46,11 +46,15 @@ const envSchema = z.object({
     .default('dev-only-secret-nao-use-em-producao-32'),
   JWT_TTL_SECONDS: z.coerce.number().int().min(60).max(86_400).default(3600),
   /** URL publica do web service no Render; habilita o self-ping de keep-alive. */
-  RENDER_EXTERNAL_URL: z.url().optional(),
-}).superRefine((value, ctx) => {
-  if (value.NODE_ENV === 'production' && value.JWT_SECRET.startsWith('dev-only')) {
-    ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'defina JWT_SECRET em producao' });
-  }
+  RENDER_EXTERNAL_URL: z
+    .string()
+    .trim()
+    .transform((v) => v || undefined)
+    .refine(
+      (v) => v === undefined || /^https?:\/\/\S+$/.test(v),
+      'deve ser uma URL http(s)',
+    )
+    .optional(),
 });
 
 export type Env = Readonly<z.infer<typeof envSchema>>;

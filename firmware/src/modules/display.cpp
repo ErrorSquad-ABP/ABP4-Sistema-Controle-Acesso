@@ -3,7 +3,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 #include <Arduino.h>
-#include <QRCode.h>
+#include <qrcode.h>
 #include <string.h>
 
 #include "display_text.h"
@@ -17,13 +17,13 @@ Adafruit_ILI9341 tft(TFT_CS_PIN, TFT_DC_PIN, TFT_MOSI_PIN, TFT_SCK_PIN, TFT_RST_
 constexpr int kScreenWidth = 240;
 constexpr int kScreenHeight = 320;
 constexpr int kStatusTop = 228;
-constexpr uint8_t kQrVersion = 5;  // 37x37, ate 106 bytes em ECC_LOW
-constexpr int kQrScale = 5;
+constexpr uint8_t kQrVersion = 8;  // 49x49, ate 152 bytes em ECC_LOW (token do contrato: 128)
+constexpr int kQrScale = 4;
 
 QRCode qr;
-// 37x37 = 1369 bits (~172 bytes); 256 cobre a versao 5 com folga.
-uint8_t qrBuffer[256];
-char drawnToken[65] = {0};
+// 49x49 = 2401 bits (~301 bytes); 384 cobre a versao 8 com folga.
+uint8_t qrBuffer[384];
+char drawnToken[129] = {0};
 bool qrDrawn = false;
 uint32_t drawnSeconds = 0;
 
@@ -76,7 +76,7 @@ void drawQr(const char* token) {
 
   const int side = qr.size * kQrScale;
   const int left = (kScreenWidth - side) / 2;
-  const int top = 6;
+  const int top = 4;
   for (uint8_t y = 0; y < qr.size; ++y) {
     for (uint8_t x = 0; x < qr.size; ++x) {
       if (qrcode_getModule(&qr, x, y)) {
@@ -89,13 +89,16 @@ void drawQr(const char* token) {
 }
 
 void drawQrFooter(uint32_t secondsLeft) {
-  tft.fillRect(0, 196, kScreenWidth, kStatusTop - 196, ILI9341_WHITE);
+  tft.fillRect(0, 200, kScreenWidth, kStatusTop - 200, ILI9341_WHITE);
   tft.setTextColor(ILI9341_BLACK);
-  tft.setTextSize(2);
-  tft.setCursor(8, 202);
-  tft.print(drawnToken);
   tft.setTextSize(1);
-  tft.setCursor(8, 218);
+  // O token completo esta no QR; aqui cabe so um prefixo para conferencia.
+  char preview[17];
+  strncpy(preview, drawnToken, sizeof preview - 1);
+  preview[sizeof preview - 1] = '\0';
+  tft.setCursor(8, 202);
+  tft.print(preview);
+  tft.setCursor(8, 214);
   tft.printf("expira em %us", static_cast<unsigned int>(secondsLeft));
 }
 

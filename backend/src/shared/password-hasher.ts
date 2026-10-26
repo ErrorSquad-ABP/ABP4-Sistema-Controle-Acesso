@@ -29,11 +29,20 @@ export function verifyPassword(password: string, stored: string): boolean {
   const [, n, r, p, salt, hash] = parts;
   if (!n || !r || !p || !salt || !hash) return false;
   const expected = Buffer.from(hash, 'hex');
-  if (expected.length === 0) return false;
-  const actual = scryptSync(password, salt, expected.length, {
-    N: Number(n),
-    r: Number(r),
-    p: Number(p),
-  });
-  return actual.length === expected.length && timingSafeEqual(actual, expected);
+  if (expected.length === 0 || !isPositiveInt(n) || !isPositiveInt(r) || !isPositiveInt(p)) return false;
+  try {
+    const actual = scryptSync(password, salt, expected.length, {
+      N: Number(n),
+      r: Number(r),
+      p: Number(p),
+    });
+    return actual.length === expected.length && timingSafeEqual(actual, expected);
+  } catch {
+    // Parametros fora do limite do scrypt viram negativa, nao um 500 no login.
+    return false;
+  }
+}
+
+function isPositiveInt(value: string): boolean {
+  return /^\d+$/.test(value) && Number(value) > 0;
 }

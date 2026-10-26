@@ -15,4 +15,8 @@ describe('verifyPassword', () => {
   it('recusa hash malformado sem estourar', () => {
     expect(verifyPassword('x', 'lixo')).toBe(false);
   });
+
+  it('recusa hash com parametros de scrypt invalidos', () => {
+    expect(verifyPassword('x', 'scrypt$3$8$1$salt$00')).toBe(false);
+  });
 });

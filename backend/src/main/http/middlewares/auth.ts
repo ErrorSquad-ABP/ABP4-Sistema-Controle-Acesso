@@ -9,10 +9,12 @@ export function requireAuth(container: Container): RequestHandler {
       const getCurrentUser = container.useCases.getCurrentUser;
       if (!getCurrentUser) throw new ServiceUnavailableError('Autenticacao indisponivel');
 
-      const [scheme, token] = (req.header('authorization') ?? '').split(' ');
-      if (scheme?.toLowerCase() !== 'bearer' || !token) throw new UnauthorizedError('Token ausente');
+      const parts = (req.header('authorization') ?? '').trim().split(/\s+/);
+      if (parts.length !== 2 || parts[0]?.toLowerCase() !== 'bearer' || !parts[1]) {
+        throw new UnauthorizedError('Token ausente');
+      }
 
-      const claims = await container.tokens.verify(token);
+      const claims = await container.tokens.verify(parts[1]);
       res.locals.user = await getCurrentUser.execute(claims.userId);
       next();
     } catch (err) {

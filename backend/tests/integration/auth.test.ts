@@ -52,6 +52,18 @@ describe('auth', () => {
     expect((await request(app).get('/api/v1/auth/me').set('Authorization', 'Bearer x')).status).toBe(401);
   });
 
+  it('header com segmento extra -> 401', async () => {
+    const login = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: 'admin@abp4.local', password: 'DemoAdmin123!' });
+
+    const res = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${login.body.accessToken} extra`);
+
+    expect(res.status).toBe(401);
+  });
+
   it('credencial errada e e-mail inexistente -> 401 com a mesma mensagem', async () => {
     const errada = await request(app)
       .post('/api/v1/auth/login')
