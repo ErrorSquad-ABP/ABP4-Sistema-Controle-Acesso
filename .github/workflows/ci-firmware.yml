@@ -58,6 +58,8 @@ jobs:
           "$RUNNER_TEMP/abp4-test-feedback"
           g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_display_text.cpp -o "$RUNNER_TEMP/abp4-test-display"
           "$RUNNER_TEMP/abp4-test-display"
+          g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_qr_token.cpp -o "$RUNNER_TEMP/abp4-test-qr"
+          "$RUNNER_TEMP/abp4-test-qr"
 
       - name: Testes host (modulo MQTT com broker simulado)
         run: |

@@ -43,6 +43,8 @@ void loop() {
   terminal_mqtt::update();
   terminal_door::update();
   terminal_feedback::update();
+  const uint64_t now = clock_time::nowEpoch();
+  terminal_display::showQr(terminal_mqtt::qr(), now, now != 0);
   terminal_display::showDoor(terminal_door::state());
   terminal_display::update();
   terminal_nfc::update();

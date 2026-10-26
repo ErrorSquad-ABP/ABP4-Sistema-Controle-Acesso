@@ -40,12 +40,12 @@
       "attrs": { "volume": "0.1" }
     },
     {
-      "type": "wokwi-lcd1602",
-      "id": "lcd1",
+      "type": "wokwi-ili9341",
+      "id": "tft1",
       "top": 60,
-      "left": 380,
-      "attrs": { "pins": "i2c" },
-      "rotate": 0
+      "left": 390,
+      "rotate": 0,
+      "attrs": {}
     }
   ],
   "connections": [
@@ -60,10 +60,14 @@
     ["ledGreen:C", "esp:GND.1", "black", []],
     ["buzzer1:1", "esp:19", "orange", []],
     ["buzzer1:2", "esp:GND.2", "black", []],
-    ["lcd1:GND", "esp:GND.1", "black", []],
-    ["lcd1:VCC", "esp:3V3", "red", []],
-    ["lcd1:SDA", "esp:21", "blue", []],
-    ["lcd1:SCL", "esp:22", "yellow", []]
+    ["tft1:GND", "esp:GND.1", "black", []],
+    ["tft1:VCC", "esp:3V3", "red", []],
+    ["tft1:LED", "esp:3V3", "red", []],
+    ["tft1:CS", "esp:27", "blue", []],
+    ["tft1:RST", "esp:25", "purple", []],
+    ["tft1:D/C", "esp:26", "orange", []],
+    ["tft1:MOSI", "esp:32", "green", []],
+    ["tft1:SCK", "esp:33", "yellow", []]
   ],
   "serialMonitor": { "display": "always", "newline": "lf" }
 }
