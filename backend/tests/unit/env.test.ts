@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { InvalidEnvError, loadEnv } from '../../src/main/config/env.js';
 
+const SECRET = 'a'.repeat(64);
+const configured = (env: NodeJS.ProcessEnv = {}) => loadEnv({ QR_TOKEN_SECRET: SECRET, ...env });
+
 describe('loadEnv', () => {
   it('aplica defaults quando nada e informado', () => {
-    expect(loadEnv({})).toEqual({
+    expect(configured()).toEqual({
       NODE_ENV: 'development',
       PORT: 3000,
       LOG_LEVEL: 'info',
+      QR_TOKEN_SECRET: SECRET,
       MQTT_URL: 'mqtt://localhost:1884',
       SIM_TERMINAL_ID: 'terminal-01',
       SIM_NFC_UID: '04A1B2C3',
@@ -14,7 +18,7 @@ describe('loadEnv', () => {
   });
 
   it('le as variaveis MQTT e trata credenciais vazias como ausentes', () => {
-    const env = loadEnv({
+    const env = configured({
       MQTT_URL: 'mqtts://broker.example.com:8883',
       MQTT_USERNAME: 'abp4',
       MQTT_PASSWORD: '',
@@ -26,7 +30,7 @@ describe('loadEnv', () => {
   });
 
   it('converte PORT e trata APP_VERSION vazia como ausente', () => {
-    const env = loadEnv({ NODE_ENV: 'production', PORT: '8080', APP_VERSION: '' });
+    const env = configured({ NODE_ENV: 'production', PORT: '8080', APP_VERSION: '' });
 
     expect(env.PORT).toBe(8080);
     expect(env.APP_VERSION).toBeUndefined();
@@ -35,12 +39,12 @@ describe('loadEnv', () => {
   it('aceita DATABASE_URL postgres e trata vazia como ausente', () => {
     const url = 'postgresql://user:pass@ep-x-pooler.neon.tech/db?sslmode=require';
 
-    expect(loadEnv({ DATABASE_URL: url }).DATABASE_URL).toBe(url);
-    expect(loadEnv({ DATABASE_URL: '' }).DATABASE_URL).toBeUndefined();
+    expect(configured({ DATABASE_URL: url }).DATABASE_URL).toBe(url);
+    expect(configured({ DATABASE_URL: '' }).DATABASE_URL).toBeUndefined();
   });
 
   it('retorna objeto congelado', () => {
-    expect(Object.isFrozen(loadEnv({}))).toBe(true);
+    expect(Object.isFrozen(configured())).toBe(true);
   });
 
   it.each([
@@ -52,8 +56,15 @@ describe('loadEnv', () => {
     ['SIM_TERMINAL_ID invalido', { SIM_TERMINAL_ID: 'Terminal 01' }, 'SIM_TERMINAL_ID'],
     ['SIM_NFC_UID nao hexadecimal', { SIM_NFC_UID: 'xyz' }, 'SIM_NFC_UID'],
     ['DATABASE_URL fora do padrao postgres', { DATABASE_URL: 'mysql://x' }, 'DATABASE_URL'],
+    ['QR_TOKEN_SECRET curto', { QR_TOKEN_SECRET: 'a'.repeat(63) }, 'QR_TOKEN_SECRET'],
+    ['QR_TOKEN_SECRET nao hexadecimal', { QR_TOKEN_SECRET: 'z'.repeat(64) }, 'QR_TOKEN_SECRET'],
   ])('falha no boot com %s, citando a variavel', (_caso, source, variavel) => {
-    expect(() => loadEnv(source)).toThrow(InvalidEnvError);
-    expect(() => loadEnv(source)).toThrow(variavel);
+    expect(() => loadEnv({ QR_TOKEN_SECRET: SECRET, ...source })).toThrow(InvalidEnvError);
+    expect(() => loadEnv({ QR_TOKEN_SECRET: SECRET, ...source })).toThrow(variavel);
+  });
+
+  it('exige QR_TOKEN_SECRET sem valor padrão', () => {
+    expect(() => loadEnv({})).toThrow(InvalidEnvError);
+    expect(() => loadEnv({})).toThrow('QR_TOKEN_SECRET');
   });
 });

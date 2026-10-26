@@ -24,6 +24,7 @@ const envSchema = z.object({
     .default('mqtt://localhost:1884'),
   MQTT_USERNAME: optionalString,
   MQTT_PASSWORD: optionalString,
+  QR_TOKEN_SECRET: z.string().regex(/^[A-Fa-f0-9]{64,}$/, 'deve ser hexadecimal com pelo menos 32 bytes aleatorios (64 caracteres)'),
   SIM_TERMINAL_ID: z.string().regex(TERMINAL_ID_PATTERN).default('terminal-01'),
   SIM_NFC_UID: z
     .string()

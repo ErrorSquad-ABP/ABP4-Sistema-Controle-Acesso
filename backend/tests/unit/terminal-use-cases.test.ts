@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { HandleAccessEventUseCase } from '../../src/application/terminal/handle-access-event.use-case.js';
 import { HandleAckUseCase } from '../../src/application/terminal/handle-ack.use-case.js';
 import { PublishQrCodeUseCase } from '../../src/application/terminal/publish-qr-code.use-case.js';
+import { ValidateQrCredentialUseCase, IssueQrCredentialUseCase } from '../../src/application/terminal/qr-credential.use-cases.js';
+import { HmacQrTokenSigner } from '../../src/infrastructure/ids/hmac-qr-token-signer.js';
 import type { AccessDecider } from '../../src/domain/ports/access-decider.js';
 import type { AccessEventMessage, AckMessage } from '../../src/domain/terminal/messages.js';
+import { QR_TTL_MS } from '../../src/domain/terminal/messages.js';
 import { PendingCommands } from '../../src/domain/terminal/pending-commands.js';
 import { SeenMessages } from '../../src/domain/terminal/seen-messages.js';
 import {
@@ -156,20 +159,75 @@ describe('terminal use cases', () => {
   });
 
   describe('PublishQrCodeUseCase', () => {
-    it('publica o qr com validade de 10 s', async () => {
-      await new PublishQrCodeUseCase(bus, clock, new SequentialIds()).execute({
+    it('publica QR v1 assinado com timestamps e TTL identicos aos claims', async () => {
+      const ids = new SequentialIds();
+      const signer = new HmacQrTokenSigner('a'.repeat(64));
+      const validateCredential = new ValidateQrCredentialUseCase(clock, signer);
+      const message = await new PublishQrCodeUseCase(
+        bus,
+        ids,
+        new IssueQrCredentialUseCase(clock, ids, signer),
+      ).execute({
         terminalId: TERMINAL,
       });
 
-      expect(bus.published[0]).toMatchObject({
-        channel: 'qr',
-        message: {
-          terminalId: TERMINAL,
-          token: 'tokentest123',
-          timestamp: '2026-10-19T19:30:00.000Z',
-          expiresAt: '2026-10-19T19:30:10.000Z',
-        },
+      expect(bus.published).toEqual([{ channel: 'qr', message }]);
+      expect(message).toMatchObject({
+        v: 1,
+        terminalId: TERMINAL,
+        timestamp: '2026-10-19T19:30:00.000Z',
+        expiresAt: '2026-10-19T19:30:10.000Z',
       });
+      expect(message.token).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/);
+      const validation = validateCredential.execute(message.token, message.terminalId);
+      expect(validation.valid).toBe(true);
+      if (!validation.valid) throw new Error('credencial assinada deveria ser valida');
+      expect(new Date(validation.claims.issuedAt).toISOString()).toBe(message.timestamp);
+      expect(new Date(validation.claims.expiresAt).toISOString()).toBe(message.expiresAt);
+      expect(validation.claims.expiresAt - validation.claims.issuedAt).toBe(QR_TTL_MS);
+    });
+  });
+
+  describe('QR credential crypto', () => {
+    const signer = new HmacQrTokenSigner('a'.repeat(64));
+    const issue = () => new IssueQrCredentialUseCase(clock, new SequentialIds(), signer);
+    const validate = () => new ValidateQrCredentialUseCase(clock, signer);
+
+    it('valida token assinado e emite apenas os claims necessarios', () => {
+      const credential = issue().execute(TERMINAL);
+      expect(validate().execute(credential.token, TERMINAL)).toMatchObject({ valid: true });
+      const [payload] = credential.token.split('.');
+      expect(Object.keys(JSON.parse(Buffer.from(payload!, 'base64url').toString()))).toEqual(['terminalId', 'issuedAt', 'expiresAt', 'id']);
+    });
+
+    it('rejeita assinatura adulterada', () => {
+      const { token } = issue().execute(TERMINAL);
+      const [payload, signature] = token.split('.');
+      const altered = `${payload}.${signature![0] === 'A' ? 'B' : 'A'}${signature!.slice(1)}`;
+      expect(validate().execute(altered, TERMINAL)).toEqual({ valid: false });
+    });
+
+    it('rejeita formato invalido', () => {
+      expect(validate().execute('not.a.valid.token', TERMINAL)).toEqual({ valid: false });
+    });
+
+    it('rejeita terminal divergente', () => {
+      const { token } = issue().execute(TERMINAL);
+      expect(validate().execute(token, 'terminal-02')).toEqual({ valid: false });
+    });
+
+    it('aceita no instante emitido e rejeita no limite expiresAt', () => {
+      const { token, expiresAt } = issue().execute(TERMINAL);
+      expect(validate().execute(token, TERMINAL).valid).toBe(true);
+      clock.date = new Date(expiresAt);
+      expect(validate().execute(token, TERMINAL)).toEqual({ valid: false });
+    });
+
+    it('rejeita token ainda nao emitido', () => {
+      const signerNow = new HmacQrTokenSigner('a'.repeat(64));
+      const payload = Buffer.from(JSON.stringify({ terminalId: TERMINAL, issuedAt: NOW.getTime() + 1, expiresAt: NOW.getTime() + 10_001, id: 'id' })).toString('base64url');
+      const token = `${payload}.${signerNow.sign(payload)}`;
+      expect(validate().execute(token, TERMINAL)).toEqual({ valid: false });
     });
   });
 });

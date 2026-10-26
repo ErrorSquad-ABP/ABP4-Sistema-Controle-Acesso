@@ -6,7 +6,7 @@ import { API_V1_PREFIX, buildOpenApiDocument } from '../../src/main/http/contrac
 import { EXAMPLE_IDS, type Operation, operations } from '../../src/main/http/contract/operations.js';
 import { createApp } from '../../src/main/http/app.js';
 
-const env = loadEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent' });
+const env = loadEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent', QR_TOKEN_SECRET: 'a'.repeat(64) });
 const app = createApp(buildContainer(env));
 
 function urlFor(op: Operation, params: Record<string, string> = op.example.params ?? {}): string {
