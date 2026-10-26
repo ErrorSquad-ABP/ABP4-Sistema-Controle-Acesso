@@ -39,6 +39,16 @@ const envSchema = z.object({
       'deve comecar com postgres:// ou postgresql://',
     )
     .optional(),
+  /** Segredo do JWT HS256. O default so vale fora de producao (superRefine abaixo). */
+  JWT_SECRET: z
+    .string()
+    .min(32, 'JWT_SECRET precisa de pelo menos 32 caracteres')
+    .default('dev-only-secret-nao-use-em-producao-32'),
+  JWT_TTL_SECONDS: z.coerce.number().int().min(60).max(86_400).default(3600),
+}).superRefine((value, ctx) => {
+  if (value.NODE_ENV === 'production' && value.JWT_SECRET.startsWith('dev-only')) {
+    ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'defina JWT_SECRET em producao' });
+  }
 });
 
 export type Env = Readonly<z.infer<typeof envSchema>>;
