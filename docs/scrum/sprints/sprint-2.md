@@ -39,11 +39,27 @@ A definir na Planning 2. O goal nasce do foco macro acima (fluxo QR real ponta-a
 
 ## Backlog detalhado da sprint
 
-Preenchido na Planning 2: cards puxados, donos, pontos, critérios de aceite refinados e cortes de segurança, no mesmo formato da [`sprint-1.md`](sprint-1.md).
+Cards puxados na Planning 2. Pontos ficam "—" enquanto a estimativa colaborativa não for registrada (mesma regra da S1: nada de pontuação retroativa).
 
 | US | Título | Dono | Pontos | Status |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| US-14 | Auth JWT + perfis | João (card era do Felipe; alinhar) | — | Em review |
+| US-15 | CRUD de usuários admin | — | — | Pendente |
+| US-16 | Criar autorização admin | Caio | — | Pendente |
+| US-17 | Consultar/cancelar autorização admin | Caio | — | Pendente |
+| US-18 | Minhas autorizações usuário | — | — | Pendente |
+| US-19 | Credencial QR rotativa + validação 10s | Caio | — | Pendente |
+| US-21 | Eventos de acesso + histórico com filtros | João | — | Em review (fatia de consulta) |
+| US-22 | Display: render do QR + status | João | — | Em review |
+| US-26 | Comando de abertura do servo via MQTT | João | — | Concluído (herdado da US-08) |
+| US-27 | Login real + sessão | Felipe | — | Pendente |
+| US-28 | Minhas autorizações no app | — | — | Pendente |
+| US-29 | Scanner QR + resultado no app | — | — | Pendente |
+| US-37 | Worker MQTT persistente no Render | João | — | Em review |
+
+**Corte da US-21 nesta sprint**: entra só a fatia de **consulta** (`GET /me/access-events` e `GET /access-events`). A gravação de novas tentativas continua com US-20/US-23 porque depende do mapeamento terminal→local (DT-03) e da representação de evento sem local no contrato (DT-04). O restante volta na Sprint 3.
+
+**US-26**: os critérios já eram cobertos pelo firmware entregue na US-08 (comando v1 com prazo, dedup, ACK e servo); o card fecha com a evidência de `test_mqtt_command` e da simulação Wokwi.
 
 ## Burndown simples
 
