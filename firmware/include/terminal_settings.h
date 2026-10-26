@@ -5,6 +5,7 @@
 
 namespace terminal_settings {
 constexpr const char* id = TERMINAL_ID;
+constexpr const char* qrTopic = MQTT_TOPIC_QR;
 constexpr const char* commandsTopic = MQTT_TOPIC_COMMANDS;
 constexpr const char* acksTopic = MQTT_TOPIC_ACKS;
-}
+}  // namespace terminal_settings

@@ -19,6 +19,7 @@ RetryInterval mqttRetry(MQTT_RETRY_MS);
 terminal_command::Handler handler;
 terminal_mqtt::Actuator actuator = nullptr;
 terminal_mqtt::Clock clockSource = nullptr;
+qr_token::State qrState;
 
 // Antes disto o SNTP nao respondeu: sem hora confiavel nao da para aprovar um
 // prazo, entao o comando e recusado (fail-closed) em vez de aberto.
@@ -130,9 +131,35 @@ void readCommand(const uint8_t* payload, unsigned int length) {
   publishAck(*ack);
 }
 
+void readQr(const uint8_t* payload, unsigned int length) {
+  if (length == 0 || length > kPayloadCapacity) return;
+
+  JsonDocument document;
+  if (deserializeJson(document, payload, length)) return;
+  const JsonObjectConst root = document.as<JsonObjectConst>();
+  if (root.isNull() || (root["v"] | 0) != 1) return;
+  if (strcmp(root["terminalId"] | "", terminal_settings::id) != 0) return;
+
+  const char* token = root["token"] | "";
+  uint64_t expiresAt = 0;
+  if (token[0] == '\0' || !iso8601::toEpoch(root["expiresAt"] | "", expiresAt)) {
+    // Payload ruim nao apaga o ultimo QR valido: o display continua mostrando o anterior.
+    Serial.println("[mqtt] qr descartado: token ou expiresAt invalido");
+    return;
+  }
+  copyText(qrState.token, sizeof qrState.token, token);
+  qrState.expiresAt = expiresAt;
+  qrState.hasToken = true;
+  Serial.printf("[mqtt] qr recebido (expira em %llu)\n",
+                static_cast<unsigned long long>(expiresAt));
+}
+
 void onMessage(char* topic, uint8_t* payload, unsigned int length) {
-  if (strcmp(topic, terminal_settings::commandsTopic) != 0) return;
-  readCommand(payload, length);
+  if (strcmp(topic, terminal_settings::commandsTopic) == 0) {
+    readCommand(payload, length);
+    return;
+  }
+  if (strcmp(topic, terminal_settings::qrTopic) == 0) readQr(payload, length);
 }
 
 void startWiFi() {
@@ -189,7 +216,8 @@ void update() {
                     client.state());
       return;
     }
-    if (!client.subscribe(terminal_settings::commandsTopic, 1)) {
+    if (!client.subscribe(terminal_settings::commandsTopic, 1) ||
+        !client.subscribe(terminal_settings::qrTopic, 1)) {
       Serial.println("[mqtt] inscricao falhou; reconectar depois");
       client.disconnect();
       transport.stop();
@@ -204,5 +232,7 @@ void update() {
 bool connected() {
   return WiFi.status() == WL_CONNECTED && client.connected();
 }
+
+qr_token::State qr() { return qrState; }
 
 }  // namespace terminal_mqtt

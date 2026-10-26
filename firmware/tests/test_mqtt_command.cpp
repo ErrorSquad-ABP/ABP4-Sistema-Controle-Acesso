@@ -66,9 +66,29 @@ int main() {
 
   terminal_mqtt::begin();
   terminal_mqtt::update();
-  assert(broker.subscriptions == 1);
+  assert(broker.subscriptions == 2);
   assert(broker.callback != nullptr);
   assert(broker.bufferSize >= 512);
+
+  // QR rotativo: o terminal so guarda o token; quem valida e a API.
+  deliver(
+      R"({"v":1,"messageId":"3f0c2c7e-8a41-4a47-9b0e-6a8f5d2f1c10","terminalId":"terminal-dev-01","timestamp":"2026-10-19T19:30:00.000Z","token":"b1c2d3e4f5a6","expiresAt":"2026-10-19T19:30:14.400Z"})",
+      "terminals/terminal-dev-01/qr");
+  assert(terminal_mqtt::qr().hasToken);
+  assert(strcmp(terminal_mqtt::qr().token, "b1c2d3e4f5a6") == 0);
+  assert(terminal_mqtt::qr().expiresAt == 1792438214ULL);
+
+  // QR sem token ou de outro terminal nao substitui o ultimo valido.
+  deliver(
+      R"({"v":1,"messageId":"3f0c2c7e-8a41-4a47-9b0e-6a8f5d2f1c11","terminalId":"terminal-dev-01","timestamp":"2026-10-19T19:30:01.000Z","expiresAt":"2026-10-19T19:30:15.000Z"})",
+      "terminals/terminal-dev-01/qr");
+  assert(strcmp(terminal_mqtt::qr().token, "b1c2d3e4f5a6") == 0);
+
+  deliver(
+      R"({"v":1,"messageId":"3f0c2c7e-8a41-4a47-9b0e-6a8f5d2f1c12","terminalId":"terminal-99","timestamp":"2026-10-19T19:30:01.000Z","token":"ffffffffffff","expiresAt":"2026-10-19T19:30:15.000Z"})",
+      "terminals/terminal-dev-01/qr");
+  assert(strcmp(terminal_mqtt::qr().token, "b1c2d3e4f5a6") == 0);
+  assert(broker.publishCalls == 0);
 
   // Comando dentro do prazo: aciona uma vez e responde `executed`.
   deliver(kOpenCommand);
