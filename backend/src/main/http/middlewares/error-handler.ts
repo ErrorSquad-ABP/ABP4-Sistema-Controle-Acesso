@@ -11,6 +11,7 @@ const STATUS_BY_DOMAIN_CODE: Record<string, number> = {
   CONFLICT: 409,
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
+  SERVICE_UNAVAILABLE: 503,
 };
 
 /** Erros do body-parser/http-errors trazem `status` e `expose`. */

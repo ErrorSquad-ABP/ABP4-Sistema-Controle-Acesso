@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { UnauthorizedError } from '../../domain/errors/domain-error.js';
 import { isUserRole } from '../../domain/user-role.js';
-import type { TokenClaims, TokenService } from './token-service.js';
+import type { TokenClaims, TokenService } from '../../domain/ports/token-service.js';
 
 const ISSUER = 'abp4-api';
 const AUDIENCE = 'abp4-app';

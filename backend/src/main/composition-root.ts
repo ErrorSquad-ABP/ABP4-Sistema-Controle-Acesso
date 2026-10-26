@@ -1,7 +1,9 @@
 import { CheckHealthUseCase } from '../application/health/check-health.use-case.js';
+import { GetCurrentUserUseCase } from '../application/auth/get-current-user.use-case.js';
+import { LoginUseCase } from '../application/auth/login.use-case.js';
 import type { DatabaseProbe } from '../domain/ports/database-probe.js';
 import type { UserRepository } from '../domain/ports/user-repository.js';
-import type { TokenService } from '../infrastructure/auth/token-service.js';
+import type { TokenService } from '../domain/ports/token-service.js';
 import { JwtTokenService } from '../infrastructure/auth/jwt.js';
 import { SystemClock } from '../infrastructure/clock/system-clock.js';
 import { createPrismaClient } from '../infrastructure/database/prisma-client.js';
@@ -22,6 +24,8 @@ export interface Container {
   };
   useCases: {
     checkHealth: CheckHealthUseCase;
+    login: LoginUseCase | undefined;
+    getCurrentUser: GetCurrentUserUseCase | undefined;
   };
 }
 
@@ -41,11 +45,14 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
     (env.DATABASE_URL ? new PostgresDatabaseProbe(env.DATABASE_URL) : undefined);
   const prisma =
     !overrides.userRepository && env.DATABASE_URL ? createPrismaClient(env.DATABASE_URL) : undefined;
+  const tokens = overrides.tokenService ?? new JwtTokenService(env.JWT_SECRET, env.JWT_TTL_SECONDS);
+  const users =
+    overrides.userRepository ?? (prisma ? new PrismaUserRepository(prisma) : undefined);
   return {
     logger,
-    tokens: overrides.tokenService ?? new JwtTokenService(env.JWT_SECRET, env.JWT_TTL_SECONDS),
+    tokens,
     repositories: {
-      users: overrides.userRepository ?? (prisma ? new PrismaUserRepository(prisma) : undefined),
+      users,
     },
     useCases: {
       checkHealth: new CheckHealthUseCase(
@@ -55,6 +62,8 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
         databaseProbe,
         logger,
       ),
+      login: users ? new LoginUseCase(users, tokens) : undefined,
+      getCurrentUser: users ? new GetCurrentUserUseCase(users) : undefined,
     },
   };
 }

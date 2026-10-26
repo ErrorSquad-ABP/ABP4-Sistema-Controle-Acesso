@@ -1,6 +1,6 @@
 import { UnauthorizedError } from '../../src/domain/errors/domain-error.js';
 import type { UserRecord, UserRepository } from '../../src/domain/ports/user-repository.js';
-import type { TokenClaims, TokenService } from '../../src/infrastructure/auth/token-service.js';
+import type { TokenClaims, TokenService } from '../../src/domain/ports/token-service.js';
 
 export class InMemoryUserRepository implements UserRepository {
   constructor(private readonly users: UserRecord[] = []) {}

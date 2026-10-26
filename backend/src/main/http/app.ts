@@ -4,6 +4,7 @@ import { API_V1_PREFIX } from './contract/openapi.js';
 import { errorHandler } from './middlewares/error-handler.js';
 import { notFound } from './middlewares/not-found.js';
 import { apiV1StubRoutes } from './routes/api-v1.routes.js';
+import { authRoutes } from './routes/auth.routes.js';
 import { docsRoutes } from './routes/docs.routes.js';
 import { healthRoutes } from './routes/health.routes.js';
 
@@ -28,6 +29,8 @@ export function configureApp(
 
   app.use(healthRoutes(container.useCases.checkHealth));
   app.use(docsRoutes());
+  // Rotas reais antes do stub: o Express atende pela primeira que casar.
+  app.use(API_V1_PREFIX, authRoutes(container));
   app.use(API_V1_PREFIX, apiV1StubRoutes());
   for (const router of options.extraRoutes ?? []) app.use(router);
 
