@@ -33,6 +33,8 @@ Stories do backlog com **Sprint alvo S2** no [`product-backlog.md`](../product-b
 
 Resumo por épico: **E2** (identidade, autorizações, QR e eventos) concentra o fluxo real · **E3** (display do QR e abertura do servo) fecha o ciclo no terminal · **E4** (login, minhas autorizações e scanner) entrega o app usando o contrato da S1.
 
+**US-17 (dependência de segurança)**: a camada de domínio/aplicação/infraestrutura pode ser desenvolvida isoladamente, mas a exposição HTTP depende da US-14 fornecer identidade autenticada e perfil confiáveis, com verificação de ADMIN nas operações administrativas. Enquanto isso não existir, listar e cancelar autorizações não devem ser montados como rotas utilizáveis. Para os filtros `from`/`to`, a implementação assume sobreposição entre o intervalo consultado e a janela `startsAt`/`endsAt`; confirmar essa semântica no refinamento da US-17.
+
 ## Sprint Goal
 
 A definir na Planning 2. O goal nasce do foco macro acima (fluxo QR real ponta-a-ponta com admin e deploy no ar) e é registrado aqui na planning.
