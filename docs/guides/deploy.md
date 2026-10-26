@@ -68,3 +68,14 @@ Esperado: `200` com `{"status":"ok","version":"<sha>","database":"ok",...}`. Se 
 ## Rollback
 
 No painel da Vercel use **Instant Rollback** no deploy anterior, ou reverta o commit na `main` e deixe o CD publicar de novo.
+
+## Worker MQTT no Render (US-37)
+
+A API é serverless e não mantém conexão MQTT aberta; quem assina os tópicos do terminal é um **web service** no Render (`backend/src/main/worker.ts`), com URL própria e o mesmo broker/Neon. O `render.yaml` na raiz descreve o serviço.
+
+1. No Render: **New → Blueprint** e aponte para o repositório (o `render.yaml` é lido da raiz). O serviço `abp4-mqtt-worker` usa `rootDir: backend`, build `npm ci && npm run build` e start `node dist/main/worker.js`.
+2. Em **Environment**, preencha `MQTT_URL` (`mqtts://<host>:8883` do HiveMQ), `MQTT_USERNAME` e `MQTT_PASSWORD`. O `PORT` é injetado pelo Render.
+3. Copie a URL pública do serviço (ex.: `https://abp4-mqtt-worker.onrender.com`) para `RENDER_EXTERNAL_URL`. É ela que liga o **self-ping a cada 10 min** em `/healthz`, evitando o spin-down de 15 min do plano free.
+4. Confira em **Logs** a linha `mqtt conectado` e, no HiveMQ, o cliente `abp4-consumer-<pid>`.
+
+O worker **não** roda migrations nem a seed: isso continua no `cd-backend.yml`/Neon. Se o processo cair, o Render reinicia e o `mqtt.js` reconecta sozinho; comandos pendentes vivem em memória (limitação registrada na DT-02).

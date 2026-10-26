@@ -45,6 +45,8 @@ const envSchema = z.object({
     .min(32, 'JWT_SECRET precisa de pelo menos 32 caracteres')
     .default('dev-only-secret-nao-use-em-producao-32'),
   JWT_TTL_SECONDS: z.coerce.number().int().min(60).max(86_400).default(3600),
+  /** URL publica do web service no Render; habilita o self-ping de keep-alive. */
+  RENDER_EXTERNAL_URL: z.url().optional(),
 }).superRefine((value, ctx) => {
   if (value.NODE_ENV === 'production' && value.JWT_SECRET.startsWith('dev-only')) {
     ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'defina JWT_SECRET em producao' });

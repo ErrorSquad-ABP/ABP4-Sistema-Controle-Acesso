@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: abp4-mqtt-worker
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/main/worker.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      # Segredos e URL do broker ficam no painel do Render (sync: false).
+      - key: MQTT_URL
+        sync: false
+      - key: MQTT_USERNAME
+        sync: false
+      - key: MQTT_PASSWORD
+        sync: false
+      - key: RENDER_EXTERNAL_URL
+        sync: false
