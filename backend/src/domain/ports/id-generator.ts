@@ -3,3 +3,8 @@ export interface IdGenerator {
   uuid(): string;
   token(): string;
 }
+
+export interface QrTokenSigner {
+  sign(payload: string): string;
+  verify(payload: string, signature: string): boolean;
+}

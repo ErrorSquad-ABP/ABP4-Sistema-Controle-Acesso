@@ -23,7 +23,7 @@ probe.post('/__probe/zod', (req, res) => {
   res.status(201).json(body);
 });
 
-const env = loadEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent', APP_VERSION: 'test-sha' });
+const env = loadEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent', APP_VERSION: 'test-sha', QR_TOKEN_SECRET: 'a'.repeat(64) });
 const app = createApp(buildContainer(env), { extraRoutes: [probe] });
 
 describe('GET /health', () => {

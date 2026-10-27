@@ -16,6 +16,7 @@ import {
   ListMyAuthorizationsQuery,
 } from './schemas/authorizations.schemas.js';
 import { IdParams } from './schemas/common.schemas.js';
+import { ValidateQrCredentialRequest, ValidateQrCredentialResponse } from './schemas/credentials.schemas.js';
 import {
   CreateUserRequest,
   ListUsersQuery,
@@ -30,7 +31,7 @@ import {
  * Rota nova ou alterada: edite aqui e rode `npm run openapi:generate`.
  */
 
-export type ContractTag = 'auth' | 'users' | 'authorizations' | 'access-events';
+export type ContractTag = 'auth' | 'users' | 'authorizations' | 'access-events' | 'credentials';
 
 /** public: sem token · authenticated: qualquer perfil logado · admin: so ADMIN. */
 export type Access = 'public' | 'authenticated' | 'admin';
@@ -66,6 +67,21 @@ export const EXAMPLE_IDS = {
 } as const;
 
 export const operations: readonly Operation[] = [
+  {
+    operationId: 'validateQrCredential',
+    method: 'post',
+    path: '/credentials/qr/validate',
+    tag: 'credentials',
+    summary: 'Validar credencial QR',
+    description:
+      'Valida a assinatura, o terminal e a expiracao da credencial. Nao concede acesso, nao consulta autorizacoes, nao calcula geofence e nao registra eventos. Requer sessao autenticada conforme US-14.',
+    story: 'US-19',
+    access: 'authenticated',
+    body: ValidateQrCredentialRequest,
+    success: { status: 200, description: 'Resultado da validacao da credencial, sem decisao de acesso', schema: ValidateQrCredentialResponse },
+    extraErrors: [429],
+    example: { body: { qrToken: 'eyJ0ZXJtaW5hbElkIjoiYXVyb3JhLXJlY2VwY2FvIn0.assinatura', terminalId: 'aurora-recepcao' } },
+  },
   // ---------------------------------------------------------------- auth
   {
     operationId: 'login',

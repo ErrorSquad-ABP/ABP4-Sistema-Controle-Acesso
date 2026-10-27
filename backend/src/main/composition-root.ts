@@ -11,6 +11,8 @@ import { JwtTokenService } from '../infrastructure/auth/jwt.js';
 import { SystemClock } from '../infrastructure/clock/system-clock.js';
 import { createPrismaClient } from '../infrastructure/database/prisma-client.js';
 import { PostgresDatabaseProbe } from '../infrastructure/database/postgres-database-probe.js';
+import { HmacQrTokenSigner } from '../infrastructure/ids/hmac-qr-token-signer.js';
+import { ValidateQrCredentialUseCase } from '../application/terminal/qr-credential.use-cases.js';
 import { PrismaAccessEventRepository } from '../infrastructure/repositories/prisma-access-event-repository.js';
 import { PrismaUserRepository } from '../infrastructure/repositories/prisma-user-repository.js';
 import { createLogger, type Logger } from '../shared/logger.js';
@@ -31,6 +33,7 @@ export interface Container {
   };
   useCases: {
     checkHealth: CheckHealthUseCase;
+    validateQrCredential: ValidateQrCredentialUseCase;
     login: LoginUseCase | undefined;
     getCurrentUser: GetCurrentUserUseCase | undefined;
     listMyAccessEvents: ListMyAccessEventsUseCase | undefined;
@@ -54,6 +57,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
   }
   const clock = new SystemClock();
   const logger = createLogger(env.LOG_LEVEL);
+  const signer = new HmacQrTokenSigner(env.QR_TOKEN_SECRET);
   const databaseProbe =
     overrides.databaseProbe ??
     (env.DATABASE_URL ? new PostgresDatabaseProbe(env.DATABASE_URL) : undefined);
@@ -78,6 +82,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
         databaseProbe,
         logger,
       ),
+      validateQrCredential: new ValidateQrCredentialUseCase(clock, signer),
       login: users ? new LoginUseCase(users, tokens) : undefined,
       getCurrentUser: users ? new GetCurrentUserUseCase(users) : undefined,
       listMyAccessEvents: accessEvents ? new ListMyAccessEventsUseCase(accessEvents) : undefined,

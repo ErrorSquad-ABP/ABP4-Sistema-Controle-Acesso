@@ -6,11 +6,11 @@ import { API_V1_PREFIX, buildOpenApiDocument } from '../../src/main/http/contrac
 import { EXAMPLE_IDS, type Operation, operations } from '../../src/main/http/contract/operations.js';
 import { createApp } from '../../src/main/http/app.js';
 
-const env = loadEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent' });
+const env = loadEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent', QR_TOKEN_SECRET: 'a'.repeat(64) });
 const app = createApp(buildContainer(env));
 
 /** Rotas ja implementadas saem do loop de stub; o teste real de cada uma vive no seu arquivo. */
-const IMPLEMENTED = new Set(['login', 'getCurrentUser', 'listMyAccessEvents', 'listAccessEvents']);
+const IMPLEMENTED = new Set(['login', 'getCurrentUser', 'listMyAccessEvents', 'listAccessEvents', 'validateQrCredential']);
 
 function urlFor(op: Operation, params: Record<string, string> = op.example.params ?? {}): string {
   const path = op.path.replace(/:(\w+)/g, (_match, name: string) => params[name] ?? `:${name}`);
@@ -64,6 +64,29 @@ describe('rotas stub do contrato v1', () => {
     const res = await request(app).post(`${API_V1_PREFIX}/authorizations/${EXAMPLE_IDS.authorization}/cancel`);
 
     expect(res.status).toBe(501);
+  });
+
+  it('validacao QR deixou de ser stub e exige sessao', async () => {
+    const res = await request(app)
+      .post(`${API_V1_PREFIX}/credentials/qr/validate`)
+      .send({ qrToken: 'token.assinado', terminalId: 'aurora-recepcao' });
+
+    // Sem banco neste app de teste, a autenticacao falha antes do handler (nunca 501).
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('SERVICE_UNAVAILABLE');
+  });
+
+  it('nao altera a operacao de pedido de acesso da US-20', async () => {
+    const res = await request(app)
+      .post(`${API_V1_PREFIX}/access-events/qr`)
+      .send({ qrToken: 'token', terminalId: 'aurora-recepcao', position: { latitude: 0, longitude: 0 } });
+    expect(res.status).toBe(501);
+    expect(res.body.error.message).toContain('US-20');
+  });
+
+  it('nao publica uma rota antiga de validacao sem autenticacao', async () => {
+    const res = await request(app).post('/qr-credentials/validate').send({ token: 'x', terminalId: 'terminal-01' });
+    expect(res.status).toBe(404);
   });
 });
 

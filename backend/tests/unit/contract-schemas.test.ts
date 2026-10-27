@@ -5,6 +5,7 @@ import {
   QrAccessRequest,
 } from '../../src/main/http/contract/schemas/access-events.schemas.js';
 import { LoginRequest } from '../../src/main/http/contract/schemas/auth.schemas.js';
+import { ValidateQrCredentialRequest, ValidateQrCredentialResponse } from '../../src/main/http/contract/schemas/credentials.schemas.js';
 import {
   CreateAuthorizationRequest,
   ListAuthorizationsQuery,
@@ -29,6 +30,21 @@ describe('LoginRequest', () => {
   it('rejeita e-mail invalido e senha vazia', () => {
     const result = LoginRequest.safeParse({ email: 'maria', password: '' });
     expect(issuePaths(result)).toEqual(expect.arrayContaining(['email', 'password']));
+  });
+});
+
+describe('ValidateQrCredentialRequest / Response', () => {
+  it('exige qrToken e terminalId validos', () => {
+    expect(ValidateQrCredentialRequest.safeParse({ qrToken: 'token', terminalId: 'terminal-01' }).success).toBe(true);
+    expect(ValidateQrCredentialRequest.safeParse({ token: 'token', terminalId: 'terminal-01' }).success).toBe(false);
+    expect(ValidateQrCredentialRequest.safeParse({ qrToken: '', terminalId: 'terminal-01' }).success).toBe(false);
+  });
+
+  it('resposta positiva inclui apenas terminal e expiracao; negativa nao inclui metadados', () => {
+    expect(ValidateQrCredentialResponse.safeParse({ valid: true, terminalId: 'terminal-01', expiresAt: '2026-10-26T12:00:10.000Z' }).success).toBe(true);
+    expect(ValidateQrCredentialResponse.safeParse({ valid: false }).success).toBe(true);
+    const withExtra = ValidateQrCredentialResponse.parse({ valid: true, terminalId: 'terminal-01', expiresAt: '2026-10-26T12:00:10.000Z', decision: 'GRANTED' });
+    expect(withExtra).toEqual({ valid: true, terminalId: 'terminal-01', expiresAt: '2026-10-26T12:00:10.000Z' });
   });
 });
 

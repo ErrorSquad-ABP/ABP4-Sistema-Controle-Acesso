@@ -44,7 +44,8 @@ describe('rate limit', () => {
   });
 
   it('X-Forwarded-For nao contorna o limite quando trust proxy esta desligado', async () => {
-    const env = loadEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent' });
+    const env = loadEnv({
+  QR_TOKEN_SECRET: 'a'.repeat(64), NODE_ENV: 'test', LOG_LEVEL: 'silent' });
     const users = new InMemoryUserRepository([user]);
     const app = createApp(
       buildContainer(env, { userRepository: users, tokenService: new FakeTokenService(users) }),
@@ -63,7 +64,8 @@ describe('rate limit', () => {
   });
 
   it('as rotas de historico passam pelo rate limit', async () => {
-    const env = loadEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent' });
+    const env = loadEnv({
+  QR_TOKEN_SECRET: 'a'.repeat(64), NODE_ENV: 'test', LOG_LEVEL: 'silent' });
     const users = new InMemoryUserRepository([user]);
     const app = createApp(
       buildContainer(env, {

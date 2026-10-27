@@ -68,6 +68,7 @@ Validadas em [`src/main/config/env.ts`](src/main/config/env.ts); modelo em [`.en
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | — | só para `db:provision`: e-mail (fora de `@abp4.local`), senha com 12+ caracteres e nome do primeiro administrador |
 | `MQTT_URL` | `mqtt://localhost:1884` | broker MQTT (`mqtt://` ou `mqtts://`); dev = Mosquitto do compose |
 | `MQTT_USERNAME` / `MQTT_PASSWORD` | — | credenciais do broker (HiveMQ Cloud em produção; vazias no dev) |
+| `QR_TOKEN_SECRET` | obrigatório | 32 bytes aleatórios em hexadecimal, iguais nos processos HTTP e MQTT; gere com `openssl rand -hex 32` |
 | `SIM_TERMINAL_ID` | `terminal-01` | id do terminal simulado |
 | `SIM_NFC_UID` | `04A1B2C3` | UID NFC que o simulador lê |
 
@@ -75,6 +76,7 @@ Validadas em [`src/main/config/env.ts`](src/main/config/env.ts); modelo em [`.en
 
 - `GET /health` → `200 { status, version, uptimeSeconds, timestamp, database }`. `database` é `ok`, `not_configured` (sem `DATABASE_URL`) ou `unavailable`; neste último caso a resposta é `503` com `status: "error"` (o motivo fica só no log).
 - `GET /docs` → Swagger UI do contrato v1 · `GET /openapi.json` → o documento OpenAPI
+- `POST /api/v1/credentials/qr/validate` → operação autenticada do contrato v1 para validar assinatura, terminal e validade de 10 s. A rota protegida depende do middleware JWT da US-14; até lá, segue como stub `501` após validar a entrada. O caso de uso criptográfico está implementado e testado. Não decide acesso nem registra eventos.
 - `/api/v1/...` → rotas do contrato v1 (auth, users, authorizations, access-events). Por enquanto são stubs: validam a entrada com Zod e respondem `501 NOT_IMPLEMENTED` citando o card que as implementa. Detalhes em [`docs/api/README.md`](../docs/api/README.md).
 
 Erros seguem sempre `{ "error": { "code", "message", "details?" } }` — tabela completa no guia do caso de uso modelo.

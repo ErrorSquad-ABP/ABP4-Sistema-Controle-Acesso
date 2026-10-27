@@ -20,6 +20,7 @@ const admin: UserRecord = {
 
 const users = new InMemoryUserRepository([admin]);
 const env = loadEnv({
+  QR_TOKEN_SECRET: 'a'.repeat(64),
   NODE_ENV: 'test',
   LOG_LEVEL: 'silent',
   JWT_SECRET: 'segredo-de-teste-com-32-caracteres',

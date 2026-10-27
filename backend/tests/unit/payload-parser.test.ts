@@ -31,6 +31,11 @@ describe('parsePayload', () => {
     expect(result).toEqual({ ok: true, message: nfcRead });
   });
 
+  it('aceita token QR assinado maior que o limite antigo de 128 caracteres', () => {
+    const qr = { ...envelope(), token: `${'a'.repeat(180)}.${'b'.repeat(43)}`, expiresAt: '2026-10-19T19:30:10.000Z' };
+    expect(parsePayload('qr', TERMINAL, json(qr)).ok).toBe(true);
+  });
+
   it('rejeita JSON malformado', () => {
     expect(parsePayload('status', TERMINAL, '{nao e json')).toMatchObject({
       ok: false,

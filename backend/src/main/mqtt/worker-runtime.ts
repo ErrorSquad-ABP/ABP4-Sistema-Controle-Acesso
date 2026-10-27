@@ -25,12 +25,17 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
     logger,
   );
 
-  // Terminais vistos online recebem um QR de teste a cada 10 s (token real: US-19).
+  // Terminais vistos online recebem um QR assinado a cada 10 s.
   const onlineTerminals = new Set<string>();
-  const { router, publishQr } = buildMqttConsumer(bus, logger, (terminalId, online) => {
-    if (online) onlineTerminals.add(terminalId);
-    else onlineTerminals.delete(terminalId);
-  });
+  const { router, publishQr } = buildMqttConsumer(
+    bus,
+    logger,
+    (terminalId, online) => {
+      if (online) onlineTerminals.add(terminalId);
+      else onlineTerminals.delete(terminalId);
+    },
+    env,
+  );
 
   await bus.subscribe(
     [topicFilterFor('access-events'), topicFilterFor('status'), topicFilterFor('acks')],
