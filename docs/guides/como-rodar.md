@@ -35,11 +35,22 @@ cp .env.example .env     # opcional: sem .env valem os defaults
 npm ci
 npm run db:generate      # Prisma Client em src/generated/prisma
 npm run db:migrate:deploy  # cria as tabelas no Postgres do compose
-npm run db:seed          # dados de demonstração (pode rodar de novo)
+npm run db:seed          # dados de demonstração (pode rodar de novo; só banco local)
 npm run dev
 ```
 
 Conferindo: `curl -i http://localhost:3000/health` deve responder `200` com `{"status":"ok","database":"ok",...}` (com o Postgres no ar). Sem `DATABASE_URL`, o mesmo endpoint responde `database: not_configured`. Antes de abrir PR rode `npm run lint && npm run typecheck && npm test`. Detalhes (scripts, variáveis e Docker) em [`backend/README.md`](../../backend/README.md).
+
+### Seed demo × provisionamento real (DT-07)
+
+- `npm run db:seed` grava contas de **demonstração** com senha pública (`admin@abp4.local`, `usuario@abp4.local`) e reativa essas contas a cada execução. Por isso recusa `NODE_ENV=production`/`VERCEL_ENV=production` e qualquer `DATABASE_URL` que não seja local (`localhost`, `127.0.0.1`, `::1`, `postgres`). Num banco remoto descartável (nunca produção) use `ALLOW_DEMO_SEED=true`. Atenção: `prisma migrate dev`/`migrate reset` também executam a seed e passam pelo mesmo guard.
+- Para o **primeiro administrador real** (produção inclusive), informe as credenciais só na execução:
+
+  ```bash
+  ADMIN_EMAIL=admin@empresa.com.br ADMIN_PASSWORD='<senha com 12+ caracteres>' npm run db:provision
+  ```
+
+  Cria apenas esse usuário, com salt aleatório, e não altera nada se o e-mail já existir. Não aceita e-mail `@abp4.local`.
 
 ### Testando o MQTT (US-04)
 

@@ -17,6 +17,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:seed:run": "tsc -p tsconfig.seed.json && node .seed-dist/prisma/seed.js",
+    "db:provision": "tsc -p tsconfig.seed.json && node --env-file-if-exists=.env .seed-dist/prisma/provision.js",
     "mqtt:consumer": "tsx --env-file-if-exists=.env src/main/mqtt-consumer.ts",
     "sim:terminal": "tsx --env-file-if-exists=.env src/main/sim-terminal.ts",
     "lint": "eslint .",

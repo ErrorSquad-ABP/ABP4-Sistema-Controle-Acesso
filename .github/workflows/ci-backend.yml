@@ -67,6 +67,17 @@ jobs:
       - name: Seed idempotente (roda duas vezes)
         run: npm run db:seed && npm run db:seed
 
+      - name: Seed demo recusa producao e banco remoto (DT-07)
+        run: |
+          if NODE_ENV=production npm run db:seed:run; then echo "seed rodou em producao"; exit 1; fi
+          if DATABASE_URL=postgresql://u:p@ep-x.neon.tech/db npm run db:seed:run; then echo "seed rodou em banco remoto"; exit 1; fi
+
+      - name: Provisionamento do administrador (idempotente)
+        env:
+          ADMIN_EMAIL: admin@empresa.example
+          ADMIN_PASSWORD: senha-de-ci-0123456789
+        run: npm run db:provision && npm run db:provision
+
       - name: Lint (inclui regra de camadas)
         run: npm run lint
 

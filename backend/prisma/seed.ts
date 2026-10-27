@@ -2,12 +2,24 @@ import { createHash } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client.js";
 import { demoPasswordSalt, hashPassword } from "../src/shared/password-hasher.js";
+import { assertDemoSeedAllowed } from "../src/shared/seed-guard.js";
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error("DATABASE_URL precisa estar configurada para executar a seed.");
+/**
+ * Seed de DEMONSTRACAO: senhas publicas, dados ficticios e contas reativadas a
+ * cada execucao. Por isso so roda em banco local (ou descartavel com
+ * ALLOW_DEMO_SEED=true) e nunca em producao. Dado real: `npm run db:provision`.
+ * O guard roda antes de qualquer conexao com o banco.
+ */
+function resolveConnectionString(): string {
+  try {
+    return assertDemoSeedAllowed(process.env);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  }
 }
+
+const connectionString = resolveConnectionString();
 
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
