@@ -21,6 +21,8 @@ export class HmacQrTokenSigner implements QrTokenSigner {
     } catch {
       return false;
     }
+    // Rejeita base64url nao canonico: dois textos diferentes nao podem valer a mesma assinatura.
+    if (supplied.toString('base64url') !== signature) return false;
     return supplied.length === expected.length && timingSafeEqual(supplied, expected);
   }
 }
