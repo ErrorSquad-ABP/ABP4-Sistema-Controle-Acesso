@@ -4,6 +4,8 @@ import { parseTopic } from '../../domain/terminal/topics.js';
 import { parsePayload } from '../../infrastructure/mqtt/payload-parser.js';
 import type { Logger } from '../../shared/logger.js';
 import { maskUid } from '../../shared/redact.js';
+import type { Clock } from '../../domain/ports/clock.js';
+import { SystemClock } from '../../infrastructure/clock/system-clock.js';
 
 export interface TerminalPresenceListener {
   (terminalId: string, online: boolean): void;
@@ -19,6 +21,7 @@ export class TerminalMessageRouter {
     private readonly handleAck: HandleAckUseCase,
     private readonly logger: Logger,
     private readonly onPresence: TerminalPresenceListener = () => {},
+    private readonly clock: Clock = new SystemClock(),
   ) {}
 
   async route(topic: string, payload: Buffer | string): Promise<void> {
@@ -31,7 +34,7 @@ export class TerminalMessageRouter {
 
     switch (channel) {
       case 'access-events': {
-        const result = parsePayload(channel, terminalId, payload);
+        const result = parsePayload(channel, terminalId, payload, { now: this.clock.now() });
         if (!result.ok) return this.discard(topic, result.code, result.reason);
         this.logger.info('tentativa de acesso recebida', {
           terminalId,

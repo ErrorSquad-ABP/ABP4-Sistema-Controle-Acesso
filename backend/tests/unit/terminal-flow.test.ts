@@ -30,7 +30,7 @@ function setup() {
 
   const router = new TerminalMessageRouter(
     new HandleAccessEventUseCase(
-      new AlwaysOpenAccessDecider(),
+      new AlwaysOpenAccessDecider(clock),
       consumerBus,
       clock,
       new SequentialIds(),
@@ -41,6 +41,7 @@ function setup() {
     new HandleAckUseCase(pending, seen, silentLogger),
     silentLogger,
     (terminalId, online) => presence.push([terminalId, online]),
+    clock,
   );
   const terminal = new SimulatedTerminal(TERMINAL, terminalBus, clock, new SequentialIds(), silentLogger);
   return { clock, consumerBus, terminalBus, terminal, router, presence, pending };

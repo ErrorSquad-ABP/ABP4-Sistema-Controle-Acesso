@@ -35,6 +35,18 @@ describe('topics', () => {
 });
 
 describe('SeenMessages', () => {
+  it('nao perde reserva em andamento por eviccao e libera apos falha', async () => {
+    const seen = new SeenMessages(1);
+    let fail!: (error: Error) => void;
+    const processing = seen.run('a', () => new Promise((_, reject) => { fail = reject; }));
+    await seen.run('b', async () => 'ok');
+    await seen.run('c', async () => 'ok');
+    expect(await seen.run('a', async () => 'duplicado')).toEqual({ duplicate: true });
+    fail(new Error('falha'));
+    await expect(processing).rejects.toThrow('falha');
+    expect(await seen.run('a', async () => 'retentativa')).toEqual({ duplicate: false, value: 'retentativa' });
+  });
+
   it('aceita o id uma vez e rejeita a repeticao', () => {
     const seen = new SeenMessages();
 

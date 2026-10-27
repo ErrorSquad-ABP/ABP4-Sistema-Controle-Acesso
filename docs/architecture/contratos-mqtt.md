@@ -66,6 +66,8 @@ Mensagem com `v` desconhecida, `terminalId` diferente do tópico ou campo faltan
 
 `type` é `nfc_read` na v1; `uid` é hexadecimal maiúsculo (4 a 20 caracteres). O backend decide; o terminal só aguarda o comando.
 
+O `timestamp` deve ter idade **menor que 30 s**, com tolerância de até **5 s no futuro**. O parser e o caso de uso rejeitam tentativas fora dessa janela (`stale`), sem decidir nem publicar comando. A fila não renova o prazo; o terminal precisa manter seu relógio UTC sincronizado.
+
 ### Heartbeat e LWT — `terminals/{id}/status`
 
 ```json
@@ -123,11 +125,15 @@ Mensagem com `v` desconhecida, `terminalId` diferente do tópico ou campo faltan
 
 | Id | Gerado por | Uso |
 |---|---|---|
-| `messageId` | produtor da mensagem | dedup do consumidor (janela das últimas mensagens recebidas) |
+| `messageId` | produtor da mensagem | dedup do consumidor (persistente para tentativas NFC em modo real) |
 | `commandId` | backend | correlação comando ↔ ACK e dedup no terminal |
 | `terminalId` | configuração do terminal | roteamento e conferência com o tópico |
 
 QoS 1 pode entregar a mesma mensagem mais de uma vez; por isso a dedup por `messageId`/`commandId` é obrigatória dos dois lados.
+
+No modo real, `ProcessedAccessMessage` registra tentativas concluídas sem limite FIFO de 1.000 IDs. Uma reserva transacional PostgreSQL serializa o mesmo ID entre instâncias; qualquer falha faz rollback, e a queda da conexão libera a reserva. A marca só é confirmada após decisão e processamento do comando. A migration deve ser aplicada antes de iniciar o worker (`npm run db:migrate:deploy`); o boot verifica a tabela.
+
+A decisão e o comando já persistidos são reutilizados nas retentativas, com o mesmo `commandId` e prazo original. MQTT e PostgreSQL não compartilham transação: uma queda após publicar e antes de confirmar a marca pode retransmitir o mesmo comando; a deduplicação do terminal por `commandId` continua obrigatória. O modo demo mantém o adapter volátil, sem garantia de dedup após restart. ACKs continuam correlacionados de forma persistente por `TerminalCommand`.
 
 ## Fluxo de exemplo (NFC)
 

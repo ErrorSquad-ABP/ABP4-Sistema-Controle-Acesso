@@ -95,6 +95,23 @@ Para a demonstração antiga de transporte, configure explicitamente `ACCESS_MOD
 
 `npm run test:e2e` cria seu próprio PostgreSQL e broker em portas locais livres, aplica migrations, compara schema, roda a seed demo duas vezes fora de produção (DT-07) e inicia API/worker compilados em produção, em processos distintos. O teste faz login real, pede QR, acompanha MQTT e ACK e confere o histórico. Dados ficam em diretório temporário exclusivo, removido ao terminar; não acessa o banco do `.env` e não requer Docker, serviço do Windows ou administrador. Na primeira instalação, o npm baixa os binários da plataforma. Linux precisa executar com usuário comum, como o runner do GitHub Actions.
 
+### Idempotência e frescor — DT-05
+
+Para executar apenas esses cenários, dentro de `backend`:
+
+```bash
+npm run test:e2e -- -t "DT-05"
+```
+
+Além de restart, retenção de mais de 1.000 IDs e replay antigo, a suíte verifica:
+
+- Falha de publicação depois da decisão persistida: rollback da marca e retentativa com comando/prazo idênticos, uma única decisão gravada e um único uso consumido.
+- Queda após publicar, antes do commit da dedup: o processo é morto com a reserva aberta; o substituto retransmite o mesmo comando e o terminal simulado reenvia o mesmo ACK sem abrir novamente.
+- Dois consumidores em processos distintos recebem o mesmo NFC antes de uma barreira liberar a concorrência: apenas um chama o decisor, consome um uso e publica o comando.
+- Restart do worker de produção: o replay ainda está dentro da janela de frescor e o log deve confirmar descarte por duplicidade; expirar a mensagem não satisfaz o teste.
+
+`tests/e2e/fixtures/dt05-worker.mjs` injeta falhas e sincroniza os processos por IPC, reutilizando casos de uso e adapters compilados com PostgreSQL e MQTT reais. Não adiciona endpoints, flags ou hooks de teste ao runtime de produção. Cada cenário de autorização usa local/terminal próprios no banco descartável. A dedup do terminal físico e a sincronização de seu relógio continuam sendo verificações complementares de homologação.
+
 Roteiro e limites em [`dt-01-02-03.md`](../docs/entrega/evidencias/dt-01-02-03.md).
 
 Erros seguem sempre `{ "error": { "code", "message", "details?" } }` — tabela completa no guia do caso de uso modelo.

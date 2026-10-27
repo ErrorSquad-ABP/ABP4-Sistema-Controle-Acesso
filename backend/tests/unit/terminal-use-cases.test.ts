@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HandleAccessEventUseCase } from '../../src/application/terminal/handle-access-event.use-case.js';
 import { HandleAckUseCase } from '../../src/application/terminal/handle-ack.use-case.js';
 import { PublishQrCodeUseCase } from '../../src/application/terminal/publish-qr-code.use-case.js';
@@ -56,6 +56,63 @@ describe('terminal use cases', () => {
     );
 
   describe('HandleAccessEventUseCase', () => {
+    it('revalida frescor apos esperar pela reserva, sem decidir evento envelhecido na fila', async () => {
+      const decide = vi.fn();
+      const delayed = {
+        run: async <T>(_id: string, work: () => Promise<T>) => {
+          clock.date = new Date(NOW.getTime() + 30_000);
+          return { duplicate: false as const, value: await work() };
+        },
+      };
+      const useCase = new HandleAccessEventUseCase(
+        { decide }, bus, clock, new SequentialIds(), delayed, pending, silentLogger,
+      );
+      expect(await useCase.execute(event)).toEqual({ status: 'stale' });
+      expect(decide).not.toHaveBeenCalled();
+      expect(bus.published).toHaveLength(0);
+    });
+
+    it('falha apos publicar libera reserva e retentativa reutiliza o mesmo comando', async () => {
+      const logger = { ...silentLogger, info: () => { throw new Error('logger fora'); } };
+      const useCase = new HandleAccessEventUseCase(
+        new FixedDecider('open'), bus, clock, new SequentialIds(), seen, pending, logger,
+      );
+      await expect(useCase.execute(event)).rejects.toThrow('logger fora');
+      const original = bus.published[0]?.message;
+      expect(await accessUseCase().execute(event)).toMatchObject({ status: 'commanded', command: original });
+      expect(bus.published[1]?.message).toEqual(original);
+    });
+
+    it('libera a reserva quando decide falha e permite retentativa', async () => {
+      const decide = vi.fn()
+        .mockRejectedValueOnce(new Error('banco fora'))
+        .mockResolvedValue({ action: 'open', decidedAt: NOW });
+      const useCase = new HandleAccessEventUseCase(
+        { decide }, bus, clock, new SequentialIds(), seen, pending, silentLogger,
+      );
+      await expect(useCase.execute(event)).rejects.toThrow('banco fora');
+      expect(await useCase.execute(event)).toMatchObject({ status: 'commanded' });
+      expect(decide).toHaveBeenCalledTimes(2);
+    });
+
+    it('libera a reserva quando persistir o comando falha', async () => {
+      const save = vi.spyOn(pending, 'save').mockRejectedValueOnce(new Error('falha ao salvar'));
+      await expect(accessUseCase().execute(event)).rejects.toThrow('falha ao salvar');
+      expect(await accessUseCase().execute(event)).toMatchObject({ status: 'commanded' });
+      expect(save).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([-5_001, 30_000, 60_000])('descarta replay/relógio futuro com idade %i sem decidir ou publicar', async (age) => {
+      const decide = vi.fn();
+      const useCase = new HandleAccessEventUseCase(
+        { decide }, bus, clock, new SequentialIds(), seen, pending, silentLogger,
+      );
+      expect(await useCase.execute({ ...event, timestamp: new Date(NOW.getTime() - age).toISOString() }))
+        .toEqual({ status: 'stale' });
+      expect(decide).not.toHaveBeenCalled();
+      expect(bus.published).toHaveLength(0);
+    });
+
     it('publica o comando decidido, com expiracao de 10 s, e o deixa pendente', async () => {
       const result = await accessUseCase('open').execute(event);
 
