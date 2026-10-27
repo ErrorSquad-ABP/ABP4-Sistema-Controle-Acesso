@@ -57,14 +57,15 @@ export class DecideAccessUseCase {
           : input.userId
             ? await tx.findUser(input.userId)
             : null;
+      const authorizations = terminal && user ? await tx.findAuthorizations(user.id, terminal.location.id) : [];
+
+      // A espera por um lock nao prolonga a validade da credencial ou da autorizacao:
+      // o QR e conferido depois do lock, com o mesmo instante usado pela politica.
+      const now = this.clock.now();
       const qr =
         input.method === 'QR' && input.qrToken
           ? this.qr.execute(input.qrToken, input.terminalId)
           : undefined;
-      const authorizations = terminal && user ? await tx.findAuthorizations(user.id, terminal.location.id) : [];
-
-      // A espera por um lock nao prolonga a validade da credencial ou da autorizacao.
-      const now = this.clock.now();
       const credentialExpired =
         input.method === 'NFC'
           ? !!credential &&

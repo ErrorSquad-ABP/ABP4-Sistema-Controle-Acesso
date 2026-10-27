@@ -6,6 +6,7 @@ import {
   ValidateQrCredentialUseCase,
 } from '../../src/application/terminal/qr-credential.use-cases.js';
 import { PublishCommandUseCase } from '../../src/application/terminal/publish-command.use-case.js';
+import { ServiceUnavailableError } from '../../src/domain/errors/domain-error.js';
 import type { AccessRecord, AccessRepository } from '../../src/domain/ports/access-repository.js';
 import type { AckResult, CommandStore } from '../../src/domain/ports/command-store.js';
 import type { AckMessage, CommandMessage } from '../../src/domain/terminal/messages.js';
@@ -114,9 +115,14 @@ class AccessRepositoryTx {
 class InMemoryAccessRepository implements AccessRepository {
   readonly events = new Map<string, AccessRecord>();
   readonly store = new MapCommandStore();
+  dispatchable = true;
   private consumed = 0;
 
   async ready(): Promise<void> {}
+
+  async canDispatch(): Promise<boolean> {
+    return this.dispatchable;
+  }
 
   async transaction<T>(_requestId: string, work: (tx: AccessRepositoryTx) => Promise<T>): Promise<T> {
     const draft = new AccessRepositoryTx(
@@ -146,6 +152,7 @@ function setup() {
     new DecideAccessUseCase(repository, clock, qr, ids),
     new PublishCommandUseCase(repository.store, bus, clock, ids),
     ids,
+    repository,
   );
   const token = new IssueQrCredentialUseCase(clock, ids, signer).execute(TERMINAL).token;
   const request = {
@@ -161,6 +168,16 @@ function setup() {
 const published = (bus: RecordingBus, index: number) => bus.published[index]?.message as CommandMessage;
 
 describe('DT-02: pedido QR idempotente', () => {
+  it('nao republica apos desativar o terminal, mesmo dentro da janela', async () => {
+    const { useCase, repository, bus, request } = setup();
+
+    await useCase.execute(request);
+    repository.dispatchable = false;
+
+    await expect(useCase.execute(request)).rejects.toBeInstanceOf(ServiceUnavailableError);
+    expect(bus.published).toHaveLength(1);
+  });
+
   it('repetir o mesmo requestId devolve o mesmo evento e o mesmo comando', async () => {
     const { useCase, repository, bus, request } = setup();
 

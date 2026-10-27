@@ -42,6 +42,7 @@ function setup(options: { terminal?: boolean } = {}) {
   const repository: AccessRepository = {
     transaction: async (_requestId, work) => work(tx),
     ready: vi.fn(),
+    canDispatch: vi.fn().mockResolvedValue(true),
   };
   const clock = new FixedClock(NOW);
   const ids = new SequentialIds();
@@ -51,10 +52,34 @@ function setup(options: { terminal?: boolean } = {}) {
     new ValidateQrCredentialUseCase(clock, signer),
     ids,
   );
-  return { tx, commands, clock, ids, useCase };
+  return { tx, commands, clock, ids, useCase, authorization };
 }
 
 const attempt = { id: UUID_A, terminalId: TERMINAL, method: 'NFC' as const, uid: '04a1b2c3' };
+
+describe('validade temporal apos o lock', () => {
+  it('rejeita QR que vence enquanto espera a autorizacao', async () => {
+    const { useCase, tx, clock, authorization } = setup();
+    const token = new IssueQrCredentialUseCase(clock, new SequentialIds(), signer).execute(TERMINAL).token;
+    tx.findAuthorizations.mockImplementation(async () => {
+      clock.date = new Date(NOW.getTime() + 11_000);
+      return [authorization];
+    });
+
+    const event = await useCase.execute({
+      id: UUID_A,
+      terminalId: TERMINAL,
+      method: 'QR',
+      userId: 'user',
+      qrToken: token,
+      position: { latitude: -23, longitude: -45 },
+    });
+
+    expect(event).toMatchObject({ decision: 'DENIED', reason: 'CREDENTIAL_EXPIRED' });
+    expect(tx.consumeAuthorization).not.toHaveBeenCalled();
+    expect(tx.saveCommand).not.toHaveBeenCalled();
+  });
+});
 
 describe('decisao e auditoria transacional', () => {
   it('resolve local, normaliza UID, consome um uso e grava sem UID original', async () => {

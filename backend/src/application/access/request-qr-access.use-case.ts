@@ -1,4 +1,5 @@
-import type { AccessRecord } from '../../domain/ports/access-repository.js';
+import { ServiceUnavailableError } from '../../domain/errors/domain-error.js';
+import type { AccessRecord, AccessRepository } from '../../domain/ports/access-repository.js';
 import type { IdGenerator } from '../../domain/ports/id-generator.js';
 import type { DecideAccessUseCase } from './decide-access.use-case.js';
 import type { PublishCommandUseCase } from '../terminal/publish-command.use-case.js';
@@ -25,6 +26,7 @@ export class RequestQrAccessUseCase {
     private readonly decide: DecideAccessUseCase,
     private readonly publish: PublishCommandUseCase,
     private readonly ids: IdGenerator,
+    private readonly access: AccessRepository,
   ) {}
 
   async execute(input: QrAccessInput): Promise<QrAccessOutput> {
@@ -39,6 +41,10 @@ export class RequestQrAccessUseCase {
 
     let commandPublished = false;
     if (event.decision === 'GRANTED') {
+      // Republicar um comando antigo nao pode abrir a porta se o terminal/local saiu de operacao.
+      if (!(await this.access.canDispatch(input.terminalId))) {
+        throw new ServiceUnavailableError('Terminal indisponivel no momento');
+      }
       // Publica o comando gravado na decisao; nunca cria um prazo novo aqui.
       const published = await this.publish.execute({
         requestId: event.id,

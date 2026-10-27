@@ -41,4 +41,6 @@ export interface AccessRepository {
   transaction<T>(requestId: string, work: (tx: AccessTransaction) => Promise<T>): Promise<T>;
   /** Confere que as tabelas da decisao existem antes de conectar no broker (DT-01). */
   ready(): Promise<void>;
+  /** Terminal e local ativos agora: impede republicar comando de tentativa antiga. */
+  canDispatch(terminalId: string): Promise<boolean>;
 }

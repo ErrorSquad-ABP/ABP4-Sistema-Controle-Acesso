@@ -128,6 +128,15 @@ export class PostgresAccessRepository implements AccessRepository {
     await this.pool.query('SELECT 1 FROM "Terminal", "TerminalCommand", "AccessEvent" LIMIT 0');
   }
 
+  async canDispatch(terminalId: string): Promise<boolean> {
+    const result = await this.pool.query(
+      `SELECT 1 FROM "Terminal" t JOIN "AccessLocation" l ON l.id = t."locationId"
+       WHERE t.id = $1 AND t.active = true AND l."isActive" = true`,
+      [terminalId],
+    );
+    return result.rowCount === 1;
+  }
+
   async transaction<T>(requestId: string, work: (tx: AccessTransaction) => Promise<T>): Promise<T> {
     const connection = await this.pool.connect();
     try {
