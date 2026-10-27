@@ -19,4 +19,9 @@ describe('verifyPassword', () => {
   it('recusa hash com parametros de scrypt invalidos', () => {
     expect(verifyPassword('x', 'scrypt$3$8$1$salt$00')).toBe(false);
   });
+
+  it('recusa hash hex com sufixo invalido ou nibble solto', () => {
+    expect(verifyPassword('senha-forte-123', `${stored}zz`)).toBe(false);
+    expect(verifyPassword('senha-forte-123', `${stored}f`)).toBe(false);
+  });
 });

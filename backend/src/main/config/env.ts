@@ -39,7 +39,7 @@ const envSchema = z.object({
       'deve comecar com postgres:// ou postgresql://',
     )
     .optional(),
-  /** Segredo do JWT HS256. O default so vale fora de producao (superRefine abaixo). */
+  /** Segredo do JWT HS256. O default so vale fora de producao (guarda no composition-root). */
   JWT_SECRET: z
     .string()
     .min(32, 'JWT_SECRET precisa de pelo menos 32 caracteres')

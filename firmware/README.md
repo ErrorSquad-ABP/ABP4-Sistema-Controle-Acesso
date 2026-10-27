@@ -64,7 +64,8 @@ Valores em `include/config.example.h` (nada secreto ali; segredos ficam no
 6. Publica o ACK com o mesmo `commandId`.
 
 O ciclo do servo é a máquina `idle → opening → open → closing → idle`, avançada
-por `millis()`: nenhum `delay()` bloqueia o `client.loop()` do MQTT.
+por `millis()`: nenhum `delay()` bloqueia o `client.loop()` do MQTT. O display
+acompanha cada etapa e, em paralelo, mostra o QR recebido do backend.
 
 ## Preparação e build
 
@@ -174,6 +175,7 @@ Os testes host rodam sem Arduino, com tempo e periféricos simulados:
 | `test_command` | ISO 8601 ↔ epoch, validação do comando, dedup por `commandId`, ACK de cada recusa |
 | `test_feedback_pattern` | passos de LED/buzzer de liberado e negado, interrupção e fim do padrão |
 | `test_display_text` | textos de 16 colunas e exclusividade por status |
+| `test_display_layout` | margem de silêncio de 4 módulos do QR e encaixe do status na tela |
 | `test_qr_token` | validade do QR (limite de expiração, relógio ausente e token vazio) |
 | `test_clock_policy` | janela de hora confiável (epoch zero, antes e depois de 2025-01-01) |
 | `test_mqtt` | módulo MQTT real com doubles: offline, retentativas, inscrição, reconexão |
@@ -188,6 +190,7 @@ g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_door_machine.cpp -o /
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_command.cpp -o /tmp/t-command && /tmp/t-command
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_feedback_pattern.cpp -o /tmp/t-feedback && /tmp/t-feedback
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_display_text.cpp -o /tmp/t-display && /tmp/t-display
+g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_display_layout.cpp -o /tmp/t-layout && /tmp/t-layout
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_qr_token.cpp -o /tmp/t-qr && /tmp/t-qr
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_clock_policy.cpp -o /tmp/t-clock && /tmp/t-clock
 JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
@@ -208,7 +211,7 @@ Troque o arquivo de teste e, para os testes de MQTT, acrescente
 `src/modules/mqtt.cpp`.
 
 O CI compila sempre, roda os testes host e copia o exemplo de configuração. A
-demonstração Wokwi (servo, LCD, LED, buzzer) precisa ser executada manualmente
+demonstração Wokwi (servo, TFT, LED, buzzer) precisa ser executada manualmente
 com Docker e licença disponíveis; build e testes host verdes **não comprovam** a
 conexão do simulador ao broker nem o movimento real do servo.
 

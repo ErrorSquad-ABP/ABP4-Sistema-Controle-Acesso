@@ -6,7 +6,7 @@ A API roda na **Vercel** (Express serverless, zero-config) e o banco é o **Neon
 
 ```text
 merge na main ─► cd-backend-check (npm ci · lint · typecheck · testes · build)
-              └► cd-backend-deploy (vercel pull · build · deploy --prebuilt --prod)
+              └► cd-backend-deploy (vercel pull · build · migrate deploy · deploy --prod)
                                    └► smoke test: GET /health → status ok · database ok · versão = SHA do commit
 ```
 
@@ -44,6 +44,9 @@ Ninguém precisa colar credenciais no repositório nem no chat. Cada item abaixo
 | Variable | `VERCEL_ORG_ID` | Team/Org ID da Vercel |
 | Variable | `VERCEL_PROJECT_ID` | Project ID da Vercel |
 | Variable | `BACKEND_URL` | domínio público de produção, ex.: `https://abp-4-sistema-controle-acesso.vercel.app` |
+| Secret | `PROD_MIGRATION_DATABASE_URL` | connection string **direta** do Neon (sem `-pooler`), só para migrations |
+
+`PROD_MIGRATION_DATABASE_URL` é separada do `DATABASE_URL` da Vercel de propósito: migrations usam conexão direta e o job de deploy não deve depender dos arquivos internos da Vercel. O CD roda `prisma migrate deploy` **depois** do build e **antes** do deploy; migration com erro impede a promoção. Nenhuma seed roda em produção. A aplicação **não** tem rollback automático de banco: a migration precisa ser compatível com a versão anterior enquanto o deploy não termina.
 
 Sem `BACKEND_URL` o smoke test usa a URL do deploy, que pode ser bloqueada pela proteção da Vercel.
 
@@ -71,11 +74,11 @@ No painel da Vercel use **Instant Rollback** no deploy anterior, ou reverta o co
 
 ## Worker MQTT no Render (US-37)
 
-A API é serverless e não mantém conexão MQTT aberta; quem assina os tópicos do terminal é um **web service** no Render (`backend/src/main/worker.ts`), com URL própria e o mesmo broker/Neon. O `render.yaml` na raiz descreve o serviço.
+A API é serverless e não mantém conexão MQTT aberta; quem assina os tópicos do terminal é um **web service** no Render (`backend/src/main/worker.ts`), com URL própria e o mesmo broker MQTT. Nesta versão o worker **não acessa o banco**: decisão e persistência de eventos continuam na API.
 
 1. No Render: **New → Blueprint** e aponte para o repositório (o `render.yaml` é lido da raiz). O serviço `abp4-mqtt-worker` usa `rootDir: backend`, build `npm ci && npm run build` e start `node dist/main/worker.js`.
 2. Em **Environment**, preencha `MQTT_URL` (`mqtts://<host>:8883` do HiveMQ), `MQTT_USERNAME` e `MQTT_PASSWORD`. O `PORT` é injetado pelo Render.
 3. Copie a URL pública do serviço (ex.: `https://abp4-mqtt-worker.onrender.com`) para `RENDER_EXTERNAL_URL`. É ela que liga o **self-ping a cada 10 min** em `/healthz`, evitando o spin-down de 15 min do plano free.
 4. Confira em **Logs** a linha `mqtt conectado` e, no HiveMQ, o cliente `abp4-consumer-<pid>`.
 
-O worker **não** roda migrations nem a seed: isso continua no `cd-backend.yml`/Neon. Se o processo cair, o Render reinicia e o `mqtt.js` reconecta sozinho; comandos pendentes vivem em memória (limitação registrada na DT-02).
+O worker **não** roda migrations nem a seed: migrations rodam no `cd-backend.yml` e a seed é só de desenvolvimento, nunca em produção. Se o processo cair, o Render reinicia e o `mqtt.js` reconecta sozinho; comandos pendentes vivem em memória (limitação registrada na DT-02). O decisor de acesso segue provisório (DT-01), então liberar acesso via MQTT hoje não é seguro fora de demonstração.

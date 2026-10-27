@@ -6,6 +6,7 @@
 #include <qrcode.h>
 #include <string.h>
 
+#include "display_layout.h"
 #include "display_text.h"
 #include "terminal_settings.h"
 
@@ -14,11 +15,8 @@ namespace {
 // SPI por software: preserva os pinos do prototipo (servo, LEDs e buzzer).
 Adafruit_ILI9341 tft(TFT_CS_PIN, TFT_DC_PIN, TFT_MOSI_PIN, TFT_SCK_PIN, TFT_RST_PIN);
 
-constexpr int kScreenWidth = 240;
-constexpr int kScreenHeight = 320;
-constexpr int kStatusTop = 228;
-constexpr uint8_t kQrVersion = 8;  // 49x49, ate 152 bytes em ECC_LOW (token do contrato: 128)
-constexpr int kQrScale = 4;
+namespace layout = display_layout;
+static_assert(layout::quietZoneFits(), "QR sem margem de silencio ou fora da tela");
 
 QRCode qr;
 // 49x49 = 2401 bits (~301 bytes); 384 cobre a versao 8 com folga.
@@ -52,7 +50,7 @@ void showTransient(display_text::Status status, uint32_t durationMs) {
 }
 
 void drawNoQr() {
-  tft.fillRect(0, 0, kScreenWidth, kStatusTop, ILI9341_WHITE);
+  tft.fillRect(0, 0, layout::kWidth, layout::kStatusTop, ILI9341_WHITE);
   tft.setTextColor(ILI9341_BLACK);
   tft.setTextSize(3);
   tft.setCursor(60, 90);
@@ -64,8 +62,8 @@ void drawNoQr() {
 }
 
 void drawQr(const char* token) {
-  tft.fillRect(0, 0, kScreenWidth, kStatusTop, ILI9341_WHITE);
-  if (qrcode_initText(&qr, qrBuffer, kQrVersion, ECC_LOW, token) != 0) {
+  tft.fillRect(0, 0, layout::kWidth, layout::kStatusTop, ILI9341_WHITE);
+  if (qrcode_initText(&qr, qrBuffer, layout::kQrVersion, ECC_LOW, token) != 0) {
     tft.setTextColor(ILI9341_BLACK);
     tft.setTextSize(2);
     tft.setCursor(20, 100);
@@ -74,13 +72,13 @@ void drawQr(const char* token) {
     return;
   }
 
-  const int side = qr.size * kQrScale;
-  const int left = (kScreenWidth - side) / 2;
-  const int top = 4;
+  const int side = qr.size * layout::kQrScale;
+  const int left = (layout::kWidth - side) / 2;
+  const int top = layout::kQrTop;
   for (uint8_t y = 0; y < qr.size; ++y) {
     for (uint8_t x = 0; x < qr.size; ++x) {
       if (qrcode_getModule(&qr, x, y)) {
-        tft.fillRect(left + x * kQrScale, top + y * kQrScale, kQrScale, kQrScale, ILI9341_BLACK);
+        tft.fillRect(left + x * layout::kQrScale, top + y * layout::kQrScale, layout::kQrScale, layout::kQrScale, ILI9341_BLACK);
       }
     }
   }
@@ -89,27 +87,27 @@ void drawQr(const char* token) {
 }
 
 void drawQrFooter(uint32_t secondsLeft) {
-  tft.fillRect(0, 200, kScreenWidth, kStatusTop - 200, ILI9341_WHITE);
+  tft.fillRect(0, layout::kFooterTop, layout::kWidth, layout::kStatusTop - layout::kFooterTop, ILI9341_WHITE);
   tft.setTextColor(ILI9341_BLACK);
   tft.setTextSize(1);
   // O token completo esta no QR; aqui cabe so um prefixo para conferencia.
   char preview[17];
   strncpy(preview, drawnToken, sizeof preview - 1);
   preview[sizeof preview - 1] = '\0';
-  tft.setCursor(8, 202);
+  tft.setCursor(8, layout::kFooterTop + layout::kFooterTokenLine);
   tft.print(preview);
-  tft.setCursor(8, 214);
+  tft.setCursor(8, layout::kFooterTop + layout::kFooterCountdownLine);
   tft.printf("expira em %us", static_cast<unsigned int>(secondsLeft));
 }
 
 void drawStatus(display_text::Status status) {
   const display_text::Lines lines = display_text::render(status);
-  tft.fillRect(0, kStatusTop, kScreenWidth, kScreenHeight - kStatusTop, ILI9341_BLACK);
+  tft.fillRect(0, layout::kStatusTop, layout::kWidth, layout::kHeight - layout::kStatusTop, ILI9341_BLACK);
   tft.setTextColor(ILI9341_WHITE);
   tft.setTextSize(2);
-  tft.setCursor(8, kStatusTop + 12);
+  tft.setCursor(8, layout::kStatusTop + layout::kStatusTopLine);
   tft.print(lines.top);
-  tft.setCursor(8, kStatusTop + 48);
+  tft.setCursor(8, layout::kStatusTop + layout::kStatusBottomLine);
   tft.print(lines.bottom);
 }
 
@@ -184,3 +182,4 @@ void update() {
 }
 
 }  // namespace terminal_display
+

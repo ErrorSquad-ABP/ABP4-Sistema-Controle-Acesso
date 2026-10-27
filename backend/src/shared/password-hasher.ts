@@ -29,7 +29,9 @@ export function verifyPassword(password: string, stored: string): boolean {
   const [, n, r, p, salt, hash] = parts;
   if (!n || !r || !p || !salt || !hash) return false;
   const expected = Buffer.from(hash, 'hex');
-  if (expected.length === 0 || !isPositiveInt(n) || !isPositiveInt(r) || !isPositiveInt(p)) return false;
+  // Hex canonico de 64 bytes: Buffer.from aceita prefixo valido e ignora o resto.
+  if (expected.length !== KEY_LENGTH || !/^[0-9a-f]{128}$/i.test(hash)) return false;
+  if (!isPositiveInt(n) || !isPositiveInt(r) || !isPositiveInt(p)) return false;
   try {
     const actual = scryptSync(password, salt, expected.length, {
       N: Number(n),

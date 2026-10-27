@@ -58,6 +58,8 @@ jobs:
           "$RUNNER_TEMP/abp4-test-feedback"
           g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_display_text.cpp -o "$RUNNER_TEMP/abp4-test-display"
           "$RUNNER_TEMP/abp4-test-display"
+          g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_display_layout.cpp -o "$RUNNER_TEMP/abp4-test-layout"
+          "$RUNNER_TEMP/abp4-test-layout"
           g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_qr_token.cpp -o "$RUNNER_TEMP/abp4-test-qr"
           "$RUNNER_TEMP/abp4-test-qr"
           g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_clock_policy.cpp -o "$RUNNER_TEMP/abp4-test-clock"

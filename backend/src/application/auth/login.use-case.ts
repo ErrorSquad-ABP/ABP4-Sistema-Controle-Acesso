@@ -4,8 +4,8 @@ import type { TokenService } from '../../domain/ports/token-service.js';
 import { verifyPassword } from '../../shared/password-hasher.js';
 import { toUserView, type UserView } from './user-view.js';
 
-// Hash valido sem senha conhecida: mantem o custo do scrypt no caminho "e-mail inexistente".
-const DUMMY_HASH = 'scrypt$16384$8$1$00000000000000000000000000000000$00';
+// Hash canonico sem senha conhecida: mantem o custo do scrypt no caminho "e-mail inexistente".
+const DUMMY_HASH = `scrypt$16384$8$1$00000000000000000000000000000000$${'0'.repeat(128)}`;
 
 export interface LoginOutput {
   accessToken: string;

@@ -53,6 +53,12 @@ describe('documento OpenAPI v1', () => {
     }
   });
 
+  it('rotas implementadas que dependem do banco documentam 503', () => {
+    for (const operationId of ['login', 'getCurrentUser', 'listMyAccessEvents', 'listAccessEvents']) {
+      expect(documented(byId(operationId)).responses, operationId).toHaveProperty('503');
+    }
+  });
+
   it('requestBody so e obrigatorio quando o corpo vazio e invalido', () => {
     for (const op of operations.filter((candidate) => candidate.body)) {
       const body = documented(op).requestBody as OpenAPIV3_1.RequestBodyObject;
