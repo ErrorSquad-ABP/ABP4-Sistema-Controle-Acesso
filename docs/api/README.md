@@ -28,15 +28,16 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 | access-events | `GET /me/access-events` | logado | US-21 |
 | access-events | `GET /access-events` | ADMIN | US-21 |
 
-**Hoje todas são stubs**: validam a entrada com Zod (inválida → `400 INVALID_REQUEST`) e respondem `501 NOT_IMPLEMENTED` citando o card. Quando o card da rota for entregue, ela passa a responder de verdade, sem mudar o contrato.
+**DT-01/02/03:** as três rotas de `access-events` estão implementadas quando `DATABASE_URL` e `JWT_SECRET` estão configurados. Exigem identidade real; a listagem global exige ADMIN. As demais rotas continuam stubs, incluindo login da US-14. Sem configuração de acesso, as três rotas permanecem em stub. Os stubs validam entrada e respondem `501 NOT_IMPLEMENTED` citando o card.
 
 ## Convenções
 
-- **Autenticação**: `Authorization: Bearer <accessToken>` (de `POST /auth/login`).
+- **Autenticação**: `Authorization: Bearer <accessToken>`. O verificador aceita somente HS256 com `JWT_SECRET`, `iss=abp4`, `aud=abp4-api`, `sub` UUID, `iat` e `exp`, idade máxima de uma hora. A emissão por login permanece na US-14; o E2E assina identidades exclusivas do teste. O perfil é consultado no banco, nunca confiado ao claim do token.
 - **Datas**: ISO 8601. Na entrada aceita offset (`2026-10-20T14:00:00-03:00`); na resposta sempre UTC (`Z`).
 - **Erros**: `{ "error": { "code", "message", "details?" } }` — tabela de códigos em [`caso-de-uso-modelo.md`](../architecture/caso-de-uso-modelo.md#erros-do-domínio-ao-http).
 - **Listas**: `{ items, page, pageSize, total }`; `page` começa em 1, `pageSize` padrão 20 (máx. 100).
-- **Pedido de acesso QR**: o app envia `qrToken` (lido do QR), `terminalId` e `position`; o usuário vem do JWT. O backend confere se o `terminalId` bate com o terminal assinado dentro do token — divergiu, nega com `INVALID_CREDENTIAL`.
+- **Pedido de acesso QR**: o app envia `qrToken` (lido do QR), `terminalId` e `position`; o usuário vem do JWT. O token é opaco e seu hash é vinculado ao terminal no banco por 10 s; divergência de terminal nega com `INVALID_CREDENTIAL`. Geofence usa as coordenadas e o raio do local mapeado.
+- **Terminal desconhecido**: nega com `UNKNOWN_TERMINAL`, preserva o identificador em `event.terminalId` e retorna `event.location: null`. Terminal ou local desativado nega com `TERMINAL_INACTIVE`. Eventos legados podem ter `terminalId: null`.
 - **Acesso negado não é erro HTTP**: `POST /access-events/qr` responde `200` com `decision: DENIED` e o `reason` (ex.: `OUT_OF_RANGE`, `AUTHORIZATION_EXPIRED`), porque toda tentativa é registrada como evento.
 - **Perfis**: `ADMIN` (administrador), `RESIDENT` (condômino), `VISITOR` (visitante).
 
@@ -55,3 +56,5 @@ Requisições usam a forma de **entrada** dos schemas (antes de `transform`/`def
 O teste `tests/unit/openapi-document.test.ts` falha no CI se o YAML commitado estiver desatualizado, e também valida o documento contra a especificação OpenAPI 3.1.
 
 **Contrato congelado**: depois do merge da US-06, mudança que quebra o app (remover/renomear campo ou rota, novo campo obrigatório na entrada, novo valor de enum na resposta) precisa ser combinada com o time mobile antes. Acrescentar campo opcional ou rota nova é compatível.
+
+DT-03 amplia a resposta para negativas sem local: `location` agora aceita `null`, `terminalId` foi acrescentado e há dois motivos novos. O mobile atual ainda não implementa o consumo desse histórico; a integração futura deve tratar esses casos. O OpenAPI versionado e seus testes refletem essa alteração.
