@@ -12,6 +12,7 @@ describe('loadEnv', () => {
       SIM_NFC_UID: '04A1B2C3',
       JWT_SECRET: 'dev-only-secret-nao-use-em-producao-32',
       JWT_TTL_SECONDS: 3600,
+      TRUST_PROXY: 0,
     });
   });
 

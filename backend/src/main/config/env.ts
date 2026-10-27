@@ -55,6 +55,11 @@ const envSchema = z.object({
       'deve ser uma URL http(s)',
     )
     .optional(),
+  /**
+   * Proxies confiaveis a frente do app (1 na Vercel/Render). 0 desliga: sem proxy,
+   * confiar no X-Forwarded-For deixaria o cliente escolher a chave do rate limit.
+   */
+  TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
 });
 
 export type Env = Readonly<z.infer<typeof envSchema>>;

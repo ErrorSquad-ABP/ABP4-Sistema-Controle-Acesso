@@ -30,7 +30,7 @@ Ninguém precisa colar credenciais no repositório nem no chat. Cada item abaixo
 ### 2) Vercel
 
 1. **New Project** → importe o repositório → **Root Directory: `backend`** → **Application Preset: Express** (não use "Container").
-2. Em **Settings → Environment Variables** (ambiente **Production**): `DATABASE_URL` (a string do Neon), `JWT_SECRET` (32+ caracteres aleatórios), `NODE_ENV=production` e `LOG_LEVEL=info`.
+2. Em **Settings → Environment Variables** (ambiente **Production**): `DATABASE_URL` (a string do Neon), `JWT_SECRET` (32+ caracteres aleatórios), `TRUST_PROXY=1`, `NODE_ENV=production` e `LOG_LEVEL=info`.
 3. Em **Settings → Git**, desconecte o repositório (ou desligue os deploys automáticos): o CD é o `cd-backend.yml`.
 4. Anote o **Project ID** (Settings → General) e o **Team/Org ID** (Settings do time).
 5. Gere um token em [vercel.com/account/tokens](https://vercel.com/account/tokens).

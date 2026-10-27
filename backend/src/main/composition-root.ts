@@ -22,6 +22,8 @@ import { InvalidEnvError, type Env } from './config/env.js';
  */
 export interface Container {
   logger: Logger;
+  /** 0 desliga o trust proxy; ver TRUST_PROXY em env.ts. */
+  trustProxy: number;
   tokens: TokenService;
   repositories: {
     users: UserRepository | undefined;
@@ -65,6 +67,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
     (prisma ? new PrismaAccessEventRepository(prisma) : undefined);
   return {
     logger,
+    trustProxy: env.TRUST_PROXY,
     tokens,
     repositories: { users, accessEvents },
     useCases: {

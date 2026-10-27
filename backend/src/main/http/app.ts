@@ -26,8 +26,8 @@ export function configureApp(
   options: CreateAppOptions = {},
 ): Express {
   app.disable('x-powered-by');
-  // Atras do proxy da Vercel/Render o IP do cliente vem no X-Forwarded-For.
-  app.set('trust proxy', 1);
+  // So confia no proxy quando o deployment declara quantos existem (Vercel = 1).
+  if (container.trustProxy > 0) app.set('trust proxy', container.trustProxy);
   app.use(express.json({ limit: '100kb' }));
 
   app.use(healthRoutes(container.useCases.checkHealth));
