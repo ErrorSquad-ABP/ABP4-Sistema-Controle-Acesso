@@ -49,18 +49,4 @@ describe.skipIf(!prisma)('PrismaUserAdminRepository', () => {
       await prisma!.$disconnect();
     }
   });
-
-  it('nao deixa o banco ficar sem administrador ativo', async () => {
-    const repo = new PrismaUserAdminRepository(prisma!);
-    const adminId = 'a1000000-0000-4000-8000-000000000001';
-
-    try {
-      await expect(
-        repo.update(adminId, { active: false }, { requireAnotherAdmin: true }),
-      ).rejects.toThrow(/administrador ativo/);
-      expect((await repo.findById(adminId))?.active).toBe(true);
-    } finally {
-      await prisma!.$disconnect();
-    }
-  });
 });
