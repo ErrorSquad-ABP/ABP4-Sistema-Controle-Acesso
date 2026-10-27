@@ -54,7 +54,7 @@ export interface Operation {
    * Respostas de erro alem das derivadas de `access`/params/body. Rota publica
    * que pode negar credencial (login) declara 401 aqui.
    */
-  extraErrors?: (401 | 409 | 422 | 503)[];
+  extraErrors?: (401 | 409 | 422 | 429 | 503)[];
   /** Requisicao valida de exemplo: vira exemplo no OpenAPI e e usada nos testes. */
   example: { params?: Record<string, string>; query?: Record<string, string>; body?: unknown };
 }
@@ -78,7 +78,7 @@ export const operations: readonly Operation[] = [
     access: 'public',
     body: LoginRequest,
     success: { status: 200, description: 'Login realizado', schema: LoginResponse },
-    extraErrors: [401, 503],
+    extraErrors: [401, 429, 503],
     example: { body: { email: 'maria.souza@exemplo.com', password: 'senha-forte-123' } },
   },
   {
@@ -90,7 +90,7 @@ export const operations: readonly Operation[] = [
     story: 'US-14',
     access: 'authenticated',
     success: { status: 200, description: 'Usuario logado', schema: User },
-    extraErrors: [503],
+    extraErrors: [429, 503],
     example: {},
   },
 
@@ -276,7 +276,7 @@ export const operations: readonly Operation[] = [
     access: 'authenticated',
     query: ListMyAccessEventsQuery,
     success: { status: 200, description: 'Pagina de eventos', schema: AccessEventPage },
-    extraErrors: [503],
+    extraErrors: [429, 503],
     example: { query: { from: '2026-10-01T00:00:00-03:00' } },
   },
   {
@@ -290,7 +290,8 @@ export const operations: readonly Operation[] = [
     access: 'admin',
     query: ListAccessEventsQuery,
     success: { status: 200, description: 'Pagina de eventos', schema: AccessEventPage },
-    extraErrors: [503],
+    extraErrors: [429, 503],
     example: { query: { decision: 'DENIED', method: 'QR', from: '2026-10-01T00:00:00Z', to: '2026-10-31T23:59:59Z' } },
   },
 ];
+

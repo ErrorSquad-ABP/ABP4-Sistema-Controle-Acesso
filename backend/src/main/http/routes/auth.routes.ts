@@ -4,11 +4,14 @@ import type { Container } from '../../composition-root.js';
 import { LoginRequest, LoginResponse } from '../contract/schemas/auth.schemas.js';
 import { User } from '../contract/schemas/users.schemas.js';
 import { requireAuth } from '../middlewares/auth.js';
+import { createAuthenticatedRateLimit, createLoginRateLimit } from '../middlewares/rate-limit.js';
 
 export function authRoutes(container: Container): Router {
   const router = Router();
+  const loginRateLimit = createLoginRateLimit();
+  const authenticatedRateLimit = createAuthenticatedRateLimit();
 
-  router.post('/auth/login', async (req, res) => {
+  router.post('/auth/login', loginRateLimit, async (req, res) => {
     // Validacao antes da disponibilidade: entrada invalida e 400 mesmo sem banco.
     const body = LoginRequest.parse(req.body);
     const login = container.useCases.login;
@@ -16,7 +19,7 @@ export function authRoutes(container: Container): Router {
     res.status(200).json(LoginResponse.parse(await login.execute(body)));
   });
 
-  router.get('/auth/me', requireAuth(container), (_req, res) => {
+  router.get('/auth/me', authenticatedRateLimit, requireAuth(container), (_req, res) => {
     res.status(200).json(User.parse(res.locals.user));
   });
 

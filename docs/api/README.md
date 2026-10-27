@@ -34,7 +34,7 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 
 - **Autenticação**: `Authorization: Bearer <accessToken>` (de `POST /auth/login`).
 - **Datas**: ISO 8601. Na entrada aceita offset (`2026-10-20T14:00:00-03:00`); na resposta sempre UTC (`Z`).
-- **Erros**: `{ "error": { "code", "message", "details?" } }` — tabela de códigos em [`caso-de-uso-modelo.md`](../architecture/caso-de-uso-modelo.md#erros-do-domínio-ao-http). Banco não configurado nas rotas de auth/histórico → `503 SERVICE_UNAVAILABLE`.
+- **Erros**: `{ "error": { "code", "message", "details?" } }` — tabela de códigos em [`caso-de-uso-modelo.md`](../architecture/caso-de-uso-modelo.md#erros-do-domínio-ao-http). Banco não configurado nas rotas de auth/histórico → `503 SERVICE_UNAVAILABLE`; excesso de requisições → `429 TOO_MANY_REQUESTS`.
 - **Listas**: `{ items, page, pageSize, total }`; `page` começa em 1, `pageSize` padrão 20 (máx. 100).
 - **Pedido de acesso QR**: o app envia `qrToken` (lido do QR), `terminalId` e `position`; o usuário vem do JWT. O backend confere se o `terminalId` bate com o terminal assinado dentro do token — divergiu, nega com `INVALID_CREDENTIAL`.
 - **Acesso negado não é erro HTTP**: `POST /access-events/qr` responde `200` com `decision: DENIED` e o `reason` (ex.: `OUT_OF_RANGE`, `AUTHORIZATION_EXPIRED`), porque toda tentativa é registrada como evento.

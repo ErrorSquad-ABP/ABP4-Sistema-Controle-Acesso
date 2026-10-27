@@ -195,6 +195,7 @@ function responsesFor(op: Operation, convert: Converter): JsonSchema {
   if (op.params?.shape.id) responses['404'] = ref('NotFound');
   if (op.extraErrors?.includes(409)) responses['409'] = ref('Conflict');
   if (op.extraErrors?.includes(422)) responses['422'] = ref('UnprocessableEntity');
+  if (op.extraErrors?.includes(429)) responses['429'] = ref('TooManyRequests');
   if (op.extraErrors?.includes(503)) responses['503'] = ref('ServiceUnavailable');
   return responses;
 }
@@ -290,6 +291,7 @@ export function buildOpenApiDocument(
     NotFound: errorResponse('Recurso nao encontrado (NOT_FOUND)'),
     Conflict: errorResponse('Conflito com o estado atual (CONFLICT)'),
     UnprocessableEntity: errorResponse('Regra de negocio violada (VALIDATION_ERROR)'),
+    TooManyRequests: errorResponse('Muitas requisicoes em pouco tempo (TOO_MANY_REQUESTS)'),
     ServiceUnavailable: errorResponse('Dependencia indisponivel no processo, como banco nao configurado (SERVICE_UNAVAILABLE)'),
   };
 

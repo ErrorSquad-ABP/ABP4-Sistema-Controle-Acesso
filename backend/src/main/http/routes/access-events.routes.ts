@@ -7,11 +7,13 @@ import {
   ListMyAccessEventsQuery,
 } from '../contract/schemas/access-events.schemas.js';
 import { requireAdmin, requireAuth } from '../middlewares/auth.js';
+import { createAuthenticatedRateLimit } from '../middlewares/rate-limit.js';
 
 export function accessEventsRoutes(container: Container): Router {
   const router = Router();
+  const rateLimit = createAuthenticatedRateLimit();
 
-  router.get('/me/access-events', requireAuth(container), async (req, res) => {
+  router.get('/me/access-events', rateLimit, requireAuth(container), async (req, res) => {
     const query = ListMyAccessEventsQuery.parse(req.query);
     const useCase = container.useCases.listMyAccessEvents;
     if (!useCase) throw new ServiceUnavailableError('Historico indisponivel sem banco configurado');
@@ -22,7 +24,7 @@ export function accessEventsRoutes(container: Container): Router {
     );
   });
 
-  router.get('/access-events', requireAuth(container), requireAdmin, async (req, res) => {
+  router.get('/access-events', rateLimit, requireAuth(container), requireAdmin, async (req, res) => {
     const query = ListAccessEventsQuery.parse(req.query);
     const useCase = container.useCases.listAccessEvents;
     if (!useCase) throw new ServiceUnavailableError('Historico indisponivel sem banco configurado');
