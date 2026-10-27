@@ -44,12 +44,12 @@ Mensagem com `v` desconhecida, `terminalId` diferente do tópico ou campo faltan
   "messageId": "3f0c2c7e-8a41-4a47-9b0e-6a8f5d2f1c10",
   "terminalId": "terminal-01",
   "timestamp": "2026-10-19T19:30:00.000Z",
-  "token": "payload-base64url.signature-base64url",
+  "token": "v1.terminal-01.1792438200.1792438210.assinatura-base64url",
   "expiresAt": "2026-10-19T19:30:10.000Z"
 }
 ```
 
-`token` é emitido pelo backend como `base64url(JSON).base64url(HMAC-SHA-256)`. O JSON assinado contém somente `terminalId`, `issuedAt`, `expiresAt` (milissegundos Unix) e `id` aleatório. A chave vem de `QR_TOKEN_SECRET`, compartilhada pelos processos HTTP e MQTT; ela nunca segue na mensagem. `timestamp` é o instante `issuedAt`, e `expiresAt` da mensagem é o mesmo instante de expiração assinado no token (`issuedAt` + 10 s). O terminal só exibe o token. A validação criptográfica rejeita assinatura inválida, terminal divergente, timestamps incoerentes e token expirado; ela não concede acesso.
+`token` é emitido pelo backend como `v1.<terminalId>.<iat>.<exp>.<assinatura>`, com `iat`/`exp` em segundos Unix e assinatura `base64url(HMAC-SHA-256)` sobre os quatro primeiros campos. O formato é compacto de propósito: o QR do terminal é versão 8 / ECC_LOW (152 bytes) e precisa caber até com `terminalId` de 64 caracteres. A chave vem de `QR_TOKEN_SECRET`, compartilhada pelos processos HTTP e MQTT; ela nunca segue na mensagem. `timestamp` é o instante `iat`, e `expiresAt` da mensagem é o mesmo instante de expiração assinado no token (`iat` + 10 s). O terminal só exibe o token. A validação criptográfica rejeita assinatura inválida, terminal divergente, timestamps incoerentes e token expirado; ela não concede acesso.
 
 ### Tentativa de acesso — `terminals/{id}/access-events`
 

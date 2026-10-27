@@ -179,14 +179,14 @@ describe('terminal use cases', () => {
         timestamp: '2026-10-19T19:30:00.000Z',
         expiresAt: '2026-10-19T19:30:10.000Z',
       });
-      expect(message.token).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/);
+      expect(message.token).toMatch(/^v1\.[a-z0-9-]+\.[0-9]+\.[0-9]+\.[A-Za-z0-9_-]{43}$/);
       const validation = validateCredential.execute(message.token, message.terminalId);
       expect(validation.valid).toBe(true);
       if (!validation.valid) throw new Error('credencial assinada deveria ser valida');
       expect(new Date(validation.claims.issuedAt).toISOString()).toBe(message.timestamp);
       expect(new Date(validation.claims.expiresAt).toISOString()).toBe(message.expiresAt);
       expect(validation.claims.expiresAt - validation.claims.issuedAt).toBe(QR_TTL_MS);
-      expect(message.token.length).toBeGreaterThan(128);
+      expect(Buffer.byteLength(message.token, 'utf8')).toBeLessThanOrEqual(152);
       expect(parsePayload('qr', TERMINAL, JSON.stringify(message))).toMatchObject({ ok: true });
     });
   });
@@ -199,8 +199,17 @@ describe('terminal use cases', () => {
     it('valida token assinado e emite apenas os claims necessarios', () => {
       const credential = issue().execute(TERMINAL);
       expect(validate().execute(credential.token, TERMINAL)).toMatchObject({ valid: true });
-      const [payload] = credential.token.split('.');
-      expect(Object.keys(JSON.parse(Buffer.from(payload!, 'base64url').toString()))).toEqual(['terminalId', 'issuedAt', 'expiresAt', 'id']);
+      const [version, terminal, issuedAt, expiresAt] = credential.token.split('.');
+      expect({ version, terminal }).toEqual({ version: 'v1', terminal: TERMINAL });
+      expect(Number(expiresAt) - Number(issuedAt)).toBe(QR_TTL_MS / 1000);
+    });
+
+    it('cabe no QR do terminal (152 bytes) com o maior terminal permitido', () => {
+      const longTerminal = 'a'.repeat(64);
+      const credential = issue().execute(longTerminal);
+
+      expect(Buffer.byteLength(credential.token, 'utf8')).toBeLessThanOrEqual(152);
+      expect(validate().execute(credential.token, longTerminal).valid).toBe(true);
     });
 
     it('rejeita assinatura adulterada', () => {
@@ -228,7 +237,8 @@ describe('terminal use cases', () => {
 
     it('rejeita token ainda nao emitido', () => {
       const signerNow = new HmacQrTokenSigner('a'.repeat(64));
-      const payload = Buffer.from(JSON.stringify({ terminalId: TERMINAL, issuedAt: NOW.getTime() + 1, expiresAt: NOW.getTime() + 10_001, id: 'id' })).toString('base64url');
+      const issued = Math.floor(NOW.getTime() / 1000) + 1;
+      const payload = `v1.${TERMINAL}.${issued}.${issued + QR_TTL_MS / 1000}`;
       const token = `${payload}.${signerNow.sign(payload)}`;
       expect(validate().execute(token, TERMINAL)).toEqual({ valid: false });
     });
