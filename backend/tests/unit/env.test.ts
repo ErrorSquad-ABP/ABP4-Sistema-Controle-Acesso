@@ -14,6 +14,9 @@ describe('loadEnv', () => {
       MQTT_URL: 'mqtt://localhost:1884',
       SIM_TERMINAL_ID: 'terminal-01',
       SIM_NFC_UID: '04A1B2C3',
+      JWT_SECRET: 'dev-only-secret-nao-use-em-producao-32',
+      JWT_TTL_SECONDS: 3600,
+      TRUST_PROXY: 0,
     });
   });
 
@@ -43,6 +46,14 @@ describe('loadEnv', () => {
     expect(configured({ DATABASE_URL: '' }).DATABASE_URL).toBeUndefined();
   });
 
+  it('trata RENDER_EXTERNAL_URL vazia como ausente e valida a URL', () => {
+    expect(configured({ RENDER_EXTERNAL_URL: '' }).RENDER_EXTERNAL_URL).toBeUndefined();
+    expect(configured({ RENDER_EXTERNAL_URL: 'https://abp4.onrender.com' }).RENDER_EXTERNAL_URL).toBe(
+      'https://abp4.onrender.com',
+    );
+    expect(() => loadEnv({ RENDER_EXTERNAL_URL: 'nao-e-url' })).toThrow('RENDER_EXTERNAL_URL');
+  });
+
   it('retorna objeto congelado', () => {
     expect(Object.isFrozen(configured())).toBe(true);
   });
@@ -58,6 +69,7 @@ describe('loadEnv', () => {
     ['DATABASE_URL fora do padrao postgres', { DATABASE_URL: 'mysql://x' }, 'DATABASE_URL'],
     ['QR_TOKEN_SECRET curto', { QR_TOKEN_SECRET: 'a'.repeat(63) }, 'QR_TOKEN_SECRET'],
     ['QR_TOKEN_SECRET nao hexadecimal', { QR_TOKEN_SECRET: 'z'.repeat(64) }, 'QR_TOKEN_SECRET'],
+    ['RENDER_EXTERNAL_URL invalida', { RENDER_EXTERNAL_URL: 'ftp://x' }, 'RENDER_EXTERNAL_URL'],
   ])('falha no boot com %s, citando a variavel', (_caso, source, variavel) => {
     expect(() => loadEnv({ QR_TOKEN_SECRET: SECRET, ...source })).toThrow(InvalidEnvError);
     expect(() => loadEnv({ QR_TOKEN_SECRET: SECRET, ...source })).toThrow(variavel);

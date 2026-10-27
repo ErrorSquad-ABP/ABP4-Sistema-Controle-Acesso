@@ -33,3 +33,7 @@ export class UnauthorizedError extends DomainError {
 export class ForbiddenError extends DomainError {
   readonly code = 'FORBIDDEN';
 }
+
+export class ServiceUnavailableError extends DomainError {
+  readonly code = 'SERVICE_UNAVAILABLE';
+}
