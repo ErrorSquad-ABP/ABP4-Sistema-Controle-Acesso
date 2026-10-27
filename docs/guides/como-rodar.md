@@ -62,7 +62,19 @@ npm run mqtt:consumer     # terminal 1: assina os tópicos e fica escutando
 npm run sim:terminal      # terminal 2: publica a leitura NFC e responde o comando
 ```
 
-Esperado: o consumidor loga `tentativa de acesso recebida`, `comando enviado` e `ack correlacionado`; o simulador loga `leitura nfc publicada`, `porta aberta` e sai com código 0. Sem o consumidor, o simulador espera 10 s e sai com erro. Na S1 o consumidor libera qualquer UID (decisão provisória até as US-19/US-20).
+No modo padrão `ACCESS_MODE=real`, o banco precisa estar migrado e o terminal mapeado. A seed cadastra `terminal-01`, a tag `04A1B2C3` e uma autorização para o local demo. O consumidor valida o banco antes de conectar ao MQTT. Uma tag válida com autorização disponível gera abertura; desconhecida gera negativa. O simulador recebe o comando e responde ACK nos dois casos, saindo com código 0; esse código comprova transporte, não concessão. Sem consumidor, espera 10 s e sai com erro.
+
+Para demonstrar apenas transporte sem banco, configure explicitamente no `.env` `NODE_ENV=development` e `ACCESS_MODE=demo`. O consumidor avisa que libera qualquer UID. `NODE_ENV=production` rejeita demo; sem decisor real o consumidor não inicia.
+
+### E2E sem Docker ou administrador
+
+```bash
+cd backend
+npm ci
+npm run test:e2e
+```
+
+O teste baixa os binários do PostgreSQL via dependência de desenvolvimento, cria banco temporário e broker MQTT em portas livres de loopback, inicia API e worker separados e usa terminal simulado. Aplica as migrations, verifica alinhamento do schema e roda a seed duas vezes. Limpa processos e dados próprios ao terminar. Não usa o banco do `.env` nem instala serviços. Evidências e cenários em [`dt-01-02-03.md`](../entrega/evidencias/dt-01-02-03.md).
 
 ## 3) Mobile
 

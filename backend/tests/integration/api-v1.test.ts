@@ -10,7 +10,14 @@ const env = loadEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent', QR_TOKEN_SECRET: 'a
 const app = createApp(buildContainer(env));
 
 /** Rotas ja implementadas saem do loop de stub; o teste real de cada uma vive no seu arquivo. */
-const IMPLEMENTED = new Set(['login', 'getCurrentUser', 'listMyAccessEvents', 'listAccessEvents', 'validateQrCredential']);
+const IMPLEMENTED = new Set([
+  'login',
+  'getCurrentUser',
+  'listMyAccessEvents',
+  'listAccessEvents',
+  'validateQrCredential',
+  'requestQrAccess',
+]);
 
 function urlFor(op: Operation, params: Record<string, string> = op.example.params ?? {}): string {
   const path = op.path.replace(/:(\w+)/g, (_match, name: string) => params[name] ?? `:${name}`);
@@ -76,12 +83,14 @@ describe('rotas stub do contrato v1', () => {
     expect(res.body.error.code).toBe('SERVICE_UNAVAILABLE');
   });
 
-  it('nao altera a operacao de pedido de acesso da US-20', async () => {
+  it('pedido de acesso QR deixou de ser stub e exige sessao', async () => {
     const res = await request(app)
       .post(`${API_V1_PREFIX}/access-events/qr`)
       .send({ qrToken: 'token', terminalId: 'aurora-recepcao', position: { latitude: 0, longitude: 0 } });
-    expect(res.status).toBe(501);
-    expect(res.body.error.message).toContain('US-20');
+
+    // Sem banco neste app de teste, a autenticacao falha antes do handler (nunca 501).
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('SERVICE_UNAVAILABLE');
   });
 
   it('nao publica uma rota antiga de validacao sem autenticacao', async () => {

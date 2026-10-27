@@ -8,6 +8,7 @@ import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 const SELECT = {
   id: true,
   occurredAt: true,
+  terminalId: true,
   method: true,
   decision: true,
   reason: true,
@@ -20,15 +21,15 @@ const SELECT = {
 type Row = Prisma.AccessEventGetPayload<{ select: typeof SELECT }>;
 
 function toView(row: Row): AccessEventView {
-  // O contrato exige location; o filtro `locationId: { not: null }` garante a relacao.
-  if (!row.location) throw new Error('evento sem local nao deveria chegar ao contrato');
   return {
     id: row.id,
     occurredAt: row.occurredAt.toISOString(),
+    terminalId: row.terminalId,
     method: row.method,
     decision: row.decision,
     reason: row.reason,
     user: row.user,
+    // Evento de terminal desconhecido fica sem local, mas continua consultavel (DT-03).
     location: row.location,
     authorizationId: row.authorizationId,
     distanceMeters: row.distanceMeters === null ? null : Number(row.distanceMeters),
@@ -39,7 +40,7 @@ export class PrismaAccessEventRepository implements AccessEventRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async list(filters: AccessEventFilters): Promise<{ items: AccessEventView[]; total: number }> {
-    const where: Prisma.AccessEventWhereInput = { locationId: { not: null } };
+    const where: Prisma.AccessEventWhereInput = {};
     if (filters.userId) where.userId = filters.userId;
     if (filters.locationId) where.locationId = filters.locationId;
     if (filters.method) where.method = filters.method;

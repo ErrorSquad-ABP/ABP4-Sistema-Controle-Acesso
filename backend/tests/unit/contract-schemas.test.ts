@@ -3,7 +3,20 @@ import { EXAMPLE_IDS } from '../../src/main/http/contract/operations.js';
 import {
   ListAccessEventsQuery,
   QrAccessRequest,
+  AccessEvent,
 } from '../../src/main/http/contract/schemas/access-events.schemas.js';
+
+describe('DT-03: evento de terminal desconhecido', () => {
+  it('continua representavel e consultavel sem local resolvido', () => {
+    expect(AccessEvent.safeParse({
+      id: 'a1000000-0000-4000-8000-000000000007',
+      occurredAt: '2026-10-26T12:00:00.000Z',
+      terminalId: 'terminal-desconhecido', method: 'NFC', decision: 'DENIED',
+      reason: 'UNKNOWN_TERMINAL', user: null, location: null,
+      authorizationId: null, distanceMeters: null,
+    }).success).toBe(true);
+  });
+});
 import { LoginRequest } from '../../src/main/http/contract/schemas/auth.schemas.js';
 import { ValidateQrCredentialRequest, ValidateQrCredentialResponse } from '../../src/main/http/contract/schemas/credentials.schemas.js';
 import {

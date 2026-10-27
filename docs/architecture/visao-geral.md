@@ -31,8 +31,9 @@ flowchart LR
 3. O usuário escaneia o QR Code com o app.
 4. O app envia o token lido do QR (com o identificador do terminal), a credencial do usuário e a geolocalização à API (HTTPS REST).
 5. A API valida o token do QR (formato, terminal e expiração de 10 s), a credencial do usuário, a janela de uso, o número de usos, o local e a distância (≤ 100 m).
-6. O caso de uso publica o comando de abertura no tópico do terminal (pela API na requisição do app; pelo processo MQTT nos fluxos do terminal) e registra o evento de acesso.
+6. O caso de uso grava a decisão e o consumo da autorização na mesma transação, persiste o comando no registro compartilhado e publica a abertura no tópico do terminal (pela API na requisição do app; pelo processo MQTT nos fluxos do terminal).
 7. O terminal abre a porta, sinaliza o resultado (LED/buzzer) e publica o ACK de execução.
+8. O worker correlaciona o ACK no mesmo PostgreSQL usado pela API, mesmo após reinício. A decisão `GRANTED` é autorização; confirmação física depende do status do ACK.
 
 ## Fluxo de acesso via NFC
 
@@ -54,3 +55,11 @@ flowchart LR
 | Evento de acesso | PostgreSQL | caso de uso → banco | backend registra tentativa e resultado |
 
 Contrato mínimo: `messageId`, `terminalId`, versão e timestamp; comandos também com `commandId` e `expiresAt`. Comandos sem retenção e QoS 1; o consumidor deduplica e rejeita comando expirado. O detalhamento (payloads, QoS e LWT) fica em [`contratos-mqtt.md`](contratos-mqtt.md).
+
+## Proteções DT-01/02/03
+
+- O padrão é `ACCESS_MODE=real`: decisor real e tabelas validados antes de conectar ao MQTT. `demo` precisa ser explícito e é proibido em produção.
+- `Terminal` resolve o local usado por NFC, QR e geofence. Terminal desconhecido ou desativado não abre acesso. A tentativa desconhecida é persistida com o identificador recebido e local nulo, consultável pelo histórico.
+- `TerminalCommand` é o registro compartilhado por API e worker. A intenção de comando entra na mesma transação do evento e do consumo, com prazo ancorado na decisão; o ACK atualiza atomicamente por comando e terminal. Retentativa mantém identificador e prazo originais.
+- O QR é o token assinado da US-19 (`v1.<terminal>.<iat>.<exp>.<hmac>`, validade de 10 s), validado pelo `ValidateQrCredentialUseCase`; o usuário do pedido vem do JWT do login.
+- Validação reproduzível sem Docker/admin em `backend`: `npm run test:e2e`. Roteiro em [`dt-01-02-03.md`](../entrega/evidencias/dt-01-02-03.md).

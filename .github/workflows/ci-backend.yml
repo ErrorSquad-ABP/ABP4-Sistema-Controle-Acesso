@@ -102,6 +102,10 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: E2E (PostgreSQL temporario + broker MQTT + API e worker separados)
+        # O build ja foi executado acima; o script local test:e2e tambem inclui build.
+        run: npx vitest run --config vitest.e2e.config.ts
+
   docker:
     name: ci-backend-docker
     runs-on: ubuntu-latest

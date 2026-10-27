@@ -20,7 +20,7 @@ export function createApp(container: Container, options: CreateAppOptions = {}):
   return configureApp(express(), container, options);
 }
 
-/** Aplica a composição HTTP num app já criado (o entry da Vercel precisa chamar `express()`). */
+/** Aplica a composicao HTTP num app ja criado (o entry da Vercel precisa chamar `express()`). */
 export function configureApp(
   app: Express,
   container: Container,

@@ -27,7 +27,7 @@ const event: AccessEventMessage = { ...envelope(UUID_A), type: 'nfc_read', uid: 
 class FixedDecider implements AccessDecider {
   constructor(private readonly action: 'open' | 'deny') {}
   decide() {
-    return Promise.resolve({ action: this.action, reason: 'teste' });
+    return Promise.resolve({ action: this.action, reason: 'teste', decidedAt: NOW });
   }
 }
 
@@ -80,7 +80,7 @@ describe('terminal use cases', () => {
       expect(bus.published[0]?.message).toMatchObject({ action: 'deny' });
     });
 
-    it('se a publicacao falhar, desfaz o estado para a retransmissao tentar de novo', async () => {
+    it('se a publicacao falhar, preserva o comando para retransmitir com o mesmo id', async () => {
       const failing = new RecordingBus();
       failing.publish = () => Promise.reject(new Error('broker fora'));
       const useCase = new HandleAccessEventUseCase(
@@ -95,7 +95,7 @@ describe('terminal use cases', () => {
 
       await expect(useCase.execute(event)).rejects.toThrow('broker fora');
 
-      expect(pending.size).toBe(0);
+      expect(pending.size).toBe(1);
       expect(await accessUseCase().execute(event)).toMatchObject({ status: 'commanded' });
     });
 
@@ -121,7 +121,7 @@ describe('terminal use cases', () => {
       const output = await accessUseCase().execute(event);
       if (output.status !== 'commanded') throw new Error('esperava comando');
 
-      const result = new HandleAckUseCase(pending, seen, silentLogger).execute(
+      const result = await new HandleAckUseCase(pending, seen, silentLogger).execute(
         ackFor(output.command.commandId),
       );
 
@@ -133,7 +133,7 @@ describe('terminal use cases', () => {
       const output = await accessUseCase().execute(event);
       if (output.status !== 'commanded') throw new Error('esperava comando');
 
-      const result = new HandleAckUseCase(pending, seen, silentLogger).execute({
+      const result = await new HandleAckUseCase(pending, seen, silentLogger).execute({
         ...ackFor(output.command.commandId),
         terminalId: 'terminal-02',
       });
@@ -142,20 +142,20 @@ describe('terminal use cases', () => {
       expect(pending.size).toBe(1);
     });
 
-    it('ignora ack de comando desconhecido', () => {
-      const result = new HandleAckUseCase(pending, seen, silentLogger).execute(
+    it('ignora ack de comando desconhecido', async () => {
+      const result = await new HandleAckUseCase(pending, seen, silentLogger).execute(
         ackFor('c7e4f1a2-6b3d-4c58-9f10-2a8b5d7e9c99'),
       );
 
       expect(result).toEqual({ status: 'unknown' });
     });
 
-    it('descarta ack repetido (mesmo messageId)', () => {
+    it('descarta ack repetido (mesmo messageId)', async () => {
       const useCase = new HandleAckUseCase(pending, seen, silentLogger);
       const ack = ackFor('c7e4f1a2-6b3d-4c58-9f10-2a8b5d7e9c99');
-      useCase.execute(ack);
+      await useCase.execute(ack);
 
-      expect(useCase.execute(ack)).toEqual({ status: 'duplicate' });
+      expect(await useCase.execute(ack)).toEqual({ status: 'duplicate' });
     });
   });
 
@@ -216,23 +216,23 @@ describe('terminal use cases', () => {
       const { token } = issue().execute(TERMINAL);
       const [payload, signature] = token.split('.');
       const altered = `${payload}.${signature![0] === 'A' ? 'B' : 'A'}${signature!.slice(1)}`;
-      expect(validate().execute(altered, TERMINAL)).toEqual({ valid: false });
+      expect(validate().execute(altered, TERMINAL)).toEqual({ valid: false, reason: 'invalid' });
     });
 
     it('rejeita formato invalido', () => {
-      expect(validate().execute('not.a.valid.token', TERMINAL)).toEqual({ valid: false });
+      expect(validate().execute('not.a.valid.token', TERMINAL)).toEqual({ valid: false, reason: 'invalid' });
     });
 
     it('rejeita terminal divergente', () => {
       const { token } = issue().execute(TERMINAL);
-      expect(validate().execute(token, 'terminal-02')).toEqual({ valid: false });
+      expect(validate().execute(token, 'terminal-02')).toEqual({ valid: false, reason: 'invalid' });
     });
 
     it('aceita no instante emitido e rejeita no limite expiresAt', () => {
       const { token, expiresAt } = issue().execute(TERMINAL);
       expect(validate().execute(token, TERMINAL).valid).toBe(true);
       clock.date = new Date(expiresAt);
-      expect(validate().execute(token, TERMINAL)).toEqual({ valid: false });
+      expect(validate().execute(token, TERMINAL)).toEqual({ valid: false, reason: 'expired' });
     });
 
     it('rejeita token ainda nao emitido', () => {
@@ -240,7 +240,7 @@ describe('terminal use cases', () => {
       const issued = Math.floor(NOW.getTime() / 1000) + 1;
       const payload = `v1.${TERMINAL}.${issued}.${issued + QR_TTL_MS / 1000}`;
       const token = `${payload}.${signerNow.sign(payload)}`;
-      expect(validate().execute(token, TERMINAL)).toEqual({ valid: false });
+      expect(validate().execute(token, TERMINAL)).toEqual({ valid: false, reason: 'invalid' });
     });
   });
 });

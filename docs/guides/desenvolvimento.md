@@ -37,6 +37,7 @@ Cada stack tem seu workflow. **Em PR os três rodam sempre** (são os checks obr
 - Os quatro checks acima são obrigatórios na `main`, além de 1 aprovação. Merge com check vermelho ou pendente não passa.
 - Os badges no `README.md` raiz mostram o estado da `main`.
 - Antes de abrir PR, rode localmente o mesmo que o CI roda: no backend, `npm run lint && npm run typecheck && npm test && npm run build`.
+- Para alterações no acesso, rode também `npm run test:e2e`: PostgreSQL temporário e broker MQTT próprios, sem Docker ou administrador. O CI backend executa esse cenário depois do build.
 - Falhou? Abra a aba **Checks** do PR: cada etapa tem nome próprio, e o resumo do job do backend mostra a tabela de cobertura.
 
 ## Ação de review
