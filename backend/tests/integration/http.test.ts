@@ -63,20 +63,6 @@ describe('GET /health', () => {
   });
 });
 
-describe('POST /qr-credentials/validate', () => {
-  it('valida token emitido e retorna somente o resultado', async () => {
-    const { IssueQrCredentialUseCase } = await import('../../src/application/terminal/qr-credential.use-cases.js');
-    const { HmacQrTokenSigner } = await import('../../src/infrastructure/ids/hmac-qr-token-signer.js');
-    const { SystemClock } = await import('../../src/infrastructure/clock/system-clock.js');
-    const issuer = new IssueQrCredentialUseCase(new SystemClock(), { uuid: () => 'random-id', token: () => '' }, new HmacQrTokenSigner(env.QR_TOKEN_SECRET));
-    const credential = issuer.execute('terminal-01');
-    const res = await request(app).post('/qr-credentials/validate').send({ token: credential.token, terminalId: 'terminal-01' });
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ valid: true });
-    expect(JSON.stringify(res.body)).not.toContain(credential.token);
-  });
-});
-
 describe('error handler padrao', () => {
   it('rota inexistente -> 404 ROUTE_NOT_FOUND', async () => {
     const res = await request(app).get('/nao-existe');

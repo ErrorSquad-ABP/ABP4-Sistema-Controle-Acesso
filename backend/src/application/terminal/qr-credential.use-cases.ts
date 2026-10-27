@@ -42,6 +42,7 @@ export class ValidateQrCredentialUseCase {
     const [payload, signature] = parts as [string, string];
     if (!this.signer.verify(payload, signature)) return { valid: false };
     try {
+      const now = this.clock.now().getTime();
       const bytes = Buffer.from(payload, 'base64url');
       if (bytes.toString('base64url') !== payload) return { valid: false };
       const raw: unknown = JSON.parse(bytes.toString('utf8'));
@@ -52,7 +53,7 @@ export class ValidateQrCredentialUseCase {
       if (!Number.isSafeInteger(c.issuedAt) || !Number.isSafeInteger(c.expiresAt)) return { valid: false };
       const issuedAt = c.issuedAt as number;
       const expiresAt = c.expiresAt as number;
-      if (expiresAt - issuedAt !== QR_TTL_MS || issuedAt > this.clock.now().getTime() || expiresAt <= this.clock.now().getTime()) return { valid: false };
+      if (expiresAt - issuedAt !== QR_TTL_MS || issuedAt > now || expiresAt <= now) return { valid: false };
       return { valid: true, claims: { terminalId, issuedAt, expiresAt, id: c.id } };
     } catch {
       return { valid: false };

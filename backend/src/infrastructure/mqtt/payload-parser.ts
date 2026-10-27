@@ -18,7 +18,8 @@ const envelope = {
 const reason = z.string().min(1).max(100).optional();
 
 const SCHEMAS = {
-  qr: z.object({ ...envelope, token: z.string().min(1).max(128), expiresAt: z.iso.datetime() }),
+  // Base64url dos claims + assinatura HMAC-SHA-256 pode exceder 128 chars.
+  qr: z.object({ ...envelope, token: z.string().min(1).max(512), expiresAt: z.iso.datetime() }),
   'access-events': z.object({
     ...envelope,
     type: z.literal('nfc_read'),

@@ -6,7 +6,6 @@ import { notFound } from './middlewares/not-found.js';
 import { apiV1StubRoutes } from './routes/api-v1.routes.js';
 import { docsRoutes } from './routes/docs.routes.js';
 import { healthRoutes } from './routes/health.routes.js';
-import { qrCredentialRoutes } from './routes/qr-credential.routes.js';
 
 export interface CreateAppOptions {
   /** Rotas extras montadas antes do 404 (usado nos testes de integracao). */
@@ -28,7 +27,6 @@ export function configureApp(
   app.use(express.json({ limit: '100kb' }));
 
   app.use(healthRoutes(container.useCases.checkHealth));
-  app.use(qrCredentialRoutes(container.useCases.validateQrCredential));
   app.use(docsRoutes());
   app.use(API_V1_PREFIX, apiV1StubRoutes());
   for (const router of options.extraRoutes ?? []) app.use(router);

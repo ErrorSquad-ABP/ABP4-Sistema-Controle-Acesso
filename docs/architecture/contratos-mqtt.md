@@ -44,12 +44,12 @@ Mensagem com `v` desconhecida, `terminalId` diferente do tópico ou campo faltan
   "messageId": "3f0c2c7e-8a41-4a47-9b0e-6a8f5d2f1c10",
   "terminalId": "terminal-01",
   "timestamp": "2026-10-19T19:30:00.000Z",
-  "token": "b1c2d3e4f5a6",
+  "token": "payload-base64url.signature-base64url",
   "expiresAt": "2026-10-19T19:30:10.000Z"
 }
 ```
 
-`expiresAt` é `timestamp` + 10 s. O terminal só exibe o token; quem valida formato, terminal e expiração é a API quando o app o envia. O token real e sua assinatura nascem na US-19; na S1 o consumidor publica um token de teste só para exercitar o canal.
+`token` é emitido pelo backend como `base64url(JSON).base64url(HMAC-SHA-256)`. O JSON assinado contém somente `terminalId`, `issuedAt`, `expiresAt` (milissegundos Unix) e `id` aleatório. A chave vem de `QR_TOKEN_SECRET`, compartilhada pelos processos HTTP e MQTT; ela nunca segue na mensagem. `timestamp` é o instante `issuedAt`, e `expiresAt` da mensagem é o mesmo instante de expiração assinado no token (`issuedAt` + 10 s). O terminal só exibe o token. A validação criptográfica rejeita assinatura inválida, terminal divergente, timestamps incoerentes e token expirado; ela não concede acesso.
 
 ### Tentativa de acesso — `terminals/{id}/access-events`
 

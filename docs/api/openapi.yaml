@@ -26,7 +26,39 @@ tags:
     description: "Liberacoes de acesso: pessoa + local + janela + usos"
   - name: access-events
     description: Solicitacao de acesso por QR e historico de tentativas
+  - name: credentials
+    description: Validacao criptografica de credenciais QR
 paths:
+  /credentials/qr/validate:
+    post:
+      operationId: validateQrCredential
+      tags:
+        - credentials
+      summary: Validar credencial QR
+      description: Valida a assinatura, o terminal e a expiracao da credencial. Nao concede acesso, nao consulta autorizacoes, nao calcula geofence e nao registra eventos. Requer sessao autenticada conforme US-14.
+      x-story: US-19
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateQrCredentialRequest"
+            example:
+              qrToken: eyJ0ZXJtaW5hbElkIjoiYXVyb3JhLXJlY2VwY2FvIn0.assinatura
+              terminalId: aurora-recepcao
+      responses:
+        "200":
+          description: Resultado da validacao da credencial, sem decisao de acesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidateQrCredentialResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /auth/login:
     post:
       operationId: login
@@ -1154,6 +1186,47 @@ components:
         - id
         - name
         - role
+    ValidateQrCredentialRequest:
+      type: object
+      properties:
+        qrToken:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          description: Token assinado lido do QR do terminal
+        terminalId:
+          type: string
+          pattern: ^[a-z0-9][a-z0-9-]{0,63}$
+          description: 'Identificador do terminal (ex.: "aurora-recepcao"); deve bater com o terminal do token'
+      required:
+        - qrToken
+        - terminalId
+    ValidateQrCredentialResponse:
+      oneOf:
+        - type: object
+          properties:
+            valid:
+              type: boolean
+              const: true
+            terminalId:
+              type: string
+              pattern: ^[a-z0-9][a-z0-9-]{0,63}$
+              description: 'Identificador do terminal (ex.: "aurora-recepcao"); deve bater com o terminal do token'
+            expiresAt:
+              type: string
+              format: date-time
+          required:
+            - valid
+            - terminalId
+            - expiresAt
+        - type: object
+          properties:
+            valid:
+              type: boolean
+              const: false
+          required:
+            - valid
+      description: Resultado da validacao criptografica; nao representa uma decisao de acesso
   responses:
     BadRequest:
       description: Entrada invalida (INVALID_REQUEST, com erros por campo em details) ou JSON malformado (INVALID_JSON)

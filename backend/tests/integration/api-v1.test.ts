@@ -60,6 +60,36 @@ describe('rotas stub do contrato v1', () => {
 
     expect(res.status).toBe(501);
   });
+
+  it('validacao QR usa operacao separada autenticada e valida formato antes do stub', async () => {
+    const valid = await request(app)
+      .post(`${API_V1_PREFIX}/credentials/qr/validate`)
+      .send({ qrToken: 'token.assinado', terminalId: 'aurora-recepcao' });
+    expect(valid.status).toBe(501);
+    expect(valid.body.error.code).toBe('NOT_IMPLEMENTED');
+    expect(valid.body.error.message).toContain('US-19');
+
+    const invalid = await request(app)
+      .post(`${API_V1_PREFIX}/credentials/qr/validate`)
+      .send({ qrToken: '', terminalId: 'Recepcao/1' });
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.error.code).toBe('INVALID_REQUEST');
+    expect(invalid.body.error.details).toHaveProperty('qrToken');
+    expect(invalid.body.error.details).toHaveProperty('terminalId');
+  });
+
+  it('nao altera a operacao de pedido de acesso da US-20', async () => {
+    const res = await request(app)
+      .post(`${API_V1_PREFIX}/access-events/qr`)
+      .send({ qrToken: 'token', terminalId: 'aurora-recepcao', position: { latitude: 0, longitude: 0 } });
+    expect(res.status).toBe(501);
+    expect(res.body.error.message).toContain('US-20');
+  });
+
+  it('nao publica uma rota antiga de validacao sem autenticacao', async () => {
+    const res = await request(app).post('/qr-credentials/validate').send({ token: 'x', terminalId: 'terminal-01' });
+    expect(res.status).toBe(404);
+  });
 });
 
 describe('publicacao do contrato', () => {

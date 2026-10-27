@@ -7,6 +7,7 @@ import { HmacQrTokenSigner } from '../../src/infrastructure/ids/hmac-qr-token-si
 import type { AccessDecider } from '../../src/domain/ports/access-decider.js';
 import type { AccessEventMessage, AckMessage } from '../../src/domain/terminal/messages.js';
 import { QR_TTL_MS } from '../../src/domain/terminal/messages.js';
+import { parsePayload } from '../../src/infrastructure/mqtt/payload-parser.js';
 import { PendingCommands } from '../../src/domain/terminal/pending-commands.js';
 import { SeenMessages } from '../../src/domain/terminal/seen-messages.js';
 import {
@@ -185,6 +186,8 @@ describe('terminal use cases', () => {
       expect(new Date(validation.claims.issuedAt).toISOString()).toBe(message.timestamp);
       expect(new Date(validation.claims.expiresAt).toISOString()).toBe(message.expiresAt);
       expect(validation.claims.expiresAt - validation.claims.issuedAt).toBe(QR_TTL_MS);
+      expect(message.token.length).toBeGreaterThan(128);
+      expect(parsePayload('qr', TERMINAL, JSON.stringify(message))).toMatchObject({ ok: true });
     });
   });
 

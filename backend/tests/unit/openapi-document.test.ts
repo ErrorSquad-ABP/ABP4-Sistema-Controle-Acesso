@@ -28,7 +28,7 @@ describe('documento OpenAPI v1', () => {
 
   it('cobre os quatro grupos do contrato', () => {
     const tags = new Set(operations.map((op) => op.tag));
-    expect([...tags].sort()).toEqual(['access-events', 'auth', 'authorizations', 'users']);
+    expect([...tags].sort()).toEqual(['access-events', 'auth', 'authorizations', 'credentials', 'users']);
   });
 
   it('tem operationId unico e um card de implementacao em cada rota', () => {
@@ -73,6 +73,20 @@ describe('documento OpenAPI v1', () => {
     expect(document.components?.schemas?.QrAccessRequest).toMatchObject({
       required: ['qrToken', 'terminalId', 'position'],
     });
+  });
+
+  it('validacao QR tem contrato aditivo autenticado e resposta sem decisao de acesso', () => {
+    const op = byId('validateQrCredential');
+    expect(op.path).toBe('/credentials/qr/validate');
+    expect(op.access).toBe('authenticated');
+    expect(op.body?.safeParse({ qrToken: 'x', terminalId: 'aurora-recepcao' }).success).toBe(true);
+    expect(op.body?.safeParse({ qrToken: 'x', terminalId: 'Acesso/1' }).success).toBe(false);
+    expect(documented(op).security).toEqual([{ bearerAuth: [] }]);
+    expect(documented(op).responses).toHaveProperty('401');
+    expect(document.components?.schemas?.ValidateQrCredentialResponse).toMatchObject({
+      oneOf: [expect.any(Object), expect.any(Object)],
+    });
+    expect(JSON.stringify(document.components?.schemas?.ValidateQrCredentialResponse)).not.toContain('decision');
   });
 
   it('os exemplos de cada operacao passam nos proprios schemas', () => {

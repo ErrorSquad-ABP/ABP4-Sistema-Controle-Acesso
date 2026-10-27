@@ -25,6 +25,7 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 | authorizations | `GET /authorizations/{id}` | ADMIN ou dono | US-17 |
 | authorizations | `POST /authorizations/{id}/cancel` | ADMIN | US-17 |
 | access-events | `POST /access-events/qr` | logado | US-20 |
+| credentials | `POST /credentials/qr/validate` | logado | US-19 (roteamento depende da US-14) |
 | access-events | `GET /me/access-events` | logado | US-21 |
 | access-events | `GET /access-events` | ADMIN | US-21 |
 
@@ -37,6 +38,7 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 - **Erros**: `{ "error": { "code", "message", "details?" } }` — tabela de códigos em [`caso-de-uso-modelo.md`](../architecture/caso-de-uso-modelo.md#erros-do-domínio-ao-http).
 - **Listas**: `{ items, page, pageSize, total }`; `page` começa em 1, `pageSize` padrão 20 (máx. 100).
 - **Pedido de acesso QR**: o app envia `qrToken` (lido do QR), `terminalId` e `position`; o usuário vem do JWT. O backend confere se o `terminalId` bate com o terminal assinado dentro do token — divergiu, nega com `INVALID_CREDENTIAL`.
+- **Validação de credencial QR**: `POST /credentials/qr/validate` recebe `qrToken` e `terminalId`. O QR leva claims em Base64URL (`terminalId`, `issuedAt`, `expiresAt`, `id`) seguidos da assinatura HMAC-SHA-256. Responde `{ valid: true, terminalId, expiresAt }` ou `{ valid: false }`. O token rotativo é efêmero e não é persistido como `Credential`. A validação não concede acesso, consulta autorização, calcula geofence nem grava eventos. Exige sessão conforme a US-14; enquanto o middleware JWT não estiver implementado, a operação permanece em `501` depois da validação de formato.
 - **Acesso negado não é erro HTTP**: `POST /access-events/qr` responde `200` com `decision: DENIED` e o `reason` (ex.: `OUT_OF_RANGE`, `AUTHORIZATION_EXPIRED`), porque toda tentativa é registrada como evento.
 - **Perfis**: `ADMIN` (administrador), `RESIDENT` (condômino), `VISITOR` (visitante).
 
