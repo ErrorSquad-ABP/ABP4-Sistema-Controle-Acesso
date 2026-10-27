@@ -2,15 +2,11 @@ import type { AccessDecider } from '../../domain/ports/access-decider.js';
 import type { Clock } from '../../domain/ports/clock.js';
 import type { IdGenerator } from '../../domain/ports/id-generator.js';
 import type { MessageBus } from '../../domain/ports/message-bus.js';
-import {
-  COMMAND_TTL_MS,
-  CONTRACT_VERSION,
-  type AccessEventMessage,
-  type CommandMessage,
-} from '../../domain/terminal/messages.js';
-import type { PendingCommands } from '../../domain/terminal/pending-commands.js';
+import { type AccessEventMessage, type CommandMessage } from '../../domain/terminal/messages.js';
+import type { CommandStore } from '../../domain/ports/command-store.js';
 import type { SeenMessages } from '../../domain/terminal/seen-messages.js';
 import type { Logger } from '../../shared/logger.js';
+import { PublishCommandUseCase } from './publish-command.use-case.js';
 
 export type HandleAccessEventOutput =
   | { status: 'duplicate' }
@@ -24,7 +20,7 @@ export class HandleAccessEventUseCase {
     private readonly clock: Clock,
     private readonly ids: IdGenerator,
     private readonly seen: SeenMessages,
-    private readonly pending: PendingCommands,
+    private readonly pending: CommandStore,
     private readonly logger: Logger,
   ) {}
 
@@ -34,25 +30,14 @@ export class HandleAccessEventUseCase {
       return { status: 'duplicate' };
     }
 
-    const decision = await this.decider.decide(event);
-    const now = this.clock.now();
-    const command: CommandMessage = {
-      v: CONTRACT_VERSION,
-      messageId: this.ids.uuid(),
-      terminalId: event.terminalId,
-      timestamp: now.toISOString(),
-      commandId: this.ids.uuid(),
-      expiresAt: new Date(now.getTime() + COMMAND_TTL_MS).toISOString(),
-      action: decision.action,
-      reason: decision.reason,
-    };
-
-    this.pending.register(command, now);
+    let command: CommandMessage;
     try {
-      await this.bus.publish('commands', command);
+      const decision = await this.decider.decide(event);
+      command = await new PublishCommandUseCase(this.pending, this.bus, this.clock, this.ids).execute({
+        requestId: event.messageId, terminalId: event.terminalId, action: decision.action, reason: decision.reason,
+      });
     } catch (err) {
-      // Sem comando no ar: desfaz o estado para uma republicacao da tentativa ser tratada de novo.
-      this.pending.take(command.commandId);
+      // Retentativa consulta a decisao persistida e reutiliza o mesmo comando/prazo.
       this.seen.forget(event.messageId);
       throw err;
     }

@@ -1,8 +1,8 @@
 import type { AccessDecider, AccessDecision } from '../../domain/ports/access-decider.js';
 
 /**
- * PROVISORIO (Sprint 1): libera qualquer UID para exercitar o fluxo ponta-a-ponta.
- * A regra real (credencial, janela de uso, local e distancia) entra nas US-19/US-20.
+ * Somente demo explicito fora de producao (DT-01). Nunca e fallback de erro.
+ * O boot escolhe DatabaseAccessDecider no modo real.
  */
 export class AlwaysOpenAccessDecider implements AccessDecider {
   decide(): Promise<AccessDecision> {

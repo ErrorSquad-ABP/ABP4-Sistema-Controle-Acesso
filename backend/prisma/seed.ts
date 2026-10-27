@@ -77,6 +77,11 @@ async function main(): Promise<void> {
   });
 
   const authorizationId = "a1000000-0000-4000-8000-000000000004";
+  await prisma.terminal.upsert({
+    where: { id: "terminal-01" },
+    update: { locationId, active: true },
+    create: { id: "terminal-01", locationId },
+  });
   await prisma.authorization.upsert({
     where: { id: authorizationId },
     update: {
@@ -116,7 +121,7 @@ async function main(): Promise<void> {
     {
       id: credentialIds.nfc,
       type: "NFC" as const,
-      valueHash: hashCredential("ABP4-DEMO-NFC-UID"),
+      valueHash: hashCredential("04A1B2C3"),
       validUntil: null,
     },
   ];
@@ -146,6 +151,7 @@ async function main(): Promise<void> {
       userId: demoUsers.member.id,
       authorizationId,
       credentialId: credentialIds.qr,
+      terminalId: "terminal-01",
       locationId,
       method: "QR",
       decision: "GRANTED",
@@ -161,6 +167,7 @@ async function main(): Promise<void> {
       userId: demoUsers.member.id,
       authorizationId,
       credentialId: credentialIds.qr,
+      terminalId: "terminal-01",
       locationId,
       method: "QR",
       decision: "GRANTED",

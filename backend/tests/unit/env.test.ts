@@ -5,6 +5,7 @@ describe('loadEnv', () => {
   it('aplica defaults quando nada e informado', () => {
     expect(loadEnv({})).toEqual({
       NODE_ENV: 'development',
+      ACCESS_MODE: 'real',
       PORT: 3000,
       LOG_LEVEL: 'info',
       MQTT_URL: 'mqtt://localhost:1884',

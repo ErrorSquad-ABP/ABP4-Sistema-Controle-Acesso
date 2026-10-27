@@ -7,6 +7,6 @@ export class CryptoIdGenerator implements IdGenerator {
   }
 
   token(): string {
-    return randomBytes(6).toString('hex');
+    return randomBytes(32).toString('hex');
   }
 }

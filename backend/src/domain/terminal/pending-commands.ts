@@ -1,8 +1,32 @@
 import type { CommandMessage } from './messages.js';
+import type { AckMessage } from './messages.js';
+import type { CommandStore, AckResult } from '../ports/command-store.js';
 
 /** Comandos enviados que ainda aguardam ACK, indexados por `commandId`. */
-export class PendingCommands {
+export class PendingCommands implements CommandStore {
   private readonly byId = new Map<string, CommandMessage>();
+  private readonly byRequest = new Map<string, CommandMessage>();
+  private readonly acked = new Map<string, string>();
+
+  async findByRequestId(requestId: string): Promise<CommandMessage | undefined> {
+    return this.byRequest.get(requestId);
+  }
+
+  async save(command: CommandMessage, requestId: string): Promise<CommandMessage> {
+    const previous = this.byRequest.get(requestId);
+    if (previous) return previous;
+    this.register(command, new Date(command.timestamp));
+    this.byRequest.set(requestId, command);
+    return command;
+  }
+
+  async acknowledge(ack: AckMessage): Promise<AckResult> {
+    if (this.acked.has(ack.commandId)) return { status: this.acked.get(ack.commandId) === ack.terminalId ? 'duplicate' : 'unknown' };
+    const command = this.take(ack.commandId, ack.terminalId);
+    if (!command) return { status: 'unknown' };
+    this.acked.set(ack.commandId, ack.terminalId);
+    return { status: 'correlated', command };
+  }
 
   constructor(private readonly graceMs = 60_000) {}
 

@@ -3,6 +3,9 @@ import { createLogger } from '../shared/logger.js';
 import { InvalidEnvError, loadEnv, type Env } from './config/env.js';
 import { buildMqttConsumer } from './mqtt-composition-root.js';
 import { connectBusOrExit } from './mqtt/connect-bus.js';
+import { buildAccessRuntime } from './access-composition-root.js';
+import { resolveAccessDecider } from './config/access-decider.js';
+import { PendingCommands } from '../domain/terminal/pending-commands.js';
 
 const QR_INTERVAL_MS = 10_000;
 
@@ -16,6 +19,17 @@ try {
 }
 
 const logger = createLogger(env.LOG_LEVEL);
+// Decisor e schema validados antes de qualquer conexao ou assinatura MQTT.
+const access = env.ACCESS_MODE === 'real' ? buildAccessRuntime(env) : undefined;
+let decider;
+try {
+  decider = resolveAccessDecider(env, access?.decider, logger);
+  await access?.repository.ready();
+} catch (error) {
+  logger.error('falha ao inicializar decisor real', { error: error instanceof Error ? error.message : String(error) });
+  await access?.pool.end();
+  process.exit(1);
+}
 const bus = await connectBusOrExit(
   {
     url: env.MQTT_URL,
@@ -26,12 +40,19 @@ const bus = await connectBusOrExit(
   logger,
 );
 
-// Terminais vistos online recebem um QR de teste a cada 10 s (token real: US-19).
+// QR opaco: somente o hash fica no banco e a validade e vinculada ao terminal.
 const onlineTerminals = new Set<string>();
 const { router, publishQr } = buildMqttConsumer(bus, logger, (terminalId, online) => {
-  if (online) onlineTerminals.add(terminalId);
+  if (online) {
+    const isNew = !onlineTerminals.has(terminalId);
+    onlineTerminals.add(terminalId);
+    if (isNew) queueMicrotask(() => { void publishQr.execute({ terminalId }).catch((error: unknown) => {
+      logger.error('falha ao publicar qr', { terminalId, error: String(error) });
+    }); });
+  }
   else onlineTerminals.delete(terminalId);
-});
+}, { decider, commands: access?.commands ?? new PendingCommands(),
+  ...(access ? { tokens: { repository: access.repository, hasher: access.hasher } } : {}) });
 
 await bus.subscribe(
   [topicFilterFor('access-events'), topicFilterFor('status'), topicFilterFor('acks')],
@@ -59,7 +80,7 @@ const qrTimer = setInterval(() => {
 const shutdown = (signal: NodeJS.Signals) => {
   logger.info('encerrando consumidor', { signal });
   clearInterval(qrTimer);
-  bus.close().finally(() => process.exit(0));
+  Promise.all([bus.close(), access?.pool.end()]).finally(() => process.exit(0));
   setTimeout(() => process.exit(1), 5_000).unref();
 };
 process.on('SIGTERM', shutdown);

@@ -76,7 +76,7 @@ describe('terminal use cases', () => {
       expect(bus.published[0]?.message).toMatchObject({ action: 'deny' });
     });
 
-    it('se a publicacao falhar, desfaz o estado para a retransmissao tentar de novo', async () => {
+    it('se a publicacao falhar, preserva o comando para retransmitir com o mesmo id', async () => {
       const failing = new RecordingBus();
       failing.publish = () => Promise.reject(new Error('broker fora'));
       const useCase = new HandleAccessEventUseCase(
@@ -91,7 +91,7 @@ describe('terminal use cases', () => {
 
       await expect(useCase.execute(event)).rejects.toThrow('broker fora');
 
-      expect(pending.size).toBe(0);
+      expect(pending.size).toBe(1);
       expect(await accessUseCase().execute(event)).toMatchObject({ status: 'commanded' });
     });
 
@@ -117,7 +117,7 @@ describe('terminal use cases', () => {
       const output = await accessUseCase().execute(event);
       if (output.status !== 'commanded') throw new Error('esperava comando');
 
-      const result = new HandleAckUseCase(pending, seen, silentLogger).execute(
+      const result = await new HandleAckUseCase(pending, seen, silentLogger).execute(
         ackFor(output.command.commandId),
       );
 
@@ -129,7 +129,7 @@ describe('terminal use cases', () => {
       const output = await accessUseCase().execute(event);
       if (output.status !== 'commanded') throw new Error('esperava comando');
 
-      const result = new HandleAckUseCase(pending, seen, silentLogger).execute({
+      const result = await new HandleAckUseCase(pending, seen, silentLogger).execute({
         ...ackFor(output.command.commandId),
         terminalId: 'terminal-02',
       });
@@ -138,20 +138,20 @@ describe('terminal use cases', () => {
       expect(pending.size).toBe(1);
     });
 
-    it('ignora ack de comando desconhecido', () => {
-      const result = new HandleAckUseCase(pending, seen, silentLogger).execute(
+    it('ignora ack de comando desconhecido', async () => {
+      const result = await new HandleAckUseCase(pending, seen, silentLogger).execute(
         ackFor('c7e4f1a2-6b3d-4c58-9f10-2a8b5d7e9c99'),
       );
 
       expect(result).toEqual({ status: 'unknown' });
     });
 
-    it('descarta ack repetido (mesmo messageId)', () => {
+    it('descarta ack repetido (mesmo messageId)', async () => {
       const useCase = new HandleAckUseCase(pending, seen, silentLogger);
       const ack = ackFor('c7e4f1a2-6b3d-4c58-9f10-2a8b5d7e9c99');
-      useCase.execute(ack);
+      await useCase.execute(ack);
 
-      expect(useCase.execute(ack)).toEqual({ status: 'duplicate' });
+      expect(await useCase.execute(ack)).toEqual({ status: 'duplicate' });
     });
   });
 

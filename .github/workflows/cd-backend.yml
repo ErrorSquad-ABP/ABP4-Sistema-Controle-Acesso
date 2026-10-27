@@ -56,6 +56,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: E2E de acesso (banco e MQTT temporarios)
+        run: npx vitest run --config vitest.e2e.config.ts
+
   deploy:
     name: cd-backend-deploy
     runs-on: ubuntu-latest
