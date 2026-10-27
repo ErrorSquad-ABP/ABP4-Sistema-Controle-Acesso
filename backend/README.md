@@ -29,7 +29,7 @@ cp .env.example .env     # opcional: sem .env valem os defaults
 npm ci
 npm run db:generate      # gera o Prisma Client em src/generated/prisma
 npm run db:migrate:deploy  # aplica a migration no Postgres do compose
-npm run db:seed          # dados de demonstração (idempotente)
+npm run db:seed          # dados de demonstração (idempotente; só banco local)
 npm run dev              # http://localhost:3000/health
 ```
 
@@ -43,7 +43,8 @@ O Postgres de dev sobe pelo compose (`docker compose -f infra/docker-compose.dev
 | `npm run db:generate` | gera o Prisma Client (necessário após `npm ci` e ao mudar o schema) |
 | `npm run db:migrate` | cria/aplica migration em desenvolvimento (`prisma migrate dev`) |
 | `npm run db:migrate:deploy` | aplica migrations pendentes (CI e produção) |
-| `npm run db:seed` | popula os dados de demonstração (pode rodar de novo) |
+| `npm run db:seed` | popula os dados de **demonstração** (pode rodar de novo). Recusa `NODE_ENV`/`VERCEL_ENV=production` e banco que não seja local, salvo `ALLOW_DEMO_SEED=true` em banco descartável |
+| `npm run db:provision` | cria o primeiro administrador **real** a partir de `ADMIN_EMAIL`/`ADMIN_PASSWORD` (`ADMIN_NAME` opcional); roda em produção, não grava dados de demonstração e não altera conta que já existe |
 | `npm run lint` | ESLint, incluindo a regra de camadas |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` | Vitest (unit + integração) |
@@ -63,6 +64,8 @@ Validadas em [`src/main/config/env.ts`](src/main/config/env.ts); modelo em [`.en
 | `LOG_LEVEL` | `info` | `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` \| `silent` |
 | `APP_VERSION` | `dev` | versão exibida no `/health` (no CI/CD, o SHA do commit) |
 | `DATABASE_URL` | — | Postgres (`postgres://` ou `postgresql://`); compose no dev, Neon com `-pooler` em produção. Sem ela o `/health` informa `not_configured` |
+| `ALLOW_DEMO_SEED` | — | `true` libera a seed demo em banco remoto descartável; nunca vale em produção |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | — | só para `db:provision`: e-mail (fora de `@abp4.local`), senha com 12+ caracteres e nome do primeiro administrador |
 | `MQTT_URL` | `mqtt://localhost:1884` | broker MQTT (`mqtt://` ou `mqtts://`); dev = Mosquitto do compose |
 | `MQTT_USERNAME` / `MQTT_PASSWORD` | — | credenciais do broker (HiveMQ Cloud em produção; vazias no dev) |
 | `SIM_TERMINAL_ID` | `terminal-01` | id do terminal simulado |
