@@ -13,6 +13,12 @@ const app = createApp(buildContainer(env));
 const IMPLEMENTED = new Set([
   'login',
   'getCurrentUser',
+  'listUsers',
+  'createUser',
+  'getUser',
+  'updateUser',
+  'deleteUser',
+  'listMyAuthorizations',
   'listMyAccessEvents',
   'listAccessEvents',
   'validateQrCredential',
@@ -54,17 +60,17 @@ describe('rotas stub do contrato v1', () => {
   });
 
   it('id que nao e UUID -> 400', async () => {
-    const res = await request(app).get(`${API_V1_PREFIX}/users/123`);
+    const res = await request(app).get(`${API_V1_PREFIX}/authorizations/123`);
 
     expect(res.status).toBe(400);
     expect(res.body.error.details).toHaveProperty('id');
   });
 
   it('query invalida -> 400', async () => {
-    const res = await request(app).get(`${API_V1_PREFIX}/users`).query({ role: 'TALVEZ' });
+    const res = await request(app).get(`${API_V1_PREFIX}/authorizations`).query({ status: 'TALVEZ' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error.details).toHaveProperty('role');
+    expect(res.body.error.details).toHaveProperty('status');
   });
 
   it('cancelar sem body e valido (motivo opcional)', async () => {
@@ -91,6 +97,16 @@ describe('rotas stub do contrato v1', () => {
     // Sem banco neste app de teste, a autenticacao falha antes do handler (nunca 501).
     expect(res.status).toBe(503);
     expect(res.body.error.code).toBe('SERVICE_UNAVAILABLE');
+  });
+
+  it('usuarios e minhas autorizacoes deixaram de ser stub e exigem sessao', async () => {
+    const users = await request(app).get(`${API_V1_PREFIX}/users`);
+    const mine = await request(app).get(`${API_V1_PREFIX}/me/authorizations`);
+
+    for (const res of [users, mine]) {
+      expect(res.status).toBe(503);
+      expect(res.body.error.code).toBe('SERVICE_UNAVAILABLE');
+    }
   });
 
   it('nao publica uma rota antiga de validacao sem autenticacao', async () => {
