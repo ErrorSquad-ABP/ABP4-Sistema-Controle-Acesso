@@ -121,6 +121,7 @@ export const operations: readonly Operation[] = [
     access: 'admin',
     query: ListUsersQuery,
     success: { status: 200, description: 'Pagina de usuarios', schema: UserPage },
+    extraErrors: [429, 503],
     example: { query: { role: 'VISITOR', active: 'true', page: '1' } },
   },
   {
@@ -134,7 +135,7 @@ export const operations: readonly Operation[] = [
     access: 'admin',
     body: CreateUserRequest,
     success: { status: 201, description: 'Usuario criado', schema: User },
-    extraErrors: [409],
+    extraErrors: [409, 429, 503],
     example: {
       body: { name: 'Maria Souza', email: 'maria.souza@exemplo.com', password: 'senha-forte-123', role: 'VISITOR' },
     },
@@ -149,6 +150,7 @@ export const operations: readonly Operation[] = [
     access: 'admin',
     params: IdParams,
     success: { status: 200, description: 'Usuario', schema: User },
+    extraErrors: [429, 503],
     example: { params: { id: EXAMPLE_IDS.user } },
   },
   {
@@ -163,7 +165,7 @@ export const operations: readonly Operation[] = [
     params: IdParams,
     body: UpdateUserRequest,
     success: { status: 200, description: 'Usuario atualizado', schema: User },
-    extraErrors: [409],
+    extraErrors: [409, 429, 503],
     example: { params: { id: EXAMPLE_IDS.user }, body: { role: 'RESIDENT' } },
   },
   {
@@ -177,6 +179,7 @@ export const operations: readonly Operation[] = [
     access: 'admin',
     params: IdParams,
     success: { status: 204, description: 'Usuario removido' },
+    extraErrors: [429, 503],
     example: { params: { id: EXAMPLE_IDS.user } },
   },
 
@@ -192,6 +195,7 @@ export const operations: readonly Operation[] = [
     access: 'authenticated',
     query: ListMyAuthorizationsQuery,
     success: { status: 200, description: 'Pagina de autorizacoes', schema: AuthorizationPage },
+    extraErrors: [429, 503],
     example: { query: { status: 'ACTIVE' } },
   },
   {

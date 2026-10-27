@@ -54,13 +54,35 @@ describe('documento OpenAPI v1', () => {
   });
 
   it('rotas implementadas que dependem do banco documentam 503', () => {
-    for (const operationId of ['login', 'getCurrentUser', 'listMyAccessEvents', 'listAccessEvents']) {
+    for (const operationId of [
+      'login',
+      'getCurrentUser',
+      'listUsers',
+      'createUser',
+      'getUser',
+      'updateUser',
+      'deleteUser',
+      'listMyAuthorizations',
+      'listMyAccessEvents',
+      'listAccessEvents',
+    ]) {
       expect(documented(byId(operationId)).responses, operationId).toHaveProperty('503');
     }
   });
 
   it('rotas com rate limit documentam 429', () => {
-    for (const operationId of ['login', 'getCurrentUser', 'listMyAccessEvents', 'listAccessEvents']) {
+    for (const operationId of [
+      'login',
+      'getCurrentUser',
+      'listUsers',
+      'createUser',
+      'getUser',
+      'updateUser',
+      'deleteUser',
+      'listMyAuthorizations',
+      'listMyAccessEvents',
+      'listAccessEvents',
+    ]) {
       expect(documented(byId(operationId)).responses, operationId).toHaveProperty('429');
     }
   });

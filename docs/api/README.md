@@ -29,13 +29,15 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 | access-events | `GET /me/access-events` | logado | US-21 |
 | access-events | `GET /access-events` | ADMIN | US-21 |
 
-**Já implementadas**: `POST /auth/login`, `GET /auth/me`, `POST /credentials/qr/validate` e as três rotas de `access-events` (`POST /access-events/qr` exige `DATABASE_URL`). Exigem identidade real; a listagem global exige ADMIN. As demais seguem como stubs: validam a entrada com Zod (inválida → `400 INVALID_REQUEST`) e respondem `501 NOT_IMPLEMENTED` citando o card.
+**Já implementadas**: `POST /auth/login`, `GET /auth/me`, o CRUD de usuários (`GET`/`POST /users`, `GET`/`PATCH`/`DELETE /users/{id}`), `GET /me/authorizations`, `POST /credentials/qr/validate` e as três rotas de `access-events` (`POST /access-events/qr` exige `DATABASE_URL`). Exigem identidade real; as rotas de `users`, a listagem global de eventos e as demais de autorizações exigem ADMIN. As demais seguem como stubs: validam a entrada com Zod (inválida → `400 INVALID_REQUEST`) e respondem `501 NOT_IMPLEMENTED` citando o card.
 
 ## Convenções
 
 - **Autenticação**: `Authorization: Bearer <accessToken>` de `POST /auth/login`. O token é HS256 com `JWT_SECRET`, `iss=abp4`, `aud=abp4-api`, `sub` UUID, `iat` e `exp`. Perfil e situação ativa são consultados no banco, nunca confiados ao claim do token.
 - **Datas**: ISO 8601. Na entrada aceita offset (`2026-10-20T14:00:00-03:00`); na resposta sempre UTC (`Z`).
-- **Erros**: `{ "error": { "code", "message", "details?" } }` — tabela de códigos em [`caso-de-uso-modelo.md`](../architecture/caso-de-uso-modelo.md#erros-do-domínio-ao-http). Banco não configurado nas rotas de auth/histórico → `503 SERVICE_UNAVAILABLE`; excesso de requisições → `429 TOO_MANY_REQUESTS`.
+- **Erros**: `{ "error": { "code", "message", "details?" } }` — tabela de códigos em [`caso-de-uso-modelo.md`](../architecture/caso-de-uso-modelo.md#erros-do-domínio-ao-http). Banco não configurado nas rotas de auth/usuários/autorizações/histórico → `503 SERVICE_UNAVAILABLE`; excesso de requisições → `429 TOO_MANY_REQUESTS`.
+- **Usuários**: e-mail normalizado para minúsculas e único (`409 CONFLICT` se já existir); senha guardada como hash scrypt com salt aleatório e nunca devolvida. `DELETE /users/{id}` é exclusão lógica (`active=false`): o histórico de acessos fica preservado.
+- **Minhas autorizações**: o `userId` vem do token, nunca da query. `status` filtra a situação calculada — `CANCELED` (cancelada), `SCHEDULED` (antes do início), `EXPIRED` (fim alcançado ou usos esgotados) e `ACTIVE`; `remainingUses = max(0, maxUses - usedCount)`; ordem `startsAt desc, id desc`.
 - **Listas**: `{ items, page, pageSize, total }`; `page` começa em 1, `pageSize` padrão 20 (máx. 100).
 - **Pedido de acesso QR**: o app envia `qrToken` (lido do QR), `terminalId`, `position` e, opcionalmente, `requestId`. O usuário vem do JWT. O token é o assinado da US-19 (`v1.<terminal>.<iat>.<exp>.<hmac>`, validade de 10 s); divergência de terminal ou assinatura nega com `INVALID_CREDENTIAL`, e token vencido com `CREDENTIAL_EXPIRED`. Geofence usa as coordenadas e o raio do local mapeado.
 - **Idempotência do pedido**: repetir o mesmo `requestId` devolve o mesmo evento e o mesmo comando, sem consumir a autorização de novo e sem esticar o prazo do comando.

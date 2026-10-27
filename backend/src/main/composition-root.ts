@@ -1,13 +1,21 @@
 import { CheckHealthUseCase } from '../application/health/check-health.use-case.js';
 import { GetCurrentUserUseCase } from '../application/auth/get-current-user.use-case.js';
 import { LoginUseCase } from '../application/auth/login.use-case.js';
+import { ListMyAuthorizationsUseCase } from '../application/authorizations/list-my-authorizations.use-case.js';
+import { CreateUserUseCase } from '../application/users/create-user.use-case.js';
+import { DeleteUserUseCase } from '../application/users/delete-user.use-case.js';
+import { GetUserUseCase } from '../application/users/get-user.use-case.js';
+import { ListUsersUseCase } from '../application/users/list-users.use-case.js';
+import { UpdateUserUseCase } from '../application/users/update-user.use-case.js';
 import { ListAccessEventsUseCase } from '../application/access-events/list-access-events.use-case.js';
 import { ListMyAccessEventsUseCase } from '../application/access-events/list-my-access-events.use-case.js';
 import { RequestQrAccessUseCase } from '../application/access/request-qr-access.use-case.js';
 import { PublishCommandUseCase } from '../application/terminal/publish-command.use-case.js';
 import type { AccessEventRepository } from '../domain/ports/access-event-repository.js';
+import type { AuthorizationRepository } from '../domain/ports/authorization-repository.js';
 import type { DatabaseProbe } from '../domain/ports/database-probe.js';
 import type { TokenService } from '../domain/ports/token-service.js';
+import type { UserAdminRepository } from '../domain/ports/user-admin-repository.js';
 import type { UserRepository } from '../domain/ports/user-repository.js';
 import { JwtTokenService } from '../infrastructure/auth/jwt.js';
 import { SystemClock } from '../infrastructure/clock/system-clock.js';
@@ -18,6 +26,8 @@ import { HmacQrTokenSigner } from '../infrastructure/ids/hmac-qr-token-signer.js
 import { LazyMqttMessageBus } from '../infrastructure/mqtt/lazy-mqtt-message-bus.js';
 import { ValidateQrCredentialUseCase } from '../application/terminal/qr-credential.use-cases.js';
 import { PrismaAccessEventRepository } from '../infrastructure/repositories/prisma-access-event-repository.js';
+import { PrismaAuthorizationRepository } from '../infrastructure/repositories/prisma-authorization-repository.js';
+import { PrismaUserAdminRepository } from '../infrastructure/repositories/prisma-user-admin-repository.js';
 import { PrismaUserRepository } from '../infrastructure/repositories/prisma-user-repository.js';
 import { createLogger, type Logger } from '../shared/logger.js';
 import { buildAccessRuntime } from './access-composition-root.js';
@@ -34,6 +44,8 @@ export interface Container {
   tokens: TokenService;
   repositories: {
     users: UserRepository | undefined;
+    userAdmin: UserAdminRepository | undefined;
+    authorizations: AuthorizationRepository | undefined;
     accessEvents: AccessEventRepository | undefined;
   };
   useCases: {
@@ -41,6 +53,12 @@ export interface Container {
     validateQrCredential: ValidateQrCredentialUseCase;
     login: LoginUseCase | undefined;
     getCurrentUser: GetCurrentUserUseCase | undefined;
+    listUsers: ListUsersUseCase | undefined;
+    createUser: CreateUserUseCase | undefined;
+    getUser: GetUserUseCase | undefined;
+    updateUser: UpdateUserUseCase | undefined;
+    deleteUser: DeleteUserUseCase | undefined;
+    listMyAuthorizations: ListMyAuthorizationsUseCase | undefined;
     listMyAccessEvents: ListMyAccessEventsUseCase | undefined;
     listAccessEvents: ListAccessEventsUseCase | undefined;
     /** Decisao real por QR; ausente sem banco, e a rota responde 503. */
@@ -54,6 +72,8 @@ export interface ContainerOverrides {
   databaseProbe?: DatabaseProbe;
   /** Repositorios e tokens em memoria (testes) no lugar dos adapters reais. */
   userRepository?: UserRepository;
+  userAdminRepository?: UserAdminRepository;
+  authorizationRepository?: AuthorizationRepository;
   accessEventRepository?: AccessEventRepository;
   tokenService?: TokenService;
 }
@@ -70,11 +90,20 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
   const databaseProbe =
     overrides.databaseProbe ??
     (env.DATABASE_URL ? new PostgresDatabaseProbe(env.DATABASE_URL) : undefined);
-  const needsPrisma = !overrides.userRepository || !overrides.accessEventRepository;
+  const needsPrisma =
+    !overrides.userRepository ||
+    !overrides.accessEventRepository ||
+    !overrides.userAdminRepository ||
+    !overrides.authorizationRepository;
   const prisma = needsPrisma && env.DATABASE_URL ? createPrismaClient(env.DATABASE_URL) : undefined;
   const tokens = overrides.tokenService ?? new JwtTokenService(env.JWT_SECRET, env.JWT_TTL_SECONDS);
   const users =
     overrides.userRepository ?? (prisma ? new PrismaUserRepository(prisma) : undefined);
+  const userAdmin =
+    overrides.userAdminRepository ?? (prisma ? new PrismaUserAdminRepository(prisma) : undefined);
+  const authorizations =
+    overrides.authorizationRepository ??
+    (prisma ? new PrismaAuthorizationRepository(prisma) : undefined);
   const accessEvents =
     overrides.accessEventRepository ??
     (prisma ? new PrismaAccessEventRepository(prisma) : undefined);
@@ -97,7 +126,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
     logger,
     trustProxy: env.TRUST_PROXY,
     tokens,
-    repositories: { users, accessEvents },
+    repositories: { users, userAdmin, authorizations, accessEvents },
     close: async () => {
       await accessBus?.close();
       await access?.pool.end();
@@ -113,6 +142,14 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
       validateQrCredential,
       login: users ? new LoginUseCase(users, tokens) : undefined,
       getCurrentUser: users ? new GetCurrentUserUseCase(users) : undefined,
+      listUsers: userAdmin ? new ListUsersUseCase(userAdmin) : undefined,
+      createUser: userAdmin ? new CreateUserUseCase(userAdmin) : undefined,
+      getUser: userAdmin ? new GetUserUseCase(userAdmin) : undefined,
+      updateUser: userAdmin ? new UpdateUserUseCase(userAdmin) : undefined,
+      deleteUser: userAdmin ? new DeleteUserUseCase(userAdmin) : undefined,
+      listMyAuthorizations: authorizations
+        ? new ListMyAuthorizationsUseCase(authorizations, clock)
+        : undefined,
       listMyAccessEvents: accessEvents ? new ListMyAccessEventsUseCase(accessEvents) : undefined,
       listAccessEvents: accessEvents ? new ListAccessEventsUseCase(accessEvents) : undefined,
       requestQrAccess:
