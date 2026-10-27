@@ -114,7 +114,11 @@ jobs:
       - name: Smoke test do container (/health)
         working-directory: .
         run: |
-          docker run -d --name api -p 3000:3000 -e APP_VERSION="${GITHUB_SHA::7}" abp4-backend:ci
+          qr_token_secret="$(openssl rand -hex 32)"
+          docker run -d --name api -p 3000:3000 \
+            -e APP_VERSION="${GITHUB_SHA::7}" \
+            -e QR_TOKEN_SECRET="$qr_token_secret" \
+            abp4-backend:ci
           for _ in $(seq 1 20); do
             if curl -fsS http://127.0.0.1:3000/health; then echo; exit 0; fi
             sleep 1
