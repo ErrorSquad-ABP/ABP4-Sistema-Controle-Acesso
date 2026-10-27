@@ -9,7 +9,11 @@ export class DeleteUserUseCase {
     const current = await this.users.findById(id);
     if (!current) throw new NotFoundError('Usuario nao encontrado');
 
-    const updated = await this.users.update(id, { active: false });
+    const updated = await this.users.update(
+      id,
+      { active: false },
+      current.active && current.role === 'ADMIN' ? { requireAnotherAdmin: true } : {},
+    );
     if (!updated) throw new NotFoundError('Usuario nao encontrado');
   }
 }

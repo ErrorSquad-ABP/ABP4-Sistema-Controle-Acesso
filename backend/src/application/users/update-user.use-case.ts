@@ -33,7 +33,15 @@ export class UpdateUserUseCase {
       changes.email = email;
     }
 
-    const updated = await this.users.update(id, changes);
+    const removesAdmin =
+      current.active &&
+      current.role === 'ADMIN' &&
+      (input.active === false || (input.role !== undefined && input.role !== 'ADMIN'));
+    const updated = await this.users.update(
+      id,
+      changes,
+      removesAdmin ? { requireAnotherAdmin: true } : {},
+    );
     if (!updated) throw new NotFoundError('Usuario nao encontrado');
     return toUserView(updated);
   }

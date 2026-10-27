@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import { ConflictError } from '../../src/domain/errors/domain-error.js';
 import type {
   NewUserRecord,
   UserAdminRepository,
   UserChanges,
   UserListFilters,
+  UserUpdateOptions,
 } from '../../src/domain/ports/user-admin-repository.js';
 import type { UserRecord } from '../../src/domain/ports/user-repository.js';
 
@@ -50,10 +52,17 @@ export class InMemoryUserAdminRepository implements UserAdminRepository {
     return created;
   }
 
-  async update(id: string, changes: UserChanges): Promise<UserRecord | null> {
+  async update(id: string, changes: UserChanges, options: UserUpdateOptions = {}): Promise<UserRecord | null> {
     const index = this.users.findIndex((user) => user.id === id);
     const current = this.users[index];
     if (index < 0 || !current) return null;
+
+    if (options.requireAnotherAdmin) {
+      const others = this.users.filter((user) => user.id !== id && user.role === 'ADMIN' && user.active);
+      if (others.length === 0) {
+        throw new ConflictError('O sistema precisa de pelo menos um administrador ativo');
+      }
+    }
 
     const updated: UserRecord = {
       ...current,

@@ -7,6 +7,7 @@ import { UpdateUserUseCase } from '../../src/application/users/update-user.use-c
 import { ConflictError, NotFoundError } from '../../src/domain/errors/domain-error.js';
 import type { UserRecord } from '../../src/domain/ports/user-repository.js';
 import { hashPassword, verifyPassword } from '../../src/shared/password-hasher.js';
+import { escapeLikePattern } from '../../src/infrastructure/repositories/prisma-user-admin-repository.js';
 import { InMemoryUserAdminRepository } from '../support/in-memory-user-admin.js';
 
 const admin: UserRecord = {
@@ -120,6 +121,37 @@ describe('GetUserUseCase', () => {
     await expect(new GetUserUseCase(build()).execute('00000000-0000-4000-8000-000000000000')).rejects.toBeInstanceOf(
       NotFoundError,
     );
+  });
+});
+
+describe('ultimo administrador', () => {
+  it('nao deixa desativar, rebaixar ou excluir o unico ADMIN ativo', async () => {
+    const users = new InMemoryUserAdminRepository([admin]);
+
+    await expect(new DeleteUserUseCase(users).execute(admin.id)).rejects.toBeInstanceOf(ConflictError);
+    await expect(
+      new UpdateUserUseCase(users).execute(admin.id, { role: 'RESIDENT' }),
+    ).rejects.toBeInstanceOf(ConflictError);
+    await expect(
+      new UpdateUserUseCase(users).execute(admin.id, { active: false }),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it('permite quando existe outro ADMIN ativo', async () => {
+    const outroAdmin: UserRecord = {
+      ...admin,
+      id: 'ac9e6679-7425-40de-944b-e07fc1f90aea',
+      email: 'admin2@abp4.local',
+    };
+    const users = new InMemoryUserAdminRepository([admin, outroAdmin]);
+
+    await expect(new DeleteUserUseCase(users).execute(admin.id)).resolves.toBeUndefined();
+  });
+});
+
+describe('busca literal', () => {
+  it('escapa curingas do LIKE', () => {
+    expect(escapeLikePattern('100%_a\\b')).toBe('100\\%\\_a\\\\b');
   });
 });
 

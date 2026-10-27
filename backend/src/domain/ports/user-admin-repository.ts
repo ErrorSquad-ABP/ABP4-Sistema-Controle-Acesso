@@ -25,9 +25,14 @@ export interface UserChanges {
   active?: boolean | undefined;
 }
 
+export interface UserUpdateOptions {
+  /** Bloqueia a mudanca se ela deixar o sistema sem nenhum ADMIN ativo. */
+  requireAnotherAdmin?: boolean;
+}
+
 /** Cadastro administrativo; herda as consultas usadas pela autenticacao. */
 export interface UserAdminRepository extends UserRepository {
   list(filters: UserListFilters): Promise<{ items: UserRecord[]; total: number }>;
   create(user: NewUserRecord): Promise<UserRecord>;
-  update(id: string, changes: UserChanges): Promise<UserRecord | null>;
+  update(id: string, changes: UserChanges, options?: UserUpdateOptions): Promise<UserRecord | null>;
 }

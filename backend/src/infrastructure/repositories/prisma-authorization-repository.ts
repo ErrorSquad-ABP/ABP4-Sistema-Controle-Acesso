@@ -1,5 +1,4 @@
 import {
-  authorizationStatus,
   toAuthorizationView,
   type AuthorizationRecord,
   type AuthorizationView,
@@ -25,34 +24,55 @@ const SELECT = {
 
 type Row = Prisma.AuthorizationGetPayload<{ select: typeof SELECT }>;
 
-function toRecord(row: Row): AuthorizationRecord {
-  return row;
-}
+// Row tem o mesmo shape de AuthorizationRecord (datas continuam Date).
+const toRecord = (row: Row): AuthorizationRecord => row;
 
 export class PrismaAuthorizationRepository implements AuthorizationRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
+  /** Traduz o status calculado para o mesmo `where` do banco (paginacao real). */
+  private statusWhere(status: NonNullable<AuthorizationForUserFilters['status']>, now: Date): Prisma.AuthorizationWhereInput {
+    const maxUses = this.prisma.authorization.fields.maxUses;
+    switch (status) {
+      case 'CANCELED':
+        return { canceledAt: { not: null } };
+      case 'SCHEDULED':
+        return { canceledAt: null, startsAt: { gt: now } };
+      case 'EXPIRED':
+        return {
+          canceledAt: null,
+          OR: [{ endsAt: { lte: now } }, { usedCount: { gte: maxUses } }],
+        };
+      case 'ACTIVE':
+        return {
+          canceledAt: null,
+          startsAt: { lte: now },
+          endsAt: { gt: now },
+          usedCount: { lt: maxUses },
+        };
+    }
+  }
+
   async listForUser(filters: AuthorizationForUserFilters): Promise<{ items: AuthorizationView[]; total: number }> {
-    // A situacao compara usedCount com maxUses (coluna com coluna), que o Prisma
-    // nao expressa em `where`: filtra em memoria sobre as autorizacoes do usuario,
-    // conjunto limitado pelo indice [userId, startsAt, endsAt].
-    const rows = await this.prisma.authorization.findMany({
-      where: { userId: filters.userId },
-      orderBy: [{ startsAt: 'desc' }, { id: 'desc' }],
-      select: SELECT,
-    });
+    const where: Prisma.AuthorizationWhereInput = {
+      userId: filters.userId,
+      ...(filters.status ? this.statusWhere(filters.status, filters.now) : {}),
+    };
 
-    const matching = rows
-      .map(toRecord)
-      .filter(
-        (record) =>
-          filters.status === undefined || authorizationStatus(record, filters.now) === filters.status,
-      );
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.authorization.findMany({
+        where,
+        orderBy: [{ startsAt: 'desc' }, { id: 'desc' }],
+        skip: (filters.page - 1) * filters.pageSize,
+        take: filters.pageSize,
+        select: SELECT,
+      }),
+      this.prisma.authorization.count({ where }),
+    ]);
 
-    const start = (filters.page - 1) * filters.pageSize;
     return {
-      items: matching.slice(start, start + filters.pageSize).map((record) => toAuthorizationView(record, filters.now)),
-      total: matching.length,
+      items: rows.map((row) => toAuthorizationView(toRecord(row), filters.now)),
+      total,
     };
   }
 }
