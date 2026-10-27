@@ -6,8 +6,8 @@ import { assertDemoSeedAllowed } from "../src/shared/seed-guard.js";
 
 /**
  * Seed de DEMONSTRACAO: senhas publicas, dados ficticios e contas reativadas a
- * cada execucao. Por isso so roda em banco local (ou descartavel com
- * ALLOW_DEMO_SEED=true) e nunca em producao. Dado real: `npm run db:provision`.
+ * cada execucao. Por isso so roda em banco local e nunca em producao ou em
+ * banco remoto. Dado real: `npm run db:provision`.
  * O guard roda antes de qualquer conexao com o banco.
  */
 function resolveConnectionString(): string {

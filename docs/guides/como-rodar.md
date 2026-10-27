@@ -43,7 +43,7 @@ Conferindo: `curl -i http://localhost:3000/health` deve responder `200` com `{"s
 
 ### Seed demo × provisionamento real (DT-07)
 
-- `npm run db:seed` grava contas de **demonstração** com senha pública (`admin@abp4.local`, `usuario@abp4.local`) e reativa essas contas a cada execução. Por isso recusa `NODE_ENV=production`/`VERCEL_ENV=production` e qualquer `DATABASE_URL` que não seja local (`localhost`, `127.0.0.1`, `::1`, `postgres`). Num banco remoto descartável (nunca produção) use `ALLOW_DEMO_SEED=true`. Atenção: `prisma migrate dev`/`migrate reset` também executam a seed e passam pelo mesmo guard.
+- `npm run db:seed` grava contas de **demonstração** com senha pública (`admin@abp4.local`, `usuario@abp4.local`) e reativa essas contas a cada execução. Por isso recusa `NODE_ENV=production`/`VERCEL_ENV=production` e qualquer `DATABASE_URL` que não seja local (`localhost`, `127.0.0.1`, `::1`, `postgres`). A seed **não** roda em banco remoto, nem com variável de opt-in: para dados reais use `db:provision`. O guard também rejeita `?host=`/`?hostaddr=` na URL (o driver `pg` aceitaria sobrescrever o host). No Prisma 7, `migrate dev`/`migrate reset` **não** executam a seed automaticamente; rode `npm run db:seed` explicitamente. O guard protege a seed, não o reset destrutivo do banco.
 - Para o **primeiro administrador real** (produção inclusive), informe as credenciais só na execução:
 
   ```bash

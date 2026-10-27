@@ -20,17 +20,26 @@ function isProduction(env: EnvSource): boolean {
 }
 
 function databaseHost(databaseUrl: string): string {
+  let url: URL;
   try {
-    return new URL(databaseUrl).hostname.toLowerCase();
+    url = new URL(databaseUrl);
   } catch {
     throw new SeedRefusedError('DATABASE_URL nao e uma URL valida.');
   }
+  // O pg aceita `?host=` e conecta onde a query mandar, ignorando o hostname acima.
+  for (const key of url.searchParams.keys()) {
+    const normalized = key.toLowerCase();
+    if (normalized === 'host' || normalized === 'hostaddr') {
+      throw new SeedRefusedError('DATABASE_URL nao pode sobrescrever o host pela query string.');
+    }
+  }
+  return url.hostname.toLowerCase();
 }
 
 /**
  * Libera a seed de demonstracao (contas com senha publica, dados ficticios).
- * Producao nunca passa; banco remoto so com `ALLOW_DEMO_SEED=true` explicito.
- * Devolve a `DATABASE_URL` validada.
+ * Producao nunca passa e banco remoto nunca passa: a seed e exclusiva de
+ * ambiente local/descartavel. Devolve a `DATABASE_URL` validada.
  */
 export function assertDemoSeedAllowed(env: EnvSource): string {
   if (isProduction(env)) {
@@ -46,10 +55,10 @@ export function assertDemoSeedAllowed(env: EnvSource): string {
   }
 
   const host = databaseHost(databaseUrl);
-  if (!LOCAL_DB_HOSTS.has(host) && env['ALLOW_DEMO_SEED'] !== 'true') {
+  if (!LOCAL_DB_HOSTS.has(host)) {
     throw new SeedRefusedError(
       `o banco "${host}" nao e local. A seed grava senhas publicas e reativa contas; ` +
-        'se for mesmo um banco descartavel, repita com ALLOW_DEMO_SEED=true.',
+        'para dados reais use `npm run db:provision`.',
     );
   }
 

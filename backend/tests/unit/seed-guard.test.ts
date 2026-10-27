@@ -16,8 +16,8 @@ describe('assertDemoSeedAllowed', () => {
     expect(assertDemoSeedAllowed({ NODE_ENV: 'test', DATABASE_URL: 'postgres://u:p@postgres:5432/db' })).toBeTruthy();
   });
 
-  it('recusa em producao, mesmo com banco local e com ALLOW_DEMO_SEED', () => {
-    const base = { DATABASE_URL: LOCAL_URL, ALLOW_DEMO_SEED: 'true' };
+  it('recusa em producao, mesmo com banco local', () => {
+    const base = { DATABASE_URL: LOCAL_URL };
 
     expect(() => assertDemoSeedAllowed({ ...base, NODE_ENV: 'production' })).toThrow(SeedRefusedError);
     expect(() => assertDemoSeedAllowed({ ...base, VERCEL_ENV: 'production' })).toThrow(/producao/);
@@ -28,8 +28,15 @@ describe('assertDemoSeedAllowed', () => {
     expect(() => assertDemoSeedAllowed({ DATABASE_URL: NEON_URL, ALLOW_DEMO_SEED: '1' })).toThrow(SeedRefusedError);
   });
 
-  it('aceita banco remoto com ALLOW_DEMO_SEED=true fora de producao', () => {
-    expect(assertDemoSeedAllowed({ DATABASE_URL: NEON_URL, ALLOW_DEMO_SEED: 'true' })).toBe(NEON_URL);
+  it('recusa banco remoto mesmo com ALLOW_DEMO_SEED=true', () => {
+    expect(() => assertDemoSeedAllowed({ DATABASE_URL: NEON_URL, ALLOW_DEMO_SEED: 'true' })).toThrow(/local/);
+  });
+
+  it('recusa override de host pela query string (pg aceitaria)', () => {
+    const url = 'postgresql://u:p@localhost/db?host=ep-x-pooler.neon.tech&sslmode=require';
+
+    expect(() => assertDemoSeedAllowed({ DATABASE_URL: url })).toThrow(/host/);
+    expect(() => assertDemoSeedAllowed({ DATABASE_URL: url, ALLOW_DEMO_SEED: 'true' })).toThrow(/host/);
   });
 
   it('nao confunde host remoto que apenas contem "localhost"', () => {
