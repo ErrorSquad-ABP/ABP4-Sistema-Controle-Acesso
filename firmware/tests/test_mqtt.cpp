@@ -38,9 +38,10 @@ int main() {
   terminal_mqtt::update();
   assert(terminal_mqtt::connected());
   assert(strcmp(broker.clientId, "terminal-dev-01") == 0);
-  assert(strcmp(broker.topic, "terminals/terminal-dev-01/commands") == 0);
+  assert(strcmp(broker.subscribedTopics[0], "terminals/terminal-dev-01/commands") == 0);
+  assert(strcmp(broker.subscribedTopics[1], "terminals/terminal-dev-01/qr") == 0);
   assert(broker.qos == 1);
-  assert(broker.subscriptions == 1);
+  assert(broker.subscriptions == 2);
   terminal_mqtt::update();
   assert(broker.connectCalls == 2);
   assert(broker.loopCalls > 0);
@@ -55,12 +56,12 @@ int main() {
   broker.subscribeResult = false;
   terminal_mqtt::update();
   assert(!terminal_mqtt::connected());  // Inscricao falhou: reconectar depois.
-  assert(broker.subscriptions == 2);
+  assert(broker.subscriptions == 3);
   testNow = 20000;
   broker.subscribeResult = true;
   terminal_mqtt::update();
   assert(terminal_mqtt::connected());
-  assert(broker.subscriptions == 3);
+  assert(broker.subscriptions == 5);
 
   puts("mqtt: offline, retentativas, inscricao e reconexao OK");
 }

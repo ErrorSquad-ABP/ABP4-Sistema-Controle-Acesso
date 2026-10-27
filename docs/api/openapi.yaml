@@ -56,6 +56,10 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /auth/me:
     get:
       operationId: getCurrentUser
@@ -74,6 +78,10 @@ paths:
                 $ref: "#/components/schemas/User"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /users:
     get:
       operationId: listUsers
@@ -604,6 +612,10 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /access-events:
     get:
       operationId: listAccessEvents
@@ -686,6 +698,10 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 components:
   schemas:
     AccessDecision:
@@ -1187,6 +1203,18 @@ components:
             $ref: "#/components/schemas/ErrorBody"
     UnprocessableEntity:
       description: Regra de negocio violada (VALIDATION_ERROR)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    TooManyRequests:
+      description: Muitas requisicoes em pouco tempo (TOO_MANY_REQUESTS)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    ServiceUnavailable:
+      description: Dependencia indisponivel no processo, como banco nao configurado (SERVICE_UNAVAILABLE)
       content:
         application/json:
           schema:

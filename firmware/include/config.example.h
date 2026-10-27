@@ -46,9 +46,9 @@
 // tone() usa LEDC; o canal 0 e do servo (ESP32Servo). Reserve outro canal.
 #define FEEDBACK_TONE_CHANNEL 4
 
-// LCD 1602 com expansor I2C (PCF8574 no endereco 0x27).
-#define DISPLAY_SDA_PIN 21
-#define DISPLAY_SCL_PIN 22
-#define DISPLAY_I2C_ADDRESS 0x27
-#define DISPLAY_COLUMNS 16
-#define DISPLAY_ROWS 2
+// TFT ILI9341 240x320 por SPI por software: preserva os pinos do prototipo.
+#define TFT_CS_PIN 27
+#define TFT_DC_PIN 26
+#define TFT_RST_PIN 25
+#define TFT_MOSI_PIN 32
+#define TFT_SCK_PIN 33

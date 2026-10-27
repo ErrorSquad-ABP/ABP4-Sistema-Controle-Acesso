@@ -68,6 +68,8 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      # Conexao DIRETA (sem -pooler) do Neon, so para migrations (DT-09).
+      PROD_MIGRATION_DATABASE_URL: ${{ secrets.PROD_MIGRATION_DATABASE_URL }}
     steps:
       - uses: actions/checkout@v7
 
@@ -78,7 +80,7 @@ jobs:
       - name: Validar configuracao do deploy
         run: |
           missing=0
-          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID PROD_MIGRATION_DATABASE_URL; do
             if [ -z "${!name}" ]; then echo "::error::$name nao configurado (ver docs/guides/deploy.md)"; missing=1; fi
           done
           exit "$missing"
@@ -91,6 +93,15 @@ jobs:
 
       - name: Build
         run: vercel build --prod --token "$VERCEL_TOKEN"
+
+      # Build verde antes de tocar no banco; migration com erro impede a promocao.
+      - name: Aplicar migrations de producao (DT-09)
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.PROD_MIGRATION_DATABASE_URL }}
+        run: |
+          npm ci
+          npm run db:migrate:deploy
 
       - name: Deploy
         id: deploy

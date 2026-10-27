@@ -39,6 +39,27 @@ const envSchema = z.object({
       'deve comecar com postgres:// ou postgresql://',
     )
     .optional(),
+  /** Segredo do JWT HS256. O default so vale fora de producao (guarda no composition-root). */
+  JWT_SECRET: z
+    .string()
+    .min(32, 'JWT_SECRET precisa de pelo menos 32 caracteres')
+    .default('dev-only-secret-nao-use-em-producao-32'),
+  JWT_TTL_SECONDS: z.coerce.number().int().min(60).max(86_400).default(3600),
+  /** URL publica do web service no Render; habilita o self-ping de keep-alive. */
+  RENDER_EXTERNAL_URL: z
+    .string()
+    .trim()
+    .transform((v) => v || undefined)
+    .refine(
+      (v) => v === undefined || /^https?:\/\/\S+$/.test(v),
+      'deve ser uma URL http(s)',
+    )
+    .optional(),
+  /**
+   * Proxies confiaveis a frente do app (1 na Vercel/Render). 0 desliga: sem proxy,
+   * confiar no X-Forwarded-For deixaria o cliente escolher a chave do rate limit.
+   */
+  TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
 });
 
 export type Env = Readonly<z.infer<typeof envSchema>>;

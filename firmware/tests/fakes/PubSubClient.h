@@ -12,6 +12,7 @@ struct TestBroker {
   int connectCalls = 0;
   int loopCalls = 0;
   int subscriptions = 0;
+  const char* subscribedTopics[8] = {};
   int publishCalls = 0;
   const char* clientId = "";
   const char* topic = "";
@@ -45,6 +46,7 @@ class PubSubClient {
   }
   bool subscribe(const char* topic, uint8_t qos) {
     broker.topic = topic;
+    if (broker.subscriptions < 8) broker.subscribedTopics[broker.subscriptions] = topic;
     broker.qos = qos;
     ++broker.subscriptions;
     return broker.subscribeResult;

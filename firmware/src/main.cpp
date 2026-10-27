@@ -1,6 +1,7 @@
 #include <Arduino.h>
 
 #include "clock_time.h"
+#include "clock_policy.h"
 #include "modules/display.h"
 #include "modules/door.h"
 #include "modules/feedback.h"
@@ -43,6 +44,8 @@ void loop() {
   terminal_mqtt::update();
   terminal_door::update();
   terminal_feedback::update();
+  const uint64_t now = clock_time::nowEpoch();
+  terminal_display::showQr(terminal_mqtt::qr(), now, clock_policy::reliable(now));
   terminal_display::showDoor(terminal_door::state());
   terminal_display::update();
   terminal_nfc::update();

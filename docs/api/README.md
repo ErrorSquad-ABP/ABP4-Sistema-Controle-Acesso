@@ -28,13 +28,13 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 | access-events | `GET /me/access-events` | logado | US-21 |
 | access-events | `GET /access-events` | ADMIN | US-21 |
 
-**Hoje todas são stubs**: validam a entrada com Zod (inválida → `400 INVALID_REQUEST`) e respondem `501 NOT_IMPLEMENTED` citando o card. Quando o card da rota for entregue, ela passa a responder de verdade, sem mudar o contrato.
+**Já implementadas**: `POST /auth/login`, `GET /auth/me`, `GET /me/access-events` e `GET /access-events` — validam a entrada e respondem com os códigos reais (`401` sem token, `403` fora do perfil, `503` sem banco configurado). As demais seguem como stubs: validam a entrada com Zod (inválida → `400 INVALID_REQUEST`) e respondem `501 NOT_IMPLEMENTED` citando o card.
 
 ## Convenções
 
 - **Autenticação**: `Authorization: Bearer <accessToken>` (de `POST /auth/login`).
 - **Datas**: ISO 8601. Na entrada aceita offset (`2026-10-20T14:00:00-03:00`); na resposta sempre UTC (`Z`).
-- **Erros**: `{ "error": { "code", "message", "details?" } }` — tabela de códigos em [`caso-de-uso-modelo.md`](../architecture/caso-de-uso-modelo.md#erros-do-domínio-ao-http).
+- **Erros**: `{ "error": { "code", "message", "details?" } }` — tabela de códigos em [`caso-de-uso-modelo.md`](../architecture/caso-de-uso-modelo.md#erros-do-domínio-ao-http). Banco não configurado nas rotas de auth/histórico → `503 SERVICE_UNAVAILABLE`; excesso de requisições → `429 TOO_MANY_REQUESTS`.
 - **Listas**: `{ items, page, pageSize, total }`; `page` começa em 1, `pageSize` padrão 20 (máx. 100).
 - **Pedido de acesso QR**: o app envia `qrToken` (lido do QR), `terminalId` e `position`; o usuário vem do JWT. O backend confere se o `terminalId` bate com o terminal assinado dentro do token — divergiu, nega com `INVALID_CREDENTIAL`.
 - **Acesso negado não é erro HTTP**: `POST /access-events/qr` responde `200` com `decision: DENIED` e o `reason` (ex.: `OUT_OF_RANGE`, `AUTHORIZATION_EXPIRED`), porque toda tentativa é registrada como evento.

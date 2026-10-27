@@ -9,6 +9,9 @@ import { createApp } from '../../src/main/http/app.js';
 const env = loadEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent' });
 const app = createApp(buildContainer(env));
 
+/** Rotas ja implementadas saem do loop de stub; o teste real de cada uma vive no seu arquivo. */
+const IMPLEMENTED = new Set(['login', 'getCurrentUser', 'listMyAccessEvents', 'listAccessEvents']);
+
 function urlFor(op: Operation, params: Record<string, string> = op.example.params ?? {}): string {
   const path = op.path.replace(/:(\w+)/g, (_match, name: string) => params[name] ?? `:${name}`);
   return `${API_V1_PREFIX}${path}`;
@@ -20,7 +23,9 @@ function send(op: Operation, url: string, query?: Record<string, string>, body?:
 }
 
 describe('rotas stub do contrato v1', () => {
-  it.each(operations.map((op) => [`${op.method.toUpperCase()} ${op.path}`, op] as const))(
+  const pending = operations.filter((op) => !IMPLEMENTED.has(op.operationId));
+
+  it.each(pending.map((op) => [`${op.method.toUpperCase()} ${op.path}`, op] as const))(
     '%s valida a entrada e responde 501 NOT_IMPLEMENTED',
     async (_name, op) => {
       const res = await send(op, urlFor(op), op.example.query, op.example.body);
@@ -49,10 +54,10 @@ describe('rotas stub do contrato v1', () => {
   });
 
   it('query invalida -> 400', async () => {
-    const res = await request(app).get(`${API_V1_PREFIX}/access-events`).query({ decision: 'TALVEZ' });
+    const res = await request(app).get(`${API_V1_PREFIX}/users`).query({ role: 'TALVEZ' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error.details).toHaveProperty('decision');
+    expect(res.body.error.details).toHaveProperty('role');
   });
 
   it('cancelar sem body e valido (motivo opcional)', async () => {

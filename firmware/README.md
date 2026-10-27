@@ -2,8 +2,9 @@
 
 Terminal de Acesso ESP32 — PlatformIO + Arduino/C++. A **US-08** porta a atuação
 do protótipo `teste-servo.ino` (servo de rotação contínua, LED vermelho/verde,
-buzzer e LCD 16x2 I2C) para módulos do projeto novo, atrás de uma máquina de
-estados sem `delay()` longo.
+buzzer e display) para módulos do projeto novo, atrás de uma máquina de
+estados sem `delay()` longo. A **US-22** troca o LCD 16x2 por um **TFT ILI9341**
+que desenha o QR rotativo recebido do backend e o status do terminal.
 
 O backend decide; o firmware só executa o comando v1 (`open`/`deny`) com prazo
 válido, sem repetir um `commandId` já atendido, e responde o ACK em
@@ -23,7 +24,8 @@ include/door_machine.h      máquina de estados do servo com tempo injetado
 include/command.h           validação do comando v1, dedup e ACK
 include/iso8601.h           conversão ISO 8601 <-> epoch UTC
 include/feedback_pattern.h  passos de LED/buzzer para liberado/negado
-include/display_text.h      textos de 16x2 por status
+include/display_text.h      textos de status por estado
+include/qr_token.h          validade do QR rotativo (tempo injetado)
 src/main.cpp                inicializa, liga as dependências e atualiza os módulos
 src/modules/                mqtt, clock_time, display, nfc, gps, feedback, door
 tests/                      testes host em C++ e doubles de Arduino
@@ -45,7 +47,8 @@ Valores em `include/config.example.h` (nada secreto ali; segredos ficam no
 | LED vermelho | 5 | ânodo comum: LOW acende |
 | LED verde | 18 | ânodo comum: LOW acende |
 | Buzzer | 19 | 440/659 Hz no liberado; 220 Hz no negado |
-| LCD SDA / SCL | 21 / 22 | I2C 0x27, 16x2 |
+| TFT CS / DC / RST | 27 / 26 / 25 | ILI9341 240x320 por SPI por software |
+| TFT MOSI / SCK | 32 / 33 | dados e clock do SPI por software |
 
 ## Fluxo do comando
 
@@ -61,7 +64,8 @@ Valores em `include/config.example.h` (nada secreto ali; segredos ficam no
 6. Publica o ACK com o mesmo `commandId`.
 
 O ciclo do servo é a máquina `idle → opening → open → closing → idle`, avançada
-por `millis()`: nenhum `delay()` bloqueia o `client.loop()` do MQTT.
+por `millis()`: nenhum `delay()` bloqueia o `client.loop()` do MQTT. O display
+acompanha cada etapa e, em paralelo, mostra o QR recebido do backend.
 
 ## Preparação e build
 
@@ -88,8 +92,8 @@ cp include/config.example.h include/config.h
 ```
 
 `pio run` baixa as bibliotecas (`PubSubClient`, `ESP32Servo`,
-`LiquidCrystal_I2C`, `ArduinoJson`) e gera `.pio/build/esp32dev/firmware.bin` e
-`firmware.elf`. Edite somente `include/config.h` com a configuração local e não
+`Adafruit ILI9341`, `Adafruit GFX`, `QRCode`, `ArduinoJson`) e gera
+`.pio/build/esp32dev/firmware.bin` e `firmware.elf`. Edite somente `include/config.h` com a configuração local e não
 sobrescreva uma configuração existente ao repetir os passos.
 
 Para hardware real, ajuste WiFi/host do broker, use `pio run -t upload` e
@@ -112,7 +116,8 @@ Para hardware real, ajuste WiFi/host do broker, use `pio run -t upload` e
    confirmação pessoal). Não versione a licença.
 5. Execute **Wokwi: Select Config File**, selecione `wokwi/wokwi.toml` e então
    **Wokwi: Start Simulator**. O `diagram.json` traz ESP32, servo no pino 14,
-   LEDs vermelho (5) e verde (18), buzzer (19) e LCD 16x2 I2C (21/22).
+   LEDs vermelho (5) e verde (18), buzzer (19) e TFT ILI9341 (CS 27, DC 26,
+   RST 25, MOSI 32, SCK 33).
 6. Confira na serial `[mqtt] conectado e inscrito nos comandos` e, nos logs do
    Mosquitto, a conexão do cliente `terminal-dev-01`.
 7. Publique um comando sintético com prazo futuro (o firmware confere
@@ -126,14 +131,14 @@ Para hardware real, ajuste WiFi/host do broker, use `pio run -t upload` e
      -m "{\"v\":1,\"messageId\":\"$(uuidgen)\",\"terminalId\":\"terminal-dev-01\",\"timestamp\":\"$now\",\"commandId\":\"$(uuidgen)\",\"expiresAt\":\"$expires\",\"action\":\"open\",\"reason\":\"demo\"}"
    ```
 
-   A serial informa `[mqtt] comando <commandId>: executed`; o LCD passa por
+   A serial informa `[mqtt] comando <commandId>: executed`; o display passa por
    `ACESSO LIBERADO`, `ABRINDO CANCELA`, `CANCELA ABERTA` e `FECHANDO CANCELA`
    enquanto o servo gira no sentido de abertura por 1,8 s, espera 3 s e fecha; o
    LED verde acende com dois bipes. O ACK sai em `terminals/terminal-dev-01/acks`
    (`status: executed`).
 
 8. Para o feedback de negado, repita com `"action":"deny"`: LED vermelho, bipe
-   de 220 Hz, LCD `ACESSO NEGADO`, servo parado, ACK `executed`.
+   de 220 Hz, display com `ACESSO NEGADO`, servo parado, ACK `executed`.
 
 9. Para conferir dedup e prazo, republicar o **mesmo** `commandId` deve produzir
    `duplicate` sem novo movimento, e um `expiresAt` no passado deve produzir ACK
@@ -170,8 +175,11 @@ Os testes host rodam sem Arduino, com tempo e periféricos simulados:
 | `test_command` | ISO 8601 ↔ epoch, validação do comando, dedup por `commandId`, ACK de cada recusa |
 | `test_feedback_pattern` | passos de LED/buzzer de liberado e negado, interrupção e fim do padrão |
 | `test_display_text` | textos de 16 colunas e exclusividade por status |
+| `test_display_layout` | margem de silêncio de 4 módulos do QR e encaixe do status na tela |
+| `test_qr_token` | validade do QR (limite de expiração, relógio ausente e token vazio) |
+| `test_clock_policy` | janela de hora confiável (epoch zero, antes e depois de 2025-01-01) |
 | `test_mqtt` | módulo MQTT real com doubles: offline, retentativas, inscrição, reconexão |
-| `test_mqtt_command` | JSON v1 de ponta a ponta: ACK publicado, dedup, prazo, `deny` e recusas |
+| `test_mqtt_command` | JSON v1 de ponta a ponta: ACK publicado, dedup, prazo, `deny`, recusas e QR |
 
 Linux/CI, a partir de `firmware/`:
 
@@ -182,6 +190,9 @@ g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_door_machine.cpp -o /
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_command.cpp -o /tmp/t-command && /tmp/t-command
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_feedback_pattern.cpp -o /tmp/t-feedback && /tmp/t-feedback
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_display_text.cpp -o /tmp/t-display && /tmp/t-display
+g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_display_layout.cpp -o /tmp/t-layout && /tmp/t-layout
+g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_qr_token.cpp -o /tmp/t-qr && /tmp/t-qr
+g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_clock_policy.cpp -o /tmp/t-clock && /tmp/t-clock
 JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
 g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt && /tmp/t-mqtt
 g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_command.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt-command && /tmp/t-mqtt-command
@@ -200,19 +211,23 @@ Troque o arquivo de teste e, para os testes de MQTT, acrescente
 `src/modules/mqtt.cpp`.
 
 O CI compila sempre, roda os testes host e copia o exemplo de configuração. A
-demonstração Wokwi (servo, LCD, LED, buzzer) precisa ser executada manualmente
+demonstração Wokwi (servo, TFT, LED, buzzer) precisa ser executada manualmente
 com Docker e licença disponíveis; build e testes host verdes **não comprovam** a
 conexão do simulador ao broker nem o movimento real do servo.
 
 ## Limites desta história
 
-- Heartbeat/LWT (`terminals/{id}/status`), QR rotativo e eventos de acesso
-  continuam pendentes (US-04 e seguintes); NFC e GPS seguem como stubs.
+- Heartbeat/LWT (`terminals/{id}/status`) e eventos de acesso continuam
+  pendentes (US-04 e seguintes); NFC e GPS seguem como stubs.
+- O QR exibido é o token cru recebido do backend; assinatura e validação de
+  credencial entram na US-19/US-20.
 - O prazo do comando depende de SNTP: sem hora confiável o terminal recusa em vez
-  de abrir a porta.
+  de abrir a porta e não desenha o QR.
 - A comparação de prazo é feita em segundos inteiros (tolerância < 1 s).
 - O servo é de rotação contínua e não informa posição: "aberto/fechado" é
   resultado do tempo de acionamento, não de um sensor de fim de curso.
+- O TFT usa SPI por software para preservar os pinos do protótipo; a taxa é
+  suficiente para redesenhar o QR a cada 10 s, mas não para animações.
 
 Referências: [rede ESP32](https://docs.wokwi.com/guides/esp32-wifi),
 [configuração VS Code](https://docs.wokwi.com/vscode/project-config),
