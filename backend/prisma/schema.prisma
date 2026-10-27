@@ -59,6 +59,7 @@ model AccessLocation {
 
   authorizations Authorization[]
   accessEvents   AccessEvent[]
+  terminals      Terminal[]
 
   @@index([isActive])
 }
@@ -112,12 +113,14 @@ model AccessEvent {
   authorizationId String?        @db.Uuid
   credentialId    String?        @db.Uuid
   locationId      String?        @db.Uuid
+  // Identificador recebido sem FK: tentativas de terminais desconhecidos tambem sao auditadas.
+  terminalId      String?
   method          AccessMethod
   decision        AccessDecision
   reason          String?
   latitude        Decimal?       @db.Decimal(9, 6)
   longitude       Decimal?       @db.Decimal(9, 6)
-  distanceMeters  Decimal?       @db.Decimal(8, 2)
+  distanceMeters  Decimal?       @db.Decimal(10, 2)
   occurredAt      DateTime       @default(now())
 
   user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -129,4 +132,33 @@ model AccessEvent {
   @@index([userId, occurredAt])
   @@index([locationId, occurredAt])
   @@index([authorizationId])
+  @@index([terminalId, occurredAt])
+}
+
+model Terminal {
+  id         String   @id
+  locationId String   @db.Uuid
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  location AccessLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+
+  @@index([locationId])
+}
+
+model TerminalCommand {
+  commandId      String   @id @db.Uuid
+  requestId      String   @unique @db.Uuid
+  terminalId     String
+  payload        Json
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  ackMessageId   String?  @db.Uuid
+  ackStatus      String?
+  ackReason      String?
+  acknowledgedAt DateTime?
+
+  @@index([terminalId, createdAt])
+  @@index([expiresAt])
 }

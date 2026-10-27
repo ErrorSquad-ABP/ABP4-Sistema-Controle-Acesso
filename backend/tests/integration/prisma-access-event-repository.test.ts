@@ -13,7 +13,7 @@ describe.skipIf(!prisma)('PrismaAccessEventRepository', () => {
 
     expect(page.total).toBeGreaterThan(0);
     const event = page.items[0];
-    expect(event?.location.name).toBe('Unidade de Demonstração');
+    expect(event?.location?.name).toBe('Unidade de Demonstração');
     expect(event?.user?.role).toBe('RESIDENT');
     expect(event?.occurredAt).toMatch(/Z$/);
     await prisma!.$disconnect();

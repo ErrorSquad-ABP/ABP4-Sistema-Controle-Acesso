@@ -3,6 +3,8 @@ import { GetCurrentUserUseCase } from '../application/auth/get-current-user.use-
 import { LoginUseCase } from '../application/auth/login.use-case.js';
 import { ListAccessEventsUseCase } from '../application/access-events/list-access-events.use-case.js';
 import { ListMyAccessEventsUseCase } from '../application/access-events/list-my-access-events.use-case.js';
+import { RequestQrAccessUseCase } from '../application/access/request-qr-access.use-case.js';
+import { PublishCommandUseCase } from '../application/terminal/publish-command.use-case.js';
 import type { AccessEventRepository } from '../domain/ports/access-event-repository.js';
 import type { DatabaseProbe } from '../domain/ports/database-probe.js';
 import type { TokenService } from '../domain/ports/token-service.js';
@@ -11,11 +13,14 @@ import { JwtTokenService } from '../infrastructure/auth/jwt.js';
 import { SystemClock } from '../infrastructure/clock/system-clock.js';
 import { createPrismaClient } from '../infrastructure/database/prisma-client.js';
 import { PostgresDatabaseProbe } from '../infrastructure/database/postgres-database-probe.js';
+import { CryptoIdGenerator } from '../infrastructure/ids/crypto-id-generator.js';
 import { HmacQrTokenSigner } from '../infrastructure/ids/hmac-qr-token-signer.js';
+import { LazyMqttMessageBus } from '../infrastructure/mqtt/lazy-mqtt-message-bus.js';
 import { ValidateQrCredentialUseCase } from '../application/terminal/qr-credential.use-cases.js';
 import { PrismaAccessEventRepository } from '../infrastructure/repositories/prisma-access-event-repository.js';
 import { PrismaUserRepository } from '../infrastructure/repositories/prisma-user-repository.js';
 import { createLogger, type Logger } from '../shared/logger.js';
+import { buildAccessRuntime } from './access-composition-root.js';
 import { InvalidEnvError, type Env } from './config/env.js';
 
 /**
@@ -38,7 +43,10 @@ export interface Container {
     getCurrentUser: GetCurrentUserUseCase | undefined;
     listMyAccessEvents: ListMyAccessEventsUseCase | undefined;
     listAccessEvents: ListAccessEventsUseCase | undefined;
+    /** Decisao real por QR; ausente sem banco, e a rota responde 503. */
+    requestQrAccess: RequestQrAccessUseCase | undefined;
   };
+  close?: () => Promise<void>;
 }
 
 export interface ContainerOverrides {
@@ -58,6 +66,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
   const clock = new SystemClock();
   const logger = createLogger(env.LOG_LEVEL);
   const signer = new HmacQrTokenSigner(env.QR_TOKEN_SECRET);
+  const validateQrCredential = new ValidateQrCredentialUseCase(clock, signer);
   const databaseProbe =
     overrides.databaseProbe ??
     (env.DATABASE_URL ? new PostgresDatabaseProbe(env.DATABASE_URL) : undefined);
@@ -69,11 +78,30 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
   const accessEvents =
     overrides.accessEventRepository ??
     (prisma ? new PrismaAccessEventRepository(prisma) : undefined);
+  const ids = new CryptoIdGenerator();
+  const access = buildAccessRuntime(env, { clock, qr: validateQrCredential, ids });
+  // A API so conecta no broker quando precisa publicar: boot sem MQTT continua possivel.
+  const accessBus = access
+    ? new LazyMqttMessageBus(
+        {
+          url: env.MQTT_URL,
+          clientId: `abp4-api-${process.pid}`,
+          username: env.MQTT_USERNAME,
+          password: env.MQTT_PASSWORD,
+        },
+        logger,
+      )
+    : undefined;
+
   return {
     logger,
     trustProxy: env.TRUST_PROXY,
     tokens,
     repositories: { users, accessEvents },
+    close: async () => {
+      await accessBus?.close();
+      await access?.pool.end();
+    },
     useCases: {
       checkHealth: new CheckHealthUseCase(
         clock,
@@ -82,11 +110,19 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
         databaseProbe,
         logger,
       ),
-      validateQrCredential: new ValidateQrCredentialUseCase(clock, signer),
+      validateQrCredential,
       login: users ? new LoginUseCase(users, tokens) : undefined,
       getCurrentUser: users ? new GetCurrentUserUseCase(users) : undefined,
       listMyAccessEvents: accessEvents ? new ListMyAccessEventsUseCase(accessEvents) : undefined,
       listAccessEvents: accessEvents ? new ListAccessEventsUseCase(accessEvents) : undefined,
+      requestQrAccess:
+        access && accessBus
+          ? new RequestQrAccessUseCase(
+              access.decide,
+              new PublishCommandUseCase(access.commands, accessBus, clock, ids),
+              ids,
+            )
+          : undefined,
     },
   };
 }

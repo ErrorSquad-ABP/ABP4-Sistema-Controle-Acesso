@@ -2,43 +2,50 @@ import { HandleAccessEventUseCase } from '../application/terminal/handle-access-
 import { HandleAckUseCase } from '../application/terminal/handle-ack.use-case.js';
 import { PublishQrCodeUseCase } from '../application/terminal/publish-qr-code.use-case.js';
 import { IssueQrCredentialUseCase } from '../application/terminal/qr-credential.use-cases.js';
-import { PendingCommands } from '../domain/terminal/pending-commands.js';
+import type { AccessDecider } from '../domain/ports/access-decider.js';
+import type { CommandStore } from '../domain/ports/command-store.js';
+import type { MessageBus } from '../domain/ports/message-bus.js';
 import { SeenMessages } from '../domain/terminal/seen-messages.js';
 import { CryptoIdGenerator } from '../infrastructure/ids/crypto-id-generator.js';
-import type { MqttMessageBus } from '../infrastructure/mqtt/mqtt-message-bus.js';
 import { SystemClock } from '../infrastructure/clock/system-clock.js';
 import { HmacQrTokenSigner } from '../infrastructure/ids/hmac-qr-token-signer.js';
 import type { Env } from './config/env.js';
-import { AlwaysOpenAccessDecider } from '../infrastructure/terminal/always-open-access-decider.js';
 import type { Logger } from '../shared/logger.js';
 import { TerminalMessageRouter } from './mqtt/terminal-message-router.js';
+
+export interface MqttConsumerDependencies {
+  /** Decisor ja validado no boot do runtime (DT-01); nunca um stub por fallback. */
+  decider: AccessDecider;
+  /** Store compartilhado com a API: o ACK de um comando publicado por ela correlaciona aqui. */
+  commands: CommandStore;
+}
 
 /**
  * Montagem do processo MQTT (consumidor). Roda local na S1 e no Render a partir
  * da S2 (US-37); a API HTTP usa o composition-root.ts.
  */
 export function buildMqttConsumer(
-  bus: MqttMessageBus,
+  bus: MessageBus,
   logger: Logger,
   onPresence: (terminalId: string, online: boolean) => void,
   env: Env,
+  dependencies: MqttConsumerDependencies,
 ) {
   const clock = new SystemClock();
   const ids = new CryptoIdGenerator();
   const signer = new HmacQrTokenSigner(env.QR_TOKEN_SECRET);
-  const pending = new PendingCommands();
   const seen = new SeenMessages();
 
   const handleAccessEvent = new HandleAccessEventUseCase(
-    new AlwaysOpenAccessDecider(),
+    dependencies.decider,
     bus,
     clock,
     ids,
     seen,
-    pending,
+    dependencies.commands,
     logger,
   );
-  const handleAck = new HandleAckUseCase(pending, seen, logger);
+  const handleAck = new HandleAckUseCase(dependencies.commands, seen, logger);
 
   return {
     router: new TerminalMessageRouter(handleAccessEvent, handleAck, logger, onPresence),

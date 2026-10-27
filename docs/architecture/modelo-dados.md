@@ -62,6 +62,7 @@ erDiagram
         UUID authorizationId FK "opcional"
         UUID credentialId FK "opcional"
         UUID locationId FK "opcional"
+        String terminalId "recebido; opcional em legado, sem FK"
         AccessMethod method
         AccessDecision decision
         String reason "opcional"
@@ -79,6 +80,22 @@ erDiagram
     AUTHORIZATION o|--o{ ACCESS_EVENT : "origina"
     CREDENTIAL o|--o{ ACCESS_EVENT : "utilizada em"
     ACCESS_LOCATION o|--o{ ACCESS_EVENT : "ocorre em"
+    TERMINAL {
+        String id PK "identificador MQTT validado"
+        UUID locationId FK
+        Boolean active
+    }
+    TERMINAL_COMMAND {
+        UUID commandId PK
+        UUID requestId UK
+        String terminalId
+        Json payload
+        DateTime expiresAt
+        String ackStatus "opcional"
+        UUID ackMessageId "opcional"
+        DateTime acknowledgedAt "opcional"
+    }
+    ACCESS_LOCATION ||--o{ TERMINAL : "possui"
 ```
 
 ## Situação da autorização
@@ -99,10 +116,14 @@ Persistir só os fatos (janela, contador e cancelamento) evita linha `ACTIVE` ve
 - Cada credencial pertence a um usuário. `valueHash` guarda o hash do token QR ou do UID NFC, e nunca o valor original.
 - A senha é gravada no formato `scrypt$N$r$p$salt$hash` ([`password-hasher.ts`](../../backend/src/shared/password-hasher.ts)). Cadastro real (inclusive `npm run db:provision`) usa salt aleatório; a seed de demonstração usa salt determinístico para poder ser reexecutada. A seed demo só roda em banco local e nunca em produção; o primeiro administrador real vem de `db:provision` (ver [como rodar](../guides/como-rodar.md#seed-demo--provisionamento-real-dt-07)).
 - Eventos preservam o resultado (`GRANTED` ou `DENIED`), método (`QR` ou `NFC`), motivo e coordenadas recebidas. As relações com usuário, autorização, credencial e local são opcionais para registrar tentativas sem identificação completa. O motivo segue o enum `DenialReason` do contrato e é `null` quando o acesso é concedido.
-- `locationId` do evento é opcional no banco. A API só grava evento com local quando consegue resolver o terminal para um `AccessLocation` (US-19/US-20); o contrato REST devolve `location` obrigatório, então evento sem local é falha de dados, não um caso de uso.
+- `locationId` do evento é opcional no banco e `location` aceita `null` na API. Terminal desconhecido gera negativa consultável (`UNKNOWN_TERMINAL`) com seu identificador original em `terminalId`, sem FK obrigatória que impediria a auditoria. Eventos legados preservam `terminalId: null`.
+- `Terminal` associa o identificador MQTT ao local com FK obrigatória. O banco valida o formato do identificador; terminal e local devem estar ativos para conceder acesso. Sem mapeamento, não há abertura.
+- `TerminalCommand` é compartilhado por API e worker. A intenção de comando é gravada na mesma transação do evento e do consumo, com prazo ancorado no instante da decisão; o ACK atualiza atomicamente somente o comando do terminal correspondente e não sobrescreve um resultado anterior. `requestId` único preserva comando e validade em retentativas. Não tem FK de terminal, permitindo persistir comandos de negativa para terminais desconhecidos.
+- Consumo de autorização e evento são transacionais. Locks por tentativa e autorização evitam duplicar consumo entre instâncias; uma negativa nunca incrementa o contador.
+- Os `DateTime` persistidos pelo Prisma usam UTC. O adapter SQL converte `TIMESTAMP` sem fuso para UTC ao ler e grava strings ISO UTC; filtros com offset são normalizados. Isso preserva janelas e validade do QR entre API e worker com fusos diferentes.
 - Exclusão de usuário, local e credencial referenciados por autorizações é restringida. Ao excluir uma entidade referenciada por um evento, a FK do evento é anulada para preservar o histórico.
 - `UserRole`: `ADMIN`, `RESIDENT`, `VISITOR` · `CredentialType` e `AccessMethod`: `QR`, `NFC` · `AccessDecision`: `GRANTED`, `DENIED`.
 
 ## Campos espaciais
 
-`AccessLocation.latitude` e `longitude` são coordenadas do local; `radiusMeters` define a distância máxima permitida para o geofence (100 m por padrão). As coordenadas e `distanceMeters` do evento registram a posição informada na tentativa de acesso.
+`AccessLocation.latitude` e `longitude` são coordenadas do local; `radiusMeters` define a distância máxima permitida para o geofence (100 m por padrão). As coordenadas e `distanceMeters` do evento registram a posição informada na tentativa de acesso. `distanceMeters` usa `Decimal(10,2)` para registrar também negativas a milhares de quilômetros, sem estouro numérico.

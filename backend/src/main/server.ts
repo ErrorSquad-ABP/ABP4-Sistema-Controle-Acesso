@@ -20,7 +20,7 @@ const server = createApp(container).listen(env.PORT, () => {
 
 const shutdown = (signal: NodeJS.Signals) => {
   logger.info('encerrando', { signal });
-  server.close(() => process.exit(0));
+  server.close(() => { void container.close?.().finally(() => process.exit(0)); });
   setTimeout(() => process.exit(1), 10_000).unref();
 };
 process.on('SIGTERM', shutdown);

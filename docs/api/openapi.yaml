@@ -754,6 +754,13 @@ components:
           type: string
           format: date-time
           description: Data/hora ISO 8601
+        terminalId:
+          anyOf:
+            - type: string
+              pattern: ^[a-z0-9][a-z0-9-]{0,63}$
+              description: 'Identificador do terminal (ex.: "aurora-recepcao"); deve bater com o terminal do token'
+            - type: "null"
+          description: Identificador recebido; null em eventos legados
         method:
           $ref: "#/components/schemas/AccessMethod"
         decision:
@@ -769,7 +776,10 @@ components:
             - type: "null"
           description: "null quando a credencial nao identifica ninguem (ex.: tag NFC desconhecida)"
         location:
-          $ref: "#/components/schemas/LocationSummary"
+          anyOf:
+            - $ref: "#/components/schemas/LocationSummary"
+            - type: "null"
+          description: null quando o terminal nao possui local resolvido
         authorizationId:
           anyOf:
             - type: string
@@ -785,6 +795,7 @@ components:
       required:
         - id
         - occurredAt
+        - terminalId
         - method
         - decision
         - reason
@@ -1001,6 +1012,8 @@ components:
         - AUTHORIZATION_CANCELED
         - NO_USES_LEFT
         - OUT_OF_RANGE
+        - UNKNOWN_TERMINAL
+        - TERMINAL_INACTIVE
       description: "Motivo da negativa. CREDENTIAL_EXPIRED: QR fora da validade de 10 s · OUT_OF_RANGE: mais de 100 m do terminal"
     ErrorBody:
       type: object
@@ -1101,6 +1114,10 @@ components:
           description: 'Identificador do terminal (ex.: "aurora-recepcao"); deve bater com o terminal do token'
         position:
           $ref: "#/components/schemas/GeoPoint"
+        requestId:
+          description: "Chave de idempotencia da tentativa: repetir o mesmo valor devolve o mesmo evento e o mesmo comando"
+          type: string
+          format: uuid
       required:
         - qrToken
         - terminalId

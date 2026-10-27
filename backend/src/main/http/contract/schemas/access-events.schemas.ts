@@ -21,6 +21,8 @@ export const DenialReason = named(
     'AUTHORIZATION_CANCELED',
     'NO_USES_LEFT',
     'OUT_OF_RANGE',
+    'UNKNOWN_TERMINAL',
+    'TERMINAL_INACTIVE',
   ]),
   'Motivo da negativa. CREDENTIAL_EXPIRED: QR fora da validade de 10 s · OUT_OF_RANGE: mais de 100 m do terminal',
 );
@@ -45,11 +47,12 @@ export const AccessEvent = named(
   z.object({
     id: Id,
     occurredAt: DateTime,
+    terminalId: TerminalId.nullable().describe('Identificador recebido; null em eventos legados'),
     method: AccessMethod,
     decision: AccessDecision,
     reason: DenialReason.nullable().describe('null quando GRANTED'),
     user: UserSummary.nullable().describe('null quando a credencial nao identifica ninguem (ex.: tag NFC desconhecida)'),
-    location: LocationSummary,
+    location: LocationSummary.nullable().describe('null quando o terminal nao possui local resolvido'),
     authorizationId: Id.nullable(),
     distanceMeters: z.number().min(0).nullable().describe('Distancia ate o terminal (so no fluxo QR)'),
   }),
@@ -65,6 +68,9 @@ export const QrAccessRequest = named(
     terminalId: TerminalId,
     // Sem .describe(): ele cria uma copia fora do registry e o $ref se perde.
     position: GeoPoint,
+    requestId: Id.optional().describe(
+      'Chave de idempotencia da tentativa: repetir o mesmo valor devolve o mesmo evento e o mesmo comando',
+    ),
   }),
 );
 

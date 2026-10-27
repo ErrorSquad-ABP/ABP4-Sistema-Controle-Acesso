@@ -8,6 +8,7 @@ describe('loadEnv', () => {
   it('aplica defaults quando nada e informado', () => {
     expect(configured()).toEqual({
       NODE_ENV: 'development',
+      ACCESS_MODE: 'real',
       PORT: 3000,
       LOG_LEVEL: 'info',
       QR_TOKEN_SECRET: SECRET,

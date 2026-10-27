@@ -9,11 +9,14 @@ export type AccessDecision = (typeof ACCESS_DECISIONS)[number];
 export interface AccessEventView {
   id: string;
   occurredAt: string;
+  /** Identificador recebido do terminal; null em eventos legados. */
+  terminalId: string | null;
   method: AccessMethod;
   decision: AccessDecision;
   reason: string | null;
   user: { id: string; name: string; role: UserRole } | null;
-  location: { id: string; name: string };
+  /** null quando o terminal nao possui local resolvido (DT-03). */
+  location: { id: string; name: string } | null;
   authorizationId: string | null;
   distanceMeters: number | null;
 }

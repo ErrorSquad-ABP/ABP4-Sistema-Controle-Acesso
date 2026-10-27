@@ -8,6 +8,7 @@ const events: AccessEventView[] = [
   {
     id: 'b0000000-0000-4000-8000-000000000001',
     occurredAt: '2026-10-20T12:00:00.000Z',
+    terminalId: 'terminal-01',
     method: 'QR',
     decision: 'GRANTED',
     reason: null,
@@ -19,6 +20,7 @@ const events: AccessEventView[] = [
   {
     id: 'b0000000-0000-4000-8000-000000000002',
     occurredAt: '2026-10-19T12:00:00.000Z',
+    terminalId: 'terminal-01',
     method: 'NFC',
     decision: 'DENIED',
     reason: 'NO_AUTHORIZATION',

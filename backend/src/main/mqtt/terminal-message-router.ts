@@ -51,7 +51,7 @@ export class TerminalMessageRouter {
           commandId: result.message.commandId,
           status: result.message.status,
         });
-        this.handleAck.execute(result.message);
+        await this.handleAck.execute(result.message);
         return;
       }
       case 'status': {

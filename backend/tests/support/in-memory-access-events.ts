@@ -12,7 +12,7 @@ export class InMemoryAccessEventRepository implements AccessEventRepository {
     const to = filters.to?.getTime();
     const filtered = this.events
       .filter((event) => !filters.userId || event.user?.id === filters.userId)
-      .filter((event) => !filters.locationId || event.location.id === filters.locationId)
+      .filter((event) => !filters.locationId || event.location?.id === filters.locationId)
       .filter((event) => !filters.method || event.method === filters.method)
       .filter((event) => !filters.decision || event.decision === filters.decision)
       .filter((event) => from === undefined || Date.parse(event.occurredAt) >= from)

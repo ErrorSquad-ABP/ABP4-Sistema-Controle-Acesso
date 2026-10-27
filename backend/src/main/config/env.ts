@@ -15,6 +15,7 @@ const optionalString = z
  */
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  ACCESS_MODE: z.enum(['real', 'demo']).default('real'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
   APP_VERSION: optionalString,
@@ -61,6 +62,10 @@ const envSchema = z.object({
    * confiar no X-Forwarded-For deixaria o cliente escolher a chave do rate limit.
    */
   TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
+}).superRefine((env, ctx) => {
+  if (env.NODE_ENV === 'production' && env.ACCESS_MODE === 'demo') {
+    ctx.addIssue({ code: 'custom', path: ['ACCESS_MODE'], message: 'demo e proibido em production' });
+  }
 });
 
 export type Env = Readonly<z.infer<typeof envSchema>>;

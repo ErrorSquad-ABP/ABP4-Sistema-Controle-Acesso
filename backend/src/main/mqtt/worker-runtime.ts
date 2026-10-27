@@ -1,5 +1,13 @@
+import { ValidateQrCredentialUseCase } from '../../application/terminal/qr-credential.use-cases.js';
+import type { AccessDecider } from '../../domain/ports/access-decider.js';
+import { PendingCommands } from '../../domain/terminal/pending-commands.js';
 import { topicFilterFor } from '../../domain/terminal/topics.js';
+import { SystemClock } from '../../infrastructure/clock/system-clock.js';
+import { CryptoIdGenerator } from '../../infrastructure/ids/crypto-id-generator.js';
+import { HmacQrTokenSigner } from '../../infrastructure/ids/hmac-qr-token-signer.js';
 import type { Logger } from '../../shared/logger.js';
+import { buildAccessRuntime } from '../access-composition-root.js';
+import { resolveAccessDecider } from '../config/access-decider.js';
 import type { Env } from '../config/env.js';
 import { buildMqttConsumer } from '../mqtt-composition-root.js';
 import { connectBusOrExit } from './connect-bus.js';
@@ -12,9 +20,29 @@ export interface WorkerRuntime {
 
 /**
  * Corpo do processo MQTT compartilhado pelo entry local (`mqtt-consumer`) e pelo
- * worker do Render (`worker`). O entry cuida de sinais e HTTP.
+ * worker do Render (`worker`). Nenhum dos dois conecta no broker antes do gate
+ * daqui: modo de acesso, decisor real e schema migrado (DT-01).
  */
 export async function startWorkerRuntime(env: Env, logger: Logger): Promise<WorkerRuntime> {
+  const clock = new SystemClock();
+  const qr = new ValidateQrCredentialUseCase(clock, new HmacQrTokenSigner(env.QR_TOKEN_SECRET));
+  const access =
+    env.ACCESS_MODE === 'real'
+      ? buildAccessRuntime(env, { clock, qr, ids: new CryptoIdGenerator() })
+      : undefined;
+
+  let decider: AccessDecider;
+  try {
+    decider = resolveAccessDecider(env, access?.decider, logger);
+    await access?.repository.ready();
+  } catch (error) {
+    logger.error('falha ao inicializar decisor real', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    await access?.pool.end();
+    process.exit(1);
+  }
+
   const bus = await connectBusOrExit(
     {
       url: env.MQTT_URL,
@@ -35,6 +63,7 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
       else onlineTerminals.delete(terminalId);
     },
     env,
+    { decider, commands: access?.commands ?? new PendingCommands() },
   );
 
   await bus.subscribe(
@@ -67,6 +96,7 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
       stopped = true;
       clearInterval(qrTimer);
       await bus.close();
+      await access?.pool.end();
     },
   };
 }
