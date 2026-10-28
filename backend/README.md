@@ -114,6 +114,10 @@ Além de restart, retenção de mais de 1.000 IDs e replay antigo, a suíte veri
 
 Roteiro e limites em [`dt-01-02-03.md`](../docs/entrega/evidencias/dt-01-02-03.md).
 
+### Retenção de `TerminalCommand` — DT-18
+
+O worker expurga comandos expirados há mais de 7 dias no boot e a cada 24 h, em lotes de 500 (teto de 10 lotes por execução, índice de `expiresAt`), com o total no log `expurgo de comandos concluido`. ACK dentro da retenção continua correlacionando; ACK de comando já expurgado devolve `unknown` sem reabrir acesso. Regras e justificativa em [`modelo-dados.md`](../docs/architecture/modelo-dados.md#retencao-do-comando-do-terminal); evidências em [`dt-18.md`](../docs/entrega/evidencias/dt-18.md).
+
 Erros seguem sempre `{ "error": { "code", "message", "details?" } }` — tabela completa no guia do caso de uso modelo.
 
 ## Deploy

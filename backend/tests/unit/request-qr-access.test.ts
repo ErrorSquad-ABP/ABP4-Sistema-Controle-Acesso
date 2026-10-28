@@ -46,6 +46,10 @@ class MapCommandStore implements CommandStore {
     return { status: 'correlated', command };
   }
 
+  async purgeExpired(): Promise<number> {
+    return 0;
+  }
+
   clone(): MapCommandStore {
     return new MapCommandStore(new Map(this.byRequest), new Map(this.byId), new Map(this.acked));
   }
