@@ -135,6 +135,8 @@ No modo real, `ProcessedAccessMessage` registra tentativas concluídas sem limit
 
 A decisão e o comando já persistidos são reutilizados nas retentativas, com o mesmo `commandId` e prazo original. MQTT e PostgreSQL não compartilham transação: uma queda após publicar e antes de confirmar a marca pode retransmitir o mesmo comando; a deduplicação do terminal por `commandId` continua obrigatória. O modo demo mantém o adapter volátil, sem garantia de dedup após restart. ACKs continuam correlacionados de forma persistente por `TerminalCommand`.
 
+`TerminalCommand` funciona como outbox (DT-13): `publishedAt` fica `NULL` até a entrega ao broker. Se a publicação falhar (ex.: a API sem broker no pedido QR), a decisão continua válida — o pedido responde `GRANTED` e a autorização não é consumida de novo. O worker roda um relay no boot e a cada 1 s que publica as intenções pendentes ainda no prazo, com o mesmo `commandId` e `expiresAt`, após uma folga de 1,5 s desde a decisão para não disputar com o publicador original. O relay nunca publica comando vencido nem abertura para terminal ou local inativo. A entrega é *at-least-once*: o terminal deduplica por `commandId`. Com o broker desconectado, a publicação falha na hora em vez de esperar a reconexão, e sem PUBACK em 3 s ela é dada como falha. Nesse caso o mesmo comando ainda pode sair atrasado quando o cliente reconectar, e o terminal o rejeita se já tiver vencido.
+
 ## Fluxo de exemplo (NFC)
 
 1. O terminal publica `status online` (retido) ao conectar.
