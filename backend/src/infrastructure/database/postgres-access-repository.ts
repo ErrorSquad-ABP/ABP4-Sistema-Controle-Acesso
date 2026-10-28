@@ -125,7 +125,7 @@ export class PostgresAccessRepository implements AccessRepository {
   constructor(private readonly pool: pg.Pool) {}
 
   async ready(): Promise<void> {
-    await this.pool.query('SELECT 1 FROM "Terminal", "TerminalCommand", "AccessEvent" LIMIT 0');
+    await this.pool.query('SELECT 1, c."publishedAt" FROM "Terminal", "TerminalCommand" c, "AccessEvent" LIMIT 0');
   }
 
   async canDispatch(terminalId: string): Promise<boolean> {
