@@ -30,19 +30,24 @@ const AUTHORIZATION_SELECT = `SELECT id,"userId","locationId","maxUses","usedCou
   "canceledAt" AT TIME ZONE 'UTC' AS "canceledAt" FROM "Authorization"`;
 
 /**
- * DT-17: candidatas utilizaveis pelo criterio de escolha (`endsAt`, `id`).
- * Traz todas as utilizaveis — nao apenas a primeira — porque a politica revalida
- * o instante depois da espera pelo lock: se a primeira vencer durante a espera,
- * a proxima vira a escolhida (mesma decisao da leitura completa). O que fica de
- * fora e o historico: cancelada, vencida e esgotada nao sao lidas nem travadas.
+ * DT-17: autorizacoes que ainda podem valer, na ordem de escolha (`endsAt`, `id`).
+ * Sem filtro de `startsAt`: a politica revalida o instante **depois** da espera
+ * pelo lock, e uma autorizacao pode comecar durante a espera — filtrar por
+ * `startsAt <= agora` aqui a excluiria da escolha. Ficam de fora apenas as que
+ * nunca mais podem ser usadas: cancelada, esgotada e ja terminada.
  */
 export const AUTHORIZATION_CANDIDATES_SQL = `${AUTHORIZATION_SELECT}
   WHERE "userId"=$1 AND "locationId"=$2 AND "canceledAt" IS NULL
-    AND "startsAt" <= $3 AND "endsAt" >= $3 AND "usedCount" < "maxUses"
+    AND "usedCount" < "maxUses" AND "endsAt" >= $3
   ORDER BY "Authorization"."endsAt", id FOR UPDATE`;
 
-/** Mesma primeira linha da ordem de escolha, sem lock: define o motivo da negativa. */
-const AUTHORIZATION_REASON_SQL = `${AUTHORIZATION_SELECT}
+/**
+ * Primeira linha da ordem de escolha sobre todas as autorizacoes do usuario no
+ * local. E dela que a politica tira o motivo da negativa (`authorizations[0]`),
+ * exatamente como quando recebia a lista completa; por isso acompanha as
+ * candidatas mesmo quando e cancelada, esgotada ou vencida.
+ */
+const AUTHORIZATION_FIRST_SQL = `${AUTHORIZATION_SELECT}
   WHERE "userId"=$1 AND "locationId"=$2 ORDER BY "Authorization"."endsAt", id LIMIT 1`;
 
 function mapEvent(row: EventRow): AccessRecord {
@@ -92,22 +97,21 @@ class PostgresAccessTransaction implements AccessTransaction {
   }
 
   async findAuthorizations(userId: string, locationId: string, now: Date): Promise<AccessAuthorization[]> {
-    // DT-17: ordem estavel e lock apenas nas candidatas utilizaveis; cancelada,
-    // vencida e esgotada nao sao carregadas nem travadas.
+    // A primeira linha da ordem de escolha vem sempre: e o motivo da negativa
+    // quando nada estiver utilizavel (mesmo comportamento da lista completa).
+    const first = await this.connection.query<AccessAuthorization>(AUTHORIZATION_FIRST_SQL, [userId, locationId]);
+    const head = first.rows[0];
+    if (!head) return [];
+
+    // DT-17: carrega e trava apenas o que ainda pode valer; o historico morto
+    // (cancelada, esgotada, terminada) nao entra na consulta nem no lock.
     const candidates = await this.connection.query<AccessAuthorization>(AUTHORIZATION_CANDIDATES_SQL, [
       userId,
       locationId,
       now.toISOString(),
     ]);
-    if (candidates.rowCount) return candidates.rows;
-
-    // Sem candidata: a negativa usa a primeira linha da ordem de escolha, como a
-    // politica ja fazia quando recebia todas as autorizacoes.
-    const reason = await this.connection.query<AccessAuthorization>(AUTHORIZATION_REASON_SQL, [
-      userId,
-      locationId,
-    ]);
-    return reason.rows;
+    // `head` tem o menor `(endsAt, id)` de todas: quando tambem e candidata, ja e a primeira.
+    return candidates.rows[0]?.id === head.id ? candidates.rows : [head, ...candidates.rows];
   }
 
   async consumeAuthorization(id: string, now: Date): Promise<boolean> {
