@@ -176,7 +176,8 @@ Os testes host rodam sem Arduino, com tempo e periféricos simulados:
 | `test_feedback_pattern` | passos de LED/buzzer de liberado e negado, interrupção e fim do padrão |
 | `test_display_text` | textos de 16 colunas e exclusividade por status |
 | `test_display_layout` | margem de silêncio de 4 módulos do QR e encaixe do status na tela |
-| `test_qr_token` | validade do QR (limite de expiração, relógio ausente e token vazio) |
+| `test_qr_token` | validade do QR (limite de expiração, relógio ausente, token vazio e o maior token que o backend emite) |
+| `test_display_qr` | token máximo de 133 bytes renderizado inteiro no QR v8/ECC_LOW pelo encoder real |
 | `test_clock_policy` | janela de hora confiável (epoch zero, antes e depois de 2025-01-01) |
 | `test_mqtt` | módulo MQTT real com doubles: offline, retentativas, inscrição, reconexão |
 | `test_mqtt_command` | JSON v1 de ponta a ponta: ACK publicado, dedup, prazo, `deny`, recusas e QR |
@@ -192,6 +193,9 @@ g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_feedback_pattern.cpp 
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_display_text.cpp -o /tmp/t-display && /tmp/t-display
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_display_layout.cpp -o /tmp/t-layout && /tmp/t-layout
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_qr_token.cpp -o /tmp/t-qr && /tmp/t-qr
+# O encoder do QR nao compila com -Werror; so o teste nosso exige.
+gcc -std=c99 -O2 -I .pio/libdeps/esp32dev/QRCode/src -c .pio/libdeps/esp32dev/QRCode/src/qrcode.c -o /tmp/qrcode.o
+g++ -std=c++11 -Wall -Wextra -Werror -I include -I .pio/libdeps/esp32dev/QRCode/src tests/test_display_qr.cpp /tmp/qrcode.o -o /tmp/t-display-qr && /tmp/t-display-qr
 g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_clock_policy.cpp -o /tmp/t-clock && /tmp/t-clock
 JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
 g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt && /tmp/t-mqtt

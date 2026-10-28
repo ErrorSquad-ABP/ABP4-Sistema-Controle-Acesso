@@ -17,11 +17,13 @@ Adafruit_ILI9341 tft(TFT_CS_PIN, TFT_DC_PIN, TFT_MOSI_PIN, TFT_SCK_PIN, TFT_RST_
 
 namespace layout = display_layout;
 static_assert(layout::quietZoneFits(), "QR sem margem de silencio ou fora da tela");
+// O maior token que o backend emite precisa caber inteiro no QR v8/ECC_LOW.
+static_assert(qr_token::kMaxTokenBytes <= layout::kQrByteCapacity,
+              "maior token do backend nao cabe no QR");
 
 QRCode qr;
-// 49x49 = 2401 bits (~301 bytes); 384 cobre a versao 8 com folga.
-uint8_t qrBuffer[384];
-char drawnToken[129] = {0};
+uint8_t qrBuffer[layout::kQrBufferBytes];
+char drawnToken[qr_token::kMaxTokenBytes + 1] = {0};
 bool qrDrawn = false;
 uint32_t drawnSeconds = 0;
 
