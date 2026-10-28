@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:controle_acesso/core/clock.dart';
+import 'package:controle_acesso/core/network/api.dart';
 import 'package:controle_acesso/core/router/app_router.dart';
 import 'package:controle_acesso/features/auth/auth_contract.dart';
 import 'package:controle_acesso/features/auth/session_controller.dart';
@@ -8,6 +11,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/testing.dart';
 
 import 'fakes.dart';
 
@@ -41,6 +45,22 @@ void main() {
       expect(state.ended, isNull);
     });
 
+    test('abre com a sessão salva sem esperar o /auth/me', () async {
+      final gateway = FakeAuthGateway()..meGate = Completer<void>();
+      final container = containerWith(
+        gateway: gateway,
+        store: InMemorySessionStore(sessionFor()),
+      );
+
+      final state = await restored(container);
+      expect(state.session?.accessToken, 'jwt-maria');
+
+      // A conferência começa em seguida e não tira a sessão enquanto espera.
+      await pumpEventQueue();
+      expect(gateway.meTokens, ['jwt-maria']);
+      expect(current(container).session?.accessToken, 'jwt-maria');
+    });
+
     test('confere a sessão no /auth/me e atualiza o usuário', () async {
       final gateway = FakeAuthGateway()
         ..meUser = const AuthUser(
@@ -52,12 +72,28 @@ void main() {
       final store = InMemorySessionStore(sessionFor());
       final container = containerWith(gateway: gateway, store: store);
 
-      final state = await restored(container);
+      await restored(container);
+      await pumpEventQueue();
 
+      final session = current(container).session;
       expect(gateway.meTokens, ['jwt-maria']);
-      expect(state.session?.user.name, 'Maria S. Lima');
+      expect(session?.user.name, 'Maria S. Lima');
       expect(store.session?.user.name, 'Maria S. Lima');
-      expect(container.read(currentSessionProvider), same(state.session));
+      expect(container.read(currentSessionProvider), same(session));
+    });
+
+    test('sair durante a conferência não traz a sessão de volta', () async {
+      final gateway = FakeAuthGateway()..meGate = Completer<void>();
+      final store = InMemorySessionStore(sessionFor());
+      final container = containerWith(gateway: gateway, store: store);
+      await restored(container);
+
+      await container.read(sessionControllerProvider.notifier).logout();
+      gateway.meGate!.complete();
+      await pumpEventQueue();
+
+      expect(current(container).session, isNull);
+      expect(store.session, isNull);
     });
 
     test('sessão vencida é apagada sem chamar o backend', () async {
@@ -77,32 +113,67 @@ void main() {
       expect(store.session, isNull);
     });
 
-    test('sessão recusada pelo backend (401) é apagada', () async {
+    test('sessão recusada pelo backend (401) é apagada com aviso', () async {
       final store = InMemorySessionStore(sessionFor());
-
-      final state = await restored(
-        containerWith(
-          gateway: FakeAuthGateway(meFailure: AuthFailureReason.unauthorized),
-          store: store,
-        ),
+      final container = containerWith(
+        gateway: FakeAuthGateway(meFailure: AuthFailureReason.unauthorized),
+        store: store,
       );
 
-      expect(state.session, isNull);
-      expect(state.ended?.reason, SessionEndReason.revoked);
+      await restored(container);
+      await pumpEventQueue();
+
+      expect(current(container).session, isNull);
+      expect(current(container).ended?.reason, SessionEndReason.revoked);
+      expect(current(container).ended?.email, maria.email);
+      expect(store.session, isNull);
+    });
+
+    test('401 síncrono na conferência ainda encerra a sessão', () async {
+      final store = InMemorySessionStore(sessionFor());
+      final container = containerWith(
+        gateway: _SyncUnauthorizedGateway(),
+        store: store,
+      );
+
+      await restored(container);
+      await pumpEventQueue();
+
+      expect(current(container).ended?.reason, SessionEndReason.revoked);
       expect(store.session, isNull);
     });
 
     test('sem rede mantém a sessão salva até vencer', () async {
       final store = InMemorySessionStore(sessionFor());
-
-      final state = await restored(
-        containerWith(
-          gateway: FakeAuthGateway(meFailure: AuthFailureReason.network),
-          store: store,
-        ),
+      final container = containerWith(
+        gateway: FakeAuthGateway(meFailure: AuthFailureReason.network),
+        store: store,
       );
 
-      expect(state.session?.accessToken, 'jwt-maria');
+      await restored(container);
+      await pumpEventQueue();
+
+      expect(current(container).session?.accessToken, 'jwt-maria');
+      expect(store.session, isNotNull);
+    });
+
+    test('erro fora do AuthFailure no /auth/me mantém a sessão', () async {
+      final store = InMemorySessionStore(sessionFor());
+      final container = ProviderContainer.test(
+        overrides: [
+          sessionStoreProvider.overrideWithValue(store),
+          clockProvider.overrideWithValue(() => fixedNow),
+          httpClientProvider.overrideWithValue(
+            MockClient((_) async => throw ArgumentError('Unsupported scheme')),
+          ),
+        ],
+      );
+
+      await restored(container);
+      await pumpEventQueue();
+
+      expect(current(container).session?.accessToken, 'jwt-maria');
+      expect(current(container).ended, isNull);
       expect(store.session, isNotNull);
     });
   });
@@ -138,6 +209,20 @@ void main() {
       );
       expect(current(container).session, isNull);
       expect(store.session, isNull);
+    });
+
+    test('login que responde depois do app fechado não falha', () async {
+      final gateway = FakeAuthGateway()..loginGate = Completer<void>();
+      final container = containerWith(gateway: gateway);
+      await restored(container);
+
+      final login = container
+          .read(sessionControllerProvider.notifier)
+          .login(request);
+      container.dispose();
+      gateway.loginGate!.complete();
+
+      await expectLater(login, completes);
     });
 
     test('Keystore sem gravar ainda deixa entrar, só em memória', () async {
@@ -285,4 +370,12 @@ void main() {
       expect(sessionRedirect(loggedIn, AppRoutes.scan), isNull);
     });
   });
+}
+
+/// Recusa o token antes de qualquer `await`: a conferência não pode correr
+/// na frente do build que entrega a sessão ao estado.
+class _SyncUnauthorizedGateway extends FakeAuthGateway {
+  @override
+  Future<AuthUser> currentUser(String accessToken) =>
+      throw const AuthFailure(AuthFailureReason.unauthorized);
 }

@@ -1,7 +1,8 @@
 /// Espelha LoginRequest da US-06. Não aplicar regras de criação de senha aqui.
 abstract final class LoginValidation {
   static String? email(String? value) {
-    final email = value ?? '';
+    // Espaço nas pontas vem do teclado (sugestão de palavra), não do usuário.
+    final email = (value ?? '').trim();
     if (email.isEmpty) return 'Informe seu e-mail.';
     // Mesmo formato padrão de z.email(), incluindo a restrição a pontos duplos.
     final format = RegExp(
@@ -22,7 +23,7 @@ abstract final class LoginValidation {
 
 class LoginRequest {
   LoginRequest({required String email, required this.password})
-    : email = email.toLowerCase();
+    : email = email.trim().toLowerCase();
 
   final String email;
   final String password;

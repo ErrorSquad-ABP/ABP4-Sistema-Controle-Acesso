@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'fakes.dart';
 
+const _oneSecond = Duration(seconds: 1);
+
 void main() {
   Future<void> pumpApp(
     WidgetTester tester,
@@ -89,7 +91,11 @@ void main() {
     await pumpApp(tester, store);
     expect(find.text('Olá, Maria'), findsOneWidget);
 
-    await tester.pump(const Duration(minutes: 5));
+    // O timer usa a mesma folga do isExpiredAt: sai 30 s antes do vencimento.
+    const expiresIn = Duration(minutes: 5);
+    await tester.pump(expiresIn - AuthSession.expirySkew - _oneSecond);
+    expect(find.text('Olá, Maria'), findsOneWidget);
+    await tester.pump(_oneSecond);
     await tester.pumpAndSettle();
 
     expect(store.session, isNull);
@@ -106,6 +112,29 @@ void main() {
     clock.advance(const Duration(hours: 2));
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sua sessão expirou. Entre novamente.'), findsOneWidget);
+  });
+
+  testWidgets('voltar do segundo plano reagenda a saída pelo relógio real', (
+    tester,
+  ) async {
+    final clock = FakeClock();
+    await pumpApp(tester, InMemorySessionStore(sessionFor()), clock: clock);
+
+    // Aparelho suspenso por 50 min: o relógio anda, o timer não.
+    clock.advance(const Duration(minutes: 50));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(find.text('Olá, Maria'), findsOneWidget);
+
+    // Restam 10 min de token: a saída vem 30 s antes, não no prazo antigo.
+    const remaining = Duration(minutes: 10);
+    await tester.pump(remaining - AuthSession.expirySkew - _oneSecond);
+    expect(find.text('Olá, Maria'), findsOneWidget);
+    await tester.pump(_oneSecond);
     await tester.pumpAndSettle();
 
     expect(find.text('Sua sessão expirou. Entre novamente.'), findsOneWidget);

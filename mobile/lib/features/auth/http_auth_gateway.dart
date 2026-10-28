@@ -78,6 +78,10 @@ class HttpAuthGateway implements AuthGateway {
     } on FormatException {
       // API_BASE_URL que não forma uma URL válida.
       throw const AuthFailure(AuthFailureReason.unexpected);
+    } on Exception {
+      // Transporte que o http não converte em ClientException, como o TLS
+      // recusado de um Wi-Fi com portal cativo (HandshakeException).
+      throw const AuthFailure(AuthFailureReason.network);
     }
 
     final status = response.statusCode;

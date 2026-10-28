@@ -38,12 +38,14 @@ void main() {
     expect(LoginValidation.email('invalido'), isNotNull);
     expect(LoginValidation.email('a..b@exemplo.com'), isNotNull);
     expect(LoginValidation.email('Maria@exemplo.com'), isNull);
+    expect(LoginValidation.email(' Maria@exemplo.com '), isNull);
+    expect(LoginValidation.email('   '), isNotNull);
     expect(LoginValidation.password(''), isNotNull);
     expect(LoginValidation.password('a'), isNull);
     expect(LoginValidation.password('a' * 72), isNull);
     expect(LoginValidation.password('a' * 73), isNotNull);
     expect(
-      LoginRequest(email: 'Maria@exemplo.com', password: ' senha ').toJson(),
+      LoginRequest(email: ' Maria@exemplo.com ', password: ' senha ').toJson(),
       {'email': 'maria@exemplo.com', 'password': ' senha '},
     );
   });
@@ -134,6 +136,18 @@ void main() {
       expect(find.text('Bem-vindo de volta'), findsOneWidget);
       expect(store.session, isNull);
     }
+  });
+
+  testWidgets('leitor de tela anuncia o rótulo, não o exemplo do campo', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await pumpApp(tester);
+
+    String label(Finder field) => tester.getSemantics(field).label;
+    expect(label(find.byType(TextField).first), startsWith('E-mail'));
+    expect(label(find.byType(TextField).last), startsWith('Senha'));
+    semantics.dispose();
   });
 
   testWidgets('mostra o rodapé do Figma', (tester) async {

@@ -64,12 +64,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       setState(() => _message = _failureMessage(failure.reason));
     } catch (_) {
       if (!mounted) return;
-      setState(
-        () => _message = (
-          FeedbackTone.error,
-          'Não foi possível entrar. Tente novamente.',
-        ),
-      );
+      setState(() => _message = _failureMessage(AuthFailureReason.unexpected));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -156,51 +151,62 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text('E-MAIL', style: text.labelSmall),
+                              // O rótulo visível do Figma fica fora do campo;
+                              // o leitor de tela o recebe pelo Semantics.
+                              ExcludeSemantics(
+                                child: Text('E-MAIL', style: text.labelSmall),
+                              ),
                               const SizedBox(height: AppSpacing.xs),
-                              TextFormField(
-                                controller: _email,
-                                enabled: !_loading,
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                autofillHints: const [AutofillHints.username],
-                                autocorrect: false,
-                                validator: LoginValidation.email,
-                                decoration: const InputDecoration(
-                                  hintText: 'maria.souza@exemplo.com',
-                                  prefixIcon: Icon(Icons.mail_outline),
-                                  semanticCounterText: 'E-mail',
+                              Semantics(
+                                label: 'E-mail',
+                                child: TextFormField(
+                                  controller: _email,
+                                  enabled: !_loading,
+                                  keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next,
+                                  autofillHints: const [AutofillHints.username],
+                                  autocorrect: false,
+                                  validator: LoginValidation.email,
+                                  decoration: const InputDecoration(
+                                    hintText: 'maria.souza@exemplo.com',
+                                    prefixIcon: Icon(Icons.mail_outline),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: AppSpacing.md),
-                              Text('SENHA', style: text.labelSmall),
+                              ExcludeSemantics(
+                                child: Text('SENHA', style: text.labelSmall),
+                              ),
                               const SizedBox(height: AppSpacing.xs),
-                              TextFormField(
-                                controller: _password,
-                                enabled: !_loading,
-                                obscureText: _obscure,
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                autofillHints: const [AutofillHints.password],
-                                textInputAction: TextInputAction.done,
-                                onFieldSubmitted: (_) => _submit(),
-                                validator: LoginValidation.password,
-                                decoration: InputDecoration(
-                                  hintText: 'Sua senha',
-                                  prefixIcon: const Icon(Icons.lock_outline),
-                                  suffixIcon: IconButton(
-                                    tooltip: _obscure
-                                        ? 'Mostrar senha'
-                                        : 'Ocultar senha',
-                                    onPressed: _loading
-                                        ? null
-                                        : () => setState(
-                                            () => _obscure = !_obscure,
-                                          ),
-                                    icon: Icon(
-                                      _obscure
-                                          ? Icons.visibility_outlined
-                                          : Icons.visibility_off_outlined,
+                              Semantics(
+                                label: 'Senha',
+                                child: TextFormField(
+                                  controller: _password,
+                                  enabled: !_loading,
+                                  obscureText: _obscure,
+                                  autocorrect: false,
+                                  enableSuggestions: false,
+                                  autofillHints: const [AutofillHints.password],
+                                  textInputAction: TextInputAction.done,
+                                  onFieldSubmitted: (_) => _submit(),
+                                  validator: LoginValidation.password,
+                                  decoration: InputDecoration(
+                                    hintText: 'Sua senha',
+                                    prefixIcon: const Icon(Icons.lock_outline),
+                                    suffixIcon: IconButton(
+                                      tooltip: _obscure
+                                          ? 'Mostrar senha'
+                                          : 'Ocultar senha',
+                                      onPressed: _loading
+                                          ? null
+                                          : () => setState(
+                                              () => _obscure = !_obscure,
+                                            ),
+                                      icon: Icon(
+                                        _obscure
+                                            ? Icons.visibility_outlined
+                                            : Icons.visibility_off_outlined,
+                                      ),
                                     ),
                                   ),
                                 ),

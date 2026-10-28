@@ -71,8 +71,10 @@ class FakeAuthGateway implements AuthGateway {
   AuthFailureReason? meFailure;
   AuthUser meUser = maria;
 
-  /// Quando definido, o login só responde ao completar este completer.
+  /// Quando definidos, login e `/auth/me` só respondem ao completar o
+  /// completer.
   Completer<void>? loginGate;
+  Completer<void>? meGate;
 
   final List<LoginRequest> logins = [];
   final List<String> meTokens = [];
@@ -88,6 +90,7 @@ class FakeAuthGateway implements AuthGateway {
   @override
   Future<AuthUser> currentUser(String accessToken) async {
     meTokens.add(accessToken);
+    await meGate?.future;
     if (meFailure != null) throw AuthFailure(meFailure!);
     return meUser;
   }

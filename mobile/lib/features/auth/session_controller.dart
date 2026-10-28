@@ -102,33 +102,47 @@ class SessionController extends AsyncNotifier<SessionState> {
   Future<SessionState> _restore() async {
     final stored = await _store.read();
     if (stored == null) return const SessionState.signedOut();
-    final email = stored.user.email;
     if (stored.isExpiredAt(_now())) {
       await _clearStore();
       return SessionState.signedOut(
-        SessionEnd(SessionEndReason.expired, email),
+        SessionEnd(SessionEndReason.expired, stored.user.email),
       );
     }
+    // Abre com a sessão salva e confere no backend em segundo plano: a
+    // abertura não espera a rede (sinal fraco, partida a frio da Vercel).
+    unawaited(_revalidate(stored));
+    return SessionState.signedIn(stored);
+  }
+
+  /// Confere a sessão restaurada em `GET /auth/me` e atualiza o usuário.
+  /// Só o 401 (usuário desativado ou token recusado) encerra a sessão; sem
+  /// rede, TLS recusado ou backend fora, ela vale até o token vencer.
+  Future<void> _revalidate(AuthSession stored) async {
+    // Espera o build entregar a sessão restaurada ao estado.
+    await future;
+    final AuthUser user;
     try {
-      // Confere no backend: usuário desativado ou token recusado cai aqui.
-      final refreshed = stored.withUser(
-        await _gateway.currentUser(stored.accessToken),
-      );
-      try {
-        await _store.write(refreshed);
-      } catch (error) {
-        debugPrint('Sessao nao atualizada: ${error.runtimeType}');
-      }
-      return SessionState.signedIn(refreshed);
+      user = await _gateway.currentUser(stored.accessToken);
     } on AuthFailure catch (failure) {
-      if (failure.reason == AuthFailureReason.unauthorized) {
-        await _clearStore();
-        return SessionState.signedOut(
-          SessionEnd(SessionEndReason.revoked, email),
-        );
+      if (failure.reason == AuthFailureReason.unauthorized && ref.mounted) {
+        await revoke(stored.accessToken);
       }
-      // Sem rede ou backend fora: mantém a sessão até o token vencer.
-      return SessionState.signedIn(stored);
+      return;
+    } catch (error) {
+      debugPrint('Sessao mantida sem conferir: ${error.runtimeType}');
+      return;
+    }
+    // Saiu ou trocou de sessão enquanto conferia.
+    if (!ref.mounted ||
+        state.value?.session?.accessToken != stored.accessToken) {
+      return;
+    }
+    final refreshed = stored.withUser(user);
+    state = AsyncData(SessionState.signedIn(refreshed));
+    try {
+      await _store.write(refreshed);
+    } catch (error) {
+      debugPrint('Sessao nao atualizada: ${error.runtimeType}');
     }
   }
 

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:controle_acesso/features/auth/auth_contract.dart';
 import 'package:controle_acesso/features/auth/http_auth_gateway.dart';
@@ -97,6 +98,14 @@ void main() {
       );
     });
 
+    test('TLS recusado (portal cativo) vira network', () async {
+      await expectLater(
+        _gateway((_) async => throw const HandshakeException('cert'))
+            .login(request),
+        _failsWith(AuthFailureReason.network),
+      );
+    });
+
     test('tempo esgotado vira network', () async {
       final gateway = HttpAuthGateway(
         client: MockClient(
@@ -122,6 +131,19 @@ void main() {
           'tokenType': 'Bearer',
           'expiresIn': 3600,
           'user': {..._userJson, 'role': 'ROOT'},
+        }),
+        jsonEncode({
+          'accessToken': 'x',
+          'tokenType': 'MAC',
+          'expiresIn': 3600,
+          'user': _userJson,
+        }),
+        // Sessão que nasceria vencida.
+        jsonEncode({
+          'accessToken': 'x',
+          'tokenType': 'Bearer',
+          'expiresIn': 0,
+          'user': _userJson,
         }),
       ];
       for (final body in bodies) {
