@@ -2,6 +2,7 @@ import { CheckHealthUseCase } from '../application/health/check-health.use-case.
 import { GetCurrentUserUseCase } from '../application/auth/get-current-user.use-case.js';
 import { LoginUseCase } from '../application/auth/login.use-case.js';
 import { ListMyAuthorizationsUseCase } from '../application/authorizations/list-my-authorizations.use-case.js';
+import { CancelAuthorizationUseCase, CreateAuthorizationUseCase, GetAuthorizationUseCase, ListAuthorizationsUseCase } from '../application/authorizations/admin-use-cases.js';
 import { CreateUserUseCase } from '../application/users/create-user.use-case.js';
 import { DeleteUserUseCase } from '../application/users/delete-user.use-case.js';
 import { GetUserUseCase } from '../application/users/get-user.use-case.js';
@@ -59,6 +60,10 @@ export interface Container {
     updateUser: UpdateUserUseCase | undefined;
     deleteUser: DeleteUserUseCase | undefined;
     listMyAuthorizations: ListMyAuthorizationsUseCase | undefined;
+    listAuthorizations: ListAuthorizationsUseCase | undefined;
+    getAuthorization: GetAuthorizationUseCase | undefined;
+    createAuthorization: CreateAuthorizationUseCase | undefined;
+    cancelAuthorization: CancelAuthorizationUseCase | undefined;
     listMyAccessEvents: ListMyAccessEventsUseCase | undefined;
     listAccessEvents: ListAccessEventsUseCase | undefined;
     /** Decisao real por QR; ausente sem banco, e a rota responde 503. */
@@ -151,6 +156,10 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
       listMyAuthorizations: authorizations
         ? new ListMyAuthorizationsUseCase(authorizations, clock)
         : undefined,
+      listAuthorizations: authorizations ? new ListAuthorizationsUseCase(authorizations, clock) : undefined,
+      getAuthorization: authorizations ? new GetAuthorizationUseCase(authorizations, clock) : undefined,
+      createAuthorization: authorizations ? new CreateAuthorizationUseCase(authorizations, clock) : undefined,
+      cancelAuthorization: authorizations ? new CancelAuthorizationUseCase(authorizations, clock) : undefined,
       listMyAccessEvents: accessEvents ? new ListMyAccessEventsUseCase(accessEvents) : undefined,
       listAccessEvents: accessEvents ? new ListAccessEventsUseCase(accessEvents) : undefined,
       requestQrAccess:

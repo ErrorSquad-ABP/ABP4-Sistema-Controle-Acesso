@@ -226,3 +226,35 @@ describe('minhas autorizacoes', () => {
     expect(res.body.error.details).toHaveProperty('status');
   });
 });
+
+describe('autorizacoes administrativas (US-16/17)', () => {
+  it('cria com ADMIN e recusa perfil comum', async () => {
+    const { app, token } = buildApp();
+    const body = { userId: resident.id, locationId: location.id, startsAt: new Date(now + minute).toISOString(), endsAt: new Date(now + 60 * minute).toISOString(), maxUses: 2 };
+    const admin = await request(app).post('/api/v1/authorizations').set('Authorization', `Bearer ${await token('admin@abp4.local')}`).send(body);
+    expect(admin.status, JSON.stringify(admin.body)).toBe(201);
+    expect(admin.body).toMatchObject({ user: { id: resident.id }, location: { id: location.id }, maxUses: 2, usedCount: 0, status: 'SCHEDULED' });
+    const user = await request(app).post('/api/v1/authorizations').set('Authorization', `Bearer ${await token('res@abp4.local')}`).send(body);
+    expect(user.status).toBe(403);
+  });
+
+  it('lista com filtros e paginação, e só ADMIN consulta a lista', async () => {
+    const { app, token } = buildApp();
+    const adminToken = await token('admin@abp4.local');
+    const res = await request(app).get('/api/v1/authorizations').query({ userId: resident.id, status: 'ACTIVE', pageSize: 1 }).set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toMatchObject({ total: 1, page: 1, pageSize: 1, items: [{ status: 'ACTIVE' }] });
+    const denied = await request(app).get('/api/v1/authorizations').set('Authorization', `Bearer ${await token('res@abp4.local')}`);
+    expect(denied.status).toBe(403);
+  });
+
+  it('cancela autorização ativa com motivo e rejeita expirada', async () => {
+    const { app, token } = buildApp();
+    const auth = `Bearer ${await token('admin@abp4.local')}`;
+    const canceled = await request(app).post(`/api/v1/authorizations/${records[0]?.id}/cancel`).set('Authorization', auth).send({ reason: 'Remarcada' });
+    expect(canceled.status, JSON.stringify(canceled.body)).toBe(200);
+    expect(canceled.body).toMatchObject({ status: 'CANCELED', cancelReason: 'Remarcada' });
+    const expired = await request(app).post(`/api/v1/authorizations/${records[2]?.id}/cancel`).set('Authorization', auth);
+    expect(expired.status).toBe(409);
+  });
+});
