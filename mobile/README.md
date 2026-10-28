@@ -38,10 +38,29 @@ flutter run -d chrome     # ou: flutter run (emulador/aparelho Android)
 | `flutter analyze` | lints (`flutter_lints` + regras extras em `analysis_options.yaml`) |
 | `flutter test` | widget test do app e testes do tema |
 | `dart format lib test` | formatação |
-| `flutter build apk` | build Android (exige Android SDK) |
+| `flutter build apk --release` | APK Android (exige Android SDK e JDK 17) |
 | `flutter build web` | build web |
 
-O CI (`ci-mobile.yml`) roda `flutter pub get`, `flutter analyze` e `flutter test` em todo PR que mexe em `mobile/`.
+O CI (`ci-mobile.yml`) roda em todo PR: `ci-mobile-check` (`flutter pub get`, `flutter analyze`, `flutter test`), `ci-mobile-build-android` e `ci-mobile-install-android`.
+
+## APK Android no CI (DT-10)
+
+`ci-mobile-build-android` gera `flutter build apk --release` e **falha se o Gradle ou o empacotamento quebrar**. Em seguida `tool/ci/verify_apk.sh` confere, com `apksigner` e `aapt`, a assinatura, o pacote `br.fatec.errorsquad.controle_acesso`, a activity de entrada, as permissões de câmera/localização/internet e a presença de binários `arm64-v8a`. O APK sai como artefato **`controle-acesso-apk`** (`controle-acesso-<sha7>.apk`, retido por 14 dias) na página da execução do workflow.
+
+`ci-mobile-install-android` baixa esse artefato e roda `tool/ci/android_install_smoke.sh` no **aparelho de referência do CI**: emulador Pixel 6, Android 14 (API 34, x86_64). O script instala o APK, abre o app e falha se ele não instalar, não subir ou cair nos primeiros segundos. Não exige backend.
+
+Para repetir num aparelho físico (com depuração USB):
+
+```bash
+# baixe o artefato `controle-acesso-apk` da execução do workflow, depois:
+adb install -r controle-acesso-<sha7>.apk
+bash tool/ci/android_install_smoke.sh controle-acesso-<sha7>.apk
+```
+
+Limites:
+
+- O release ainda é assinado com a chave **debug** (`app/build.gradle.kts`): instala em aparelho, mas não serve para loja. Não há AAB; ele depende de um keystore de release, que deve entrar como secret do repositório antes da publicação.
+- O emulador comprova instalação e abertura, não câmera nem GPS reais. A validação em aparelho físico segue na **DT-12**.
 
 ## Tema
 
