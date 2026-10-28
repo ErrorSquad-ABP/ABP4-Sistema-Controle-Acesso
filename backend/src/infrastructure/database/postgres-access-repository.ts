@@ -25,6 +25,20 @@ const eventSelect = `SELECT e.id,e."terminalId",e.method,e.decision,e.reason,e."
   CASE WHEN l.id IS NULL THEN NULL ELSE json_build_object('id',l.id,'name',l.name) END AS location
   FROM "AccessEvent" e LEFT JOIN "User" u ON u.id=e."userId" LEFT JOIN "AccessLocation" l ON l.id=e."locationId"`;
 
+const AUTHORIZATION_SELECT = `SELECT id,"userId","locationId","maxUses","usedCount",
+  "startsAt" AT TIME ZONE 'UTC' AS "startsAt", "endsAt" AT TIME ZONE 'UTC' AS "endsAt",
+  "canceledAt" AT TIME ZONE 'UTC' AS "canceledAt" FROM "Authorization"`;
+
+/** DT-17: candidata utilizavel pelo criterio de escolha (`endsAt`, `id`). */
+export const AUTHORIZATION_CANDIDATE_SQL = `${AUTHORIZATION_SELECT}
+  WHERE "userId"=$1 AND "locationId"=$2 AND "canceledAt" IS NULL
+    AND "startsAt" <= $3 AND "endsAt" >= $3 AND "usedCount" < "maxUses"
+  ORDER BY "Authorization"."endsAt", id LIMIT 1 FOR UPDATE`;
+
+/** Mesma primeira linha da ordem de escolha, sem lock: define o motivo da negativa. */
+export const AUTHORIZATION_REASON_SQL = `${AUTHORIZATION_SELECT}
+  WHERE "userId"=$1 AND "locationId"=$2 ORDER BY "Authorization"."endsAt", id LIMIT 1`;
+
 function mapEvent(row: EventRow): AccessRecord {
   return {
     ...row,
@@ -71,16 +85,23 @@ class PostgresAccessTransaction implements AccessTransaction {
     return result.rows[0] ?? null;
   }
 
-  async findAuthorizations(userId: string, locationId: string): Promise<AccessAuthorization[]> {
-    // Ordem estavel e lock: duas instancias nao podem gastar o mesmo ultimo uso.
-    const result = await this.connection.query<AccessAuthorization>(
-      `SELECT id,"userId","locationId","maxUses","usedCount",
-        "startsAt" AT TIME ZONE 'UTC' AS "startsAt", "endsAt" AT TIME ZONE 'UTC' AS "endsAt",
-        "canceledAt" AT TIME ZONE 'UTC' AS "canceledAt" FROM "Authorization"
-        WHERE "userId"=$1 AND "locationId"=$2 ORDER BY "endsAt",id FOR UPDATE`,
-      [userId, locationId],
-    );
-    return result.rows;
+  async findAuthorizations(userId: string, locationId: string, now: Date): Promise<AccessAuthorization[]> {
+    // DT-17: ordem estavel e lock apenas na primeira candidata utilizavel; o
+    // historico (cancelada, vencida, esgotada) nao e carregado nem bloqueado.
+    const candidate = await this.connection.query<AccessAuthorization>(AUTHORIZATION_CANDIDATE_SQL, [
+      userId,
+      locationId,
+      now.toISOString(),
+    ]);
+    if (candidate.rowCount) return candidate.rows;
+
+    // Sem candidata: a negativa usa a primeira linha da ordem de escolha, como a
+    // politica ja fazia quando recebia todas as autorizacoes.
+    const reason = await this.connection.query<AccessAuthorization>(AUTHORIZATION_REASON_SQL, [
+      userId,
+      locationId,
+    ]);
+    return reason.rows;
   }
 
   async consumeAuthorization(id: string, now: Date): Promise<boolean> {

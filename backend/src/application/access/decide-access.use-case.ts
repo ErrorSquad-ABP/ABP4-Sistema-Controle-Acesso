@@ -60,7 +60,8 @@ export class DecideAccessUseCase {
           : input.userId
             ? await tx.findUser(input.userId)
             : null;
-      const authorizations = terminal && user ? await tx.findAuthorizations(user.id, terminal.location.id) : [];
+      const authorizations =
+        terminal && user ? await tx.findAuthorizations(user.id, terminal.location.id, this.clock.now()) : [];
 
       // A espera por um lock nao prolonga a validade da credencial, do QR ou do frescor:
       // tudo e conferido depois do lock, com o mesmo instante usado pela politica.
