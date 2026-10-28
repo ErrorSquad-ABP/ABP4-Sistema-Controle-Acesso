@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 // Geometria do TFT em tempo de compilacao: o QR precisa de 4 modulos de margem
@@ -16,6 +17,11 @@ constexpr int kQrTop = 16;
 constexpr int kQuietZone = 4 * kQrScale;
 constexpr int kQrSide = kQrModules * kQrScale;
 constexpr int kQrBottom = kQrTop + kQrSide;
+// Versao 8 / ECC_LOW em modo byte: 194 codewords de dados, 4 bits de modo e 8
+// bits de tamanho -> floor((194 * 8 - 4 - 8) / 8) = 192 bytes.
+constexpr size_t kQrByteCapacity = 192;
+// 49x49 = 2401 bits (~301 bytes); 384 cobre a versao 8 com folga.
+constexpr size_t kQrBufferBytes = 384;
 
 constexpr int kFooterTop = kQrBottom + kQuietZone;
 constexpr int kFooterTokenLine = 2;
