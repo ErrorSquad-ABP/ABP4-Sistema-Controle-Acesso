@@ -36,7 +36,7 @@ export const AUTHORIZATION_CANDIDATE_SQL = `${AUTHORIZATION_SELECT}
   ORDER BY "Authorization"."endsAt", id LIMIT 1 FOR UPDATE`;
 
 /** Mesma primeira linha da ordem de escolha, sem lock: define o motivo da negativa. */
-export const AUTHORIZATION_REASON_SQL = `${AUTHORIZATION_SELECT}
+const AUTHORIZATION_REASON_SQL = `${AUTHORIZATION_SELECT}
   WHERE "userId"=$1 AND "locationId"=$2 ORDER BY "Authorization"."endsAt", id LIMIT 1`;
 
 function mapEvent(row: EventRow): AccessRecord {
