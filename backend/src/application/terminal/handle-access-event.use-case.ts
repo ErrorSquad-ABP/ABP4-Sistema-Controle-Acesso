@@ -6,6 +6,7 @@ import type { MessageBus } from '../../domain/ports/message-bus.js';
 import type { AccessEventMessage, CommandMessage } from '../../domain/terminal/messages.js';
 import type { EventDeduplicator } from '../../domain/ports/event-deduplicator.js';
 import { isFreshAccessEvent } from '../../domain/terminal/event-freshness.js';
+import { StaleEventError } from '../../domain/errors/domain-error.js';
 import type { Logger } from '../../shared/logger.js';
 import { PublishCommandUseCase } from './publish-command.use-case.js';
 
@@ -42,8 +43,25 @@ export class HandleAccessEventUseCase {
 
   private async process(event: AccessEventMessage): Promise<HandleAccessEventOutput> {
     // Revalida apos esperar pela reserva/pool: fila nao renova frescor.
-    if (!isFreshAccessEvent(event.timestamp, this.clock.now())) return { status: 'stale' };
-    const decision = await this.decider.decide(event);
+    if (!isFreshAccessEvent(event.timestamp, this.clock.now())) {
+      this.logger.warn('tentativa descartada por frescor apos a reserva', {
+        messageId: event.messageId,
+        terminalId: event.terminalId,
+      });
+      return { status: 'stale' };
+    }
+    let decision;
+    try {
+      decision = await this.decider.decide(event);
+    } catch (err) {
+      if (!(err instanceof StaleEventError)) throw err;
+      // O lock da decisao pode ter atravessado a janela de frescor: descarta sem publicar.
+      this.logger.warn('tentativa descartada por frescor na decisao', {
+        messageId: event.messageId,
+        terminalId: event.terminalId,
+      });
+      return { status: 'stale' };
+    }
     const result = await new PublishCommandUseCase(this.pending, this.bus, this.clock, this.ids).execute({
       requestId: event.messageId,
       terminalId: event.terminalId,

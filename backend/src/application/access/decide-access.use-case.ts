@@ -1,8 +1,9 @@
 import { decideAccess } from '../../domain/access/access-policy.js';
-import { ConflictError } from '../../domain/errors/domain-error.js';
+import { ConflictError, StaleEventError } from '../../domain/errors/domain-error.js';
 import type { AccessRecord, AccessRepository } from '../../domain/ports/access-repository.js';
 import type { Clock } from '../../domain/ports/clock.js';
 import type { IdGenerator } from '../../domain/ports/id-generator.js';
+import { isFreshAccessEvent } from '../../domain/terminal/event-freshness.js';
 import { COMMAND_TTL_MS, CONTRACT_VERSION } from '../../domain/terminal/messages.js';
 import { hashCredential } from '../../shared/credential-hash.js';
 import type { ValidateQrCredentialUseCase } from '../terminal/qr-credential.use-cases.js';
@@ -15,6 +16,8 @@ export interface AccessAttempt {
   userId?: string;
   qrToken?: string;
   position?: { latitude: number; longitude: number } | undefined;
+  /** Instante do evento no terminal; revalidado depois dos locks (DT-05). */
+  occurredAt?: Date | undefined;
 }
 
 function sameAttempt(previous: AccessRecord, input: AccessAttempt): boolean {
@@ -59,9 +62,12 @@ export class DecideAccessUseCase {
             : null;
       const authorizations = terminal && user ? await tx.findAuthorizations(user.id, terminal.location.id) : [];
 
-      // A espera por um lock nao prolonga a validade da credencial ou da autorizacao:
-      // o QR e conferido depois do lock, com o mesmo instante usado pela politica.
+      // A espera por um lock nao prolonga a validade da credencial, do QR ou do frescor:
+      // tudo e conferido depois do lock, com o mesmo instante usado pela politica.
       const now = this.clock.now();
+      if (input.method === 'NFC' && input.occurredAt && !isFreshAccessEvent(input.occurredAt.toISOString(), now)) {
+        throw new StaleEventError('Tentativa NFC fora da janela de frescor');
+      }
       const qr =
         input.method === 'QR' && input.qrToken
           ? this.qr.execute(input.qrToken, input.terminalId)

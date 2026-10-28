@@ -127,3 +127,7 @@ Persistir só os fatos (janela, contador e cancelamento) evita linha `ACTIVE` ve
 ## Campos espaciais
 
 `AccessLocation.latitude` e `longitude` são coordenadas do local; `radiusMeters` define a distância máxima permitida para o geofence (100 m por padrão). As coordenadas e `distanceMeters` do evento registram a posição informada na tentativa de acesso. `distanceMeters` usa `Decimal(10,2)` para registrar também negativas a milhares de quilômetros, sem estouro numérico.
+
+## Retencao da deduplicacao
+
+`ProcessedAccessMessage` guarda uma linha por `messageId` processado, sem TTL definido; o crescimento e linear ao volume de tentativas. Acompanhar o tamanho da tabela e, se necessario, definir expurgo por `processedAt` (com indice) preservando a idempotencia das mensagens ainda em transito.
