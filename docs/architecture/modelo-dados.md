@@ -131,3 +131,13 @@ Persistir só os fatos (janela, contador e cancelamento) evita linha `ACTIVE` ve
 ## Retencao da deduplicacao
 
 `ProcessedAccessMessage` guarda uma linha por `messageId` processado, sem TTL definido; o crescimento e linear ao volume de tentativas. Acompanhar o tamanho da tabela e, se necessario, definir expurgo por `processedAt` (com indice) preservando a idempotencia das mensagens ainda em transito.
+
+## Retencao do comando do terminal
+
+`TerminalCommand` guarda o payload publicado, o prazo, o resultado do ACK e a correlacao usada pelo worker. A retencao e de **7 dias depois de `expiresAt`** (`COMMAND_RETENTION_MS` em [`command-retention.ts`](../../backend/src/domain/terminal/command-retention.ts)), muito acima do prazo de 10 s do comando e da janela de frescor de 30 s: cobre ACK tardio, reinicio do worker e investigacao de uma abertura.
+
+- **Comandos com ACK**: a linha permanece 7 dias depois de expirar, com `ackStatus`, `ackMessageId`, `ackReason` e `acknowledgedAt`. Um ACK repetido continua devolvendo `duplicate`.
+- **Comandos sem ACK**: a linha expira e sai no mesmo prazo. O ACK que chegar depois do expurgo devolve `unknown` (nada e reaberto); o worker registra a falha de correlacao no log.
+- **Expurgo**: `PurgeExpiredCommandsUseCase` roda no boot do worker e a cada 24 h, em lotes de 500 com teto de 10 lotes por execucao, usando o indice `TerminalCommand_expiresAt_idx`. Cada execucao registra `expurgo de comandos concluido` com o total removido; falha vira log de erro e nao derruba o processo MQTT.
+- **Por que nao reabre acesso**: a idempotencia da tentativa e o `AccessEvent` (o `requestId` vira o id do evento), nao o `TerminalCommand`. Apos o expurgo, repetir o pedido devolve o evento ja gravado sem consumir autorizacao de novo, e o `expiresAt` do comando segue ancorado no instante da decisao — `PublishCommandUseCase` responde `published: false` em vez de abrir. Coberto em `tests/integration/postgres-command-store.test.ts`.
+

@@ -25,4 +25,14 @@ export class PostgresCommandStore implements CommandStore {
     const previous = await this.pool.query('SELECT 1 FROM "TerminalCommand" WHERE "commandId"=$1 AND "terminalId"=$2 AND "ackStatus" IS NOT NULL', [ack.commandId,ack.terminalId]);
     return { status: previous.rowCount ? 'duplicate' : 'unknown' };
   }
+
+  /** Lote unico: o indice de `expiresAt` mantem o DELETE barato (DT-18). */
+  async purgeExpired(before: Date, limit: number): Promise<number> {
+    const result = await this.pool.query(
+      `DELETE FROM "TerminalCommand" WHERE "commandId" IN (
+        SELECT "commandId" FROM "TerminalCommand" WHERE "expiresAt" < $1 ORDER BY "expiresAt" LIMIT $2)`,
+      [before, limit],
+    );
+    return result.rowCount ?? 0;
+  }
 }
