@@ -4,6 +4,7 @@ import { PublishQrCodeUseCase } from '../application/terminal/publish-qr-code.us
 import { IssueQrCredentialUseCase } from '../application/terminal/qr-credential.use-cases.js';
 import type { AccessDecider } from '../domain/ports/access-decider.js';
 import type { CommandStore } from '../domain/ports/command-store.js';
+import type { EventDeduplicator } from '../domain/ports/event-deduplicator.js';
 import type { MessageBus } from '../domain/ports/message-bus.js';
 import { SeenMessages } from '../domain/terminal/seen-messages.js';
 import { CryptoIdGenerator } from '../infrastructure/ids/crypto-id-generator.js';
@@ -18,6 +19,7 @@ export interface MqttConsumerDependencies {
   decider: AccessDecider;
   /** Store compartilhado com a API: o ACK de um comando publicado por ela correlaciona aqui. */
   commands: CommandStore;
+  events: EventDeduplicator;
 }
 
 /**
@@ -41,14 +43,14 @@ export function buildMqttConsumer(
     bus,
     clock,
     ids,
-    seen,
+    dependencies.events,
     dependencies.commands,
     logger,
   );
   const handleAck = new HandleAckUseCase(dependencies.commands, seen, logger);
 
   return {
-    router: new TerminalMessageRouter(handleAccessEvent, handleAck, logger, onPresence),
+    router: new TerminalMessageRouter(handleAccessEvent, handleAck, logger, onPresence, clock),
     publishQr: new PublishQrCodeUseCase(bus, ids, new IssueQrCredentialUseCase(clock, ids, signer)),
   };
 }

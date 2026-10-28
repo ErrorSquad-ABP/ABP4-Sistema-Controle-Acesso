@@ -7,6 +7,7 @@ import {
   type MessagesByChannel,
 } from '../../domain/terminal/messages.js';
 import { TERMINAL_ID_PATTERN } from '../../shared/terminal-id.js';
+import { isFreshAccessEvent } from '../../domain/terminal/event-freshness.js';
 
 const envelope = {
   v: z.literal(CONTRACT_VERSION),
@@ -49,6 +50,7 @@ export type ParseFailureCode =
   | 'invalid_json'
   | 'invalid_schema'
   | 'terminal_mismatch'
+  | 'stale'
   | 'expired';
 
 export type ParseResult<C extends Channel> =
@@ -62,7 +64,7 @@ export type ParseResult<C extends Channel> =
     };
 
 export interface ParseOptions {
-  /** Quando informado, comando com `expiresAt` vencido neste instante e rejeitado. */
+  /** Relogio para validar frescor NFC e expiracao de comandos. */
   now?: Date;
 }
 
@@ -95,6 +97,10 @@ export function parsePayload<C extends Channel>(
       code: 'terminal_mismatch',
       reason: `terminalId "${message.terminalId}" diferente do topico "${topicTerminalId}"`,
     };
+  }
+
+  if (channel === 'access-events' && !isFreshAccessEvent(message.timestamp, options.now ?? new Date())) {
+    return { ok: false, code: 'stale', reason: 'evento fora da janela de frescor' };
   }
 
   if (channel === 'commands' && options.now) {

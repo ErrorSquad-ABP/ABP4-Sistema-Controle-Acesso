@@ -130,6 +130,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
     close: async () => {
       await accessBus?.close();
       await access?.pool.end();
+      await access?.eventPool.end();
     },
     useCases: {
       checkHealth: new CheckHealthUseCase(

@@ -8,11 +8,14 @@ import type { CommandStore } from '../domain/ports/command-store.js';
 import type { IdGenerator } from '../domain/ports/id-generator.js';
 import { PostgresAccessRepository } from '../infrastructure/database/postgres-access-repository.js';
 import { PostgresCommandStore } from '../infrastructure/database/postgres-command-store.js';
+import { PostgresEventDeduplicator } from '../infrastructure/database/postgres-event-deduplicator.js';
 import { DatabaseAccessDecider } from '../infrastructure/terminal/database-access-decider.js';
 import type { Env } from './config/env.js';
 
 export interface AccessRuntime {
   pool: pg.Pool;
+  eventPool: pg.Pool;
+  events: PostgresEventDeduplicator;
   repository: AccessRepository;
   commands: CommandStore;
   decide: DecideAccessUseCase;
@@ -40,6 +43,15 @@ export function buildAccessRuntime(
   pool.on('error', () => {});
   const repository = new PostgresAccessRepository(pool);
   const commands = new PostgresCommandStore(pool);
+  const eventPool = new pg.Pool({
+    connectionString: env.DATABASE_URL,
+    max: 2,
+    connectionTimeoutMillis: 5_000,
+    idleTimeoutMillis: 10_000,
+    allowExitOnIdle: true,
+  });
+  eventPool.on('error', () => {});
+  const events = new PostgresEventDeduplicator(eventPool);
   const decide = new DecideAccessUseCase(repository, deps.clock, deps.qr, deps.ids);
-  return { pool, repository, commands, decide, decider: new DatabaseAccessDecider(decide) };
+  return { pool, eventPool, events, repository, commands, decide, decider: new DatabaseAccessDecider(decide) };
 }

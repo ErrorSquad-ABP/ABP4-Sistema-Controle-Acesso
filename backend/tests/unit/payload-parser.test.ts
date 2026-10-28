@@ -14,11 +14,30 @@ const command = {
 };
 
 describe('parsePayload', () => {
+  it('aplica frescor NFC mesmo sem receber um relogio explicito', () => {
+    const old = { ...nfcRead, timestamp: '2000-01-01T00:00:00.000Z' };
+    expect(parsePayload('access-events', TERMINAL, json(old))).toMatchObject({ ok: false, code: 'stale' });
+  });
+
+  it.each([
+    [-5_001, false],
+    [-5_000, true],
+    [0, true],
+    [29_999, true],
+    [30_000, false],
+    [60_000, false],
+  ])('frescor NFC: idade %i ms, aceito=%s', (age, accepted) => {
+    const payload = { ...nfcRead, timestamp: new Date(NOW.getTime() - age).toISOString() };
+    const result = parsePayload('access-events', TERMINAL, json(payload), { now: NOW });
+    expect(result.ok).toBe(accepted);
+    if (!accepted) expect(result).toMatchObject({ code: 'stale' });
+  });
+
   it('aceita payload valido de cada canal', () => {
     const qr = { ...envelope(), token: 'abc', expiresAt: command.expiresAt };
     const ack = { ...envelope(), commandId: UUID_CMD, status: 'executed' };
 
-    expect(parsePayload('access-events', TERMINAL, json(nfcRead)).ok).toBe(true);
+    expect(parsePayload('access-events', TERMINAL, json(nfcRead), { now: NOW }).ok).toBe(true);
     expect(parsePayload('qr', TERMINAL, json(qr)).ok).toBe(true);
     expect(parsePayload('status', TERMINAL, json({ ...envelope(), state: 'online' })).ok).toBe(true);
     expect(parsePayload('commands', TERMINAL, json(command)).ok).toBe(true);
@@ -26,7 +45,7 @@ describe('parsePayload', () => {
   });
 
   it('aceita Buffer e ignora campos desconhecidos', () => {
-    const result = parsePayload('access-events', TERMINAL, Buffer.from(json({ ...nfcRead, extra: 1 })));
+    const result = parsePayload('access-events', TERMINAL, Buffer.from(json({ ...nfcRead, extra: 1 })), { now: NOW });
 
     expect(result).toEqual({ ok: true, message: nfcRead });
   });

@@ -1,6 +1,7 @@
 import { ValidateQrCredentialUseCase } from '../../application/terminal/qr-credential.use-cases.js';
 import type { AccessDecider } from '../../domain/ports/access-decider.js';
 import { PendingCommands } from '../../domain/terminal/pending-commands.js';
+import { SeenMessages } from '../../domain/terminal/seen-messages.js';
 import { topicFilterFor } from '../../domain/terminal/topics.js';
 import { SystemClock } from '../../infrastructure/clock/system-clock.js';
 import { CryptoIdGenerator } from '../../infrastructure/ids/crypto-id-generator.js';
@@ -35,11 +36,13 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
   try {
     decider = resolveAccessDecider(env, access?.decider, logger);
     await access?.repository.ready();
+    await access?.events.ready();
   } catch (error) {
     logger.error('falha ao inicializar decisor real', {
       error: error instanceof Error ? error.message : String(error),
     });
     await access?.pool.end();
+    await access?.eventPool.end();
     process.exit(1);
   }
 
@@ -63,7 +66,7 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
       else onlineTerminals.delete(terminalId);
     },
     env,
-    { decider, commands: access?.commands ?? new PendingCommands() },
+    { decider, commands: access?.commands ?? new PendingCommands(), events: access?.events ?? new SeenMessages() },
   );
 
   await bus.subscribe(
@@ -97,6 +100,7 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
       clearInterval(qrTimer);
       await bus.close();
       await access?.pool.end();
+      await access?.eventPool.end();
     },
   };
 }

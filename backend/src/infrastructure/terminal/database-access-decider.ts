@@ -12,6 +12,7 @@ export class DatabaseAccessDecider implements AccessDecider {
       terminalId: event.terminalId,
       method: 'NFC',
       uid: event.uid,
+      occurredAt: new Date(event.timestamp),
     });
     return {
       action: record.decision === 'GRANTED' ? 'open' : 'deny',

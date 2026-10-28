@@ -147,6 +147,11 @@ model Terminal {
   @@index([locationId])
 }
 
+model ProcessedAccessMessage {
+  messageId   String   @id @db.Uuid
+  processedAt DateTime @default(now())
+}
+
 model TerminalCommand {
   commandId      String   @id @db.Uuid
   requestId      String   @unique @db.Uuid

@@ -13,6 +13,9 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { CryptoIdGenerator } from '../../src/infrastructure/ids/crypto-id-generator.js';
 import { SystemClock } from '../../src/infrastructure/clock/system-clock.js';
+import { PostgresEventDeduplicator } from '../../src/infrastructure/database/postgres-event-deduplicator.js';
+import type { AccessEventMessage, AckMessage, CommandMessage } from '../../src/domain/terminal/messages.js';
+import { ACCESS_EVENT_MAX_AGE_MS } from '../../src/domain/terminal/event-freshness.js';
 import {
   AccessEventPage,
   AccessResult,
@@ -41,9 +44,14 @@ let databaseUrl: string;
 let mqttUrl: string;
 let runtimeEnv: NodeJS.ProcessEnv;
 let worker: ChildProcess;
+let workerOutput: () => string;
 const children: ChildProcess[] = [];
 const qrMessages: { token: string; expiresAt: string }[] = [];
 const terminals = new Map<string, SimulatedTerminal>();
+const receivedCommands: CommandMessage[] = [];
+const receivedAcks: AckMessage[] = [];
+const terminalExecutions: string[] = [];
+const terminalDuplicates: string[] = [];
 let memberToken: string;
 let adminToken: string;
 let autoAck = true;
@@ -138,6 +146,7 @@ function expiredQrToken(): string {
 async function startWorker() {
   const consumer = launch('mqtt-consumer', { TZ: 'UTC' });
   worker = consumer.child;
+  workerOutput = consumer.output;
   await waitFor(
     () => {
       if (worker.exitCode !== null) throw new Error(consumer.output());
@@ -147,9 +156,81 @@ async function startWorker() {
   );
 }
 
+async function stopChild(child: ChildProcess) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  const exited = once(child, 'exit');
+  child.kill('SIGKILL');
+  await exited;
+}
+
+interface WorkerTrace {
+  type: string;
+  messageId?: string;
+  command?: CommandMessage;
+  error?: string;
+}
+
+async function startFaultWorker(terminalId: string, fault = 'none', gated = false) {
+  const child = spawn(process.execPath, ['tests/e2e/fixtures/dt05-worker.mjs'], {
+    env: { ...runtimeEnv, DT05_TERMINAL: terminalId, DT05_FAULT: fault, DT05_GATE: gated ? '1' : '0' },
+    windowsHide: true,
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+  });
+  children.push(child);
+  const traces: WorkerTrace[] = [];
+  let output = '';
+  child.on('message', (message: WorkerTrace) => { traces.push(message); });
+  child.stdout?.on('data', (chunk: Buffer) => { output += chunk.toString(); });
+  child.stderr?.on('data', (chunk: Buffer) => { output += chunk.toString(); });
+  const waitTrace = (type: string, messageId?: string) => waitFor(() => {
+    if (child.exitCode !== null || child.signalCode !== null) throw new Error(output);
+    return traces.find((trace) => trace.type === type && (!messageId || trace.messageId === messageId));
+  }, (trace) => trace !== undefined);
+  await waitTrace('ready');
+  return { child, traces, waitTrace };
+}
+
+async function completedMessage(id: string) {
+  return waitFor(
+    async () => (await pool.query('SELECT 1 FROM "ProcessedAccessMessage" WHERE "messageId"=$1', [id])).rowCount,
+    (count) => count === 1,
+  );
+}
+
+async function isolatedNfcAttempt() {
+  const locationId = randomUUID();
+  const authorizationId = randomUUID();
+  const terminalId = `dt05-${randomUUID()}`;
+  await pool.query(`INSERT INTO "AccessLocation" (id,name,latitude,longitude,"updatedAt")
+    VALUES ($1,'DT05',0,0,now())`, [locationId]);
+  await pool.query('INSERT INTO "Terminal" (id,"locationId","updatedAt") VALUES ($1,$2,now())', [terminalId, locationId]);
+  await pool.query(`INSERT INTO "Authorization"
+    (id,"userId","locationId","startsAt","endsAt","maxUses","updatedAt")
+    VALUES ($1,$2,$3,now()-interval '1 hour',now()+interval '1 hour',5,now())`,
+  [authorizationId, 'a1000000-0000-4000-8000-000000000002', locationId]);
+  const event: AccessEventMessage = {
+    v: 1, messageId: randomUUID(), terminalId, timestamp: new Date().toISOString(), type: 'nfc_read', uid: NFC_UID,
+  };
+  return { event, authorizationId };
+}
+
+async function publishAttempt(event: AccessEventMessage) {
+  expect(Date.now() - Date.parse(event.timestamp)).toBeLessThan(ACCESS_EVENT_MAX_AGE_MS);
+  await observer.publishAsync(`terminals/${event.terminalId}/access-events`, JSON.stringify(event), { qos: 1 });
+}
+
+async function expectSingleConsumption(event: AccessEventMessage, authorizationId: string) {
+  const events = await pool.query('SELECT decision,"authorizationId" FROM "AccessEvent" WHERE id=$1', [event.messageId]);
+  expect(events.rows).toEqual([{ decision: 'GRANTED', authorizationId }]);
+  const uses = await pool.query<{ usedCount: number }>('SELECT "usedCount" FROM "Authorization" WHERE id=$1', [authorizationId]);
+  expect(uses.rows[0]?.usedCount).toBe(1);
+  const commands = await pool.query('SELECT 1 FROM "TerminalCommand" WHERE "requestId"=$1', [event.messageId]);
+  expect(commands.rowCount).toBe(1);
+}
+
 async function commandRow(requestId: string) {
   return (
-    await pool.query<{ payload: { action: string; commandId: string }; ackStatus: string | null }>(
+    await pool.query<{ payload: CommandMessage; ackStatus: string | null }>(
       'SELECT payload,"ackStatus" FROM "TerminalCommand" WHERE "requestId"=$1',
       [requestId],
     )
@@ -246,11 +327,17 @@ beforeAll(async () => {
       token?: string;
       expiresAt?: string;
     };
+    if (topic.endsWith('/acks')) {
+      receivedAcks.push(JSON.parse(payload.toString()) as AckMessage);
+      return;
+    }
     if (topic.endsWith('/qr')) {
       qrMessages.push({ token: message.token ?? '', expiresAt: message.expiresAt ?? '' });
       return;
     }
-    if (!topic.endsWith('/commands') || !autoAck) return;
+    if (!topic.endsWith('/commands')) return;
+    receivedCommands.push(JSON.parse(payload.toString()) as CommandMessage);
+    if (!autoAck) return;
     let terminal = terminals.get(message.terminalId);
     if (!terminal) {
       terminal = new SimulatedTerminal(
@@ -266,13 +353,21 @@ beforeAll(async () => {
         },
         new SystemClock(),
         new CryptoIdGenerator(),
-        silentLogger,
+        {
+          ...silentLogger,
+          info: (msg, meta) => {
+            if (msg === 'porta aberta (servo + led verde)') terminalExecutions.push(String(meta?.commandId));
+          },
+          warn: (msg, meta) => {
+            if (msg === 'comando repetido: reenviando ack anterior') terminalDuplicates.push(String(meta?.commandId));
+          },
+        },
       );
       terminals.set(message.terminalId, terminal);
     }
     void terminal.onMessage(topic, payload);
   });
-  await observer.subscribeAsync(['terminals/+/commands', 'terminals/+/qr'], { qos: 1 });
+  await observer.subscribeAsync(['terminals/+/commands', 'terminals/+/qr', 'terminals/+/acks'], { qos: 1 });
 
   const apiProcess = launch('server');
   await waitFor(
@@ -304,7 +399,8 @@ afterAll(async () => {
   if (tcp?.listening) await new Promise<void>((resolve) => tcp.close(() => resolve()));
   if (pool) await pool.end();
   if (database) await database.stop();
-  if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true });
+  // No Windows, handles do PostgreSQL/antivirus podem sobreviver brevemente ao stop.
+  if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 }, 90_000);
 
 describe('DT-01: gate antes do MQTT nos dois entry points', () => {
@@ -350,6 +446,206 @@ describe('DT-01: gate antes do MQTT nos dois entry points', () => {
     expect(run.output()).toContain('MODO DEMO');
     run.child.kill();
     await once(run.child, 'exit');
+  });
+});
+
+describe('DT-05: deduplicacao persistente', () => {
+  it('falha de publicacao apos decisao persistida permite retry sem renovar comando ou consumir outro uso', async () => {
+    await stopChild(worker);
+    let faulty: Awaited<ReturnType<typeof startFaultWorker>> | undefined;
+    try {
+      const { event, authorizationId } = await isolatedNfcAttempt();
+      faulty = await startFaultWorker(event.terminalId, 'before-publish');
+      await publishAttempt(event);
+      const failure = await faulty.waitTrace('failed', event.messageId);
+      expect(failure?.error).toBe('DT05_PUBLICATION_FAILURE');
+      const original = (await commandRow(event.messageId))!.payload;
+      expect(original.action).toBe('open');
+      await expectSingleConsumption(event, authorizationId);
+      expect((await pool.query('SELECT 1 FROM "ProcessedAccessMessage" WHERE "messageId"=$1', [event.messageId])).rowCount).toBe(0);
+      expect(receivedCommands.filter((command) => command.commandId === original.commandId)).toHaveLength(0);
+
+      expect(Date.parse(original.expiresAt)).toBeGreaterThan(Date.now());
+      await publishAttempt(event);
+      await faulty.waitTrace('handled', event.messageId);
+      await completedMessage(event.messageId);
+      expect((await waitCommandAck(event.messageId))?.payload).toEqual(original);
+      expect(faulty.traces.filter((trace) => trace.type === 'publish-attempt').map((trace) => trace.command))
+        .toEqual([original, original]);
+      expect(receivedCommands.filter((command) => command.commandId === original.commandId)).toEqual([original]);
+      await expectSingleConsumption(event, authorizationId);
+    } finally {
+      if (faulty) await stopChild(faulty.child);
+      await startWorker();
+    }
+  });
+
+  it('queda apos publicar e antes do commit retransmite mesmo comando sem segunda abertura', async () => {
+    await stopChild(worker);
+    const testWorkers: ChildProcess[] = [];
+    try {
+      const { event, authorizationId } = await isolatedNfcAttempt();
+      const faulty = await startFaultWorker(event.terminalId, 'after-publish');
+      testWorkers.push(faulty.child);
+      await publishAttempt(event);
+      const published = await faulty.waitTrace('published-before-commit');
+      const original = published!.command!;
+      expect(original.action).toBe('open');
+      await waitCommandAck(event.messageId);
+      await expectSingleConsumption(event, authorizationId);
+      expect((await pool.query('SELECT 1 FROM "ProcessedAccessMessage" WHERE "messageId"=$1', [event.messageId])).rowCount).toBe(0);
+      expect(terminalExecutions.filter((id) => id === original.commandId)).toHaveLength(1);
+      await stopChild(faulty.child);
+
+      const restarted = await startFaultWorker(event.terminalId);
+      testWorkers.push(restarted.child);
+      expect(Date.parse(original.expiresAt)).toBeGreaterThan(Date.now());
+      await publishAttempt(event);
+      await restarted.waitTrace('handled', event.messageId);
+      await completedMessage(event.messageId);
+      await waitFor(() => receivedAcks.filter((ack) => ack.commandId === original.commandId), (acks) => acks.length === 2);
+      expect(receivedCommands.filter((command) => command.commandId === original.commandId)).toEqual([original, original]);
+      expect(terminalExecutions.filter((id) => id === original.commandId)).toHaveLength(1);
+      expect(terminalDuplicates.filter((id) => id === original.commandId)).toHaveLength(1);
+      const acks = receivedAcks.filter((ack) => ack.commandId === original.commandId);
+      expect(acks[0]?.status).toBe('executed');
+      expect(acks[1]).toEqual(acks[0]);
+      expect((await commandRow(event.messageId))?.payload).toEqual(original);
+      await expectSingleConsumption(event, authorizationId);
+    } finally {
+      for (const child of testWorkers) await stopChild(child);
+      await startWorker();
+    }
+  });
+
+  it('dois consumidores recebem o mesmo NFC simultaneamente e so um decide, consome e publica', async () => {
+    await stopChild(worker);
+    const testWorkers: ChildProcess[] = [];
+    try {
+      const { event, authorizationId } = await isolatedNfcAttempt();
+      const first = await startFaultWorker(event.terminalId, 'none', true);
+      testWorkers.push(first.child);
+      const second = await startFaultWorker(event.terminalId, 'none', true);
+      testWorkers.push(second.child);
+      await publishAttempt(event);
+      // Ambos receberam o mesmo pacote antes de liberar a disputa pela reserva.
+      await Promise.all([first.waitTrace('arrived', event.messageId), second.waitTrace('arrived', event.messageId)]);
+      first.child.send('release');
+      second.child.send('release');
+      await Promise.all([first.waitTrace('handled', event.messageId), second.waitTrace('handled', event.messageId)]);
+      const decisions = [...first.traces, ...second.traces].filter((trace) => trace.type === 'decide' && trace.messageId === event.messageId);
+      expect(decisions).toHaveLength(1);
+      await completedMessage(event.messageId);
+      const command = (await waitCommandAck(event.messageId))!.payload;
+      expect(command.action).toBe('open');
+      expect(receivedCommands.filter((received) => received.commandId === command.commandId)).toEqual([command]);
+      expect(terminalExecutions.filter((id) => id === command.commandId)).toHaveLength(1);
+      await expectSingleConsumption(event, authorizationId);
+    } finally {
+      for (const child of testWorkers) await stopChild(child);
+      await startWorker();
+    }
+  });
+
+  it('queda do processo durante processamento libera a reserva sem marca orfa', async () => {
+    const id = randomUUID();
+    const child = spawn(process.execPath, ['--input-type=module', '-e', `
+      import pg from 'pg';
+      import { PostgresEventDeduplicator } from './dist/infrastructure/database/postgres-event-deduplicator.js';
+      const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+      await new PostgresEventDeduplicator(pool).run(process.env.DT05_MESSAGE_ID, async () => {
+        console.log('dt05-reserved');
+        await new Promise(() => {});
+      });
+    `], {
+      env: { ...runtimeEnv, DT05_MESSAGE_ID: id },
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    children.push(child);
+    let output = '';
+    child.stdout?.on('data', (chunk: Buffer) => { output += chunk.toString(); });
+    child.stderr?.on('data', (chunk: Buffer) => { output += chunk.toString(); });
+    await waitFor(() => {
+      if (child.exitCode !== null) throw new Error(output);
+      return output;
+    }, (text) => text.includes('dt05-reserved'));
+    child.kill('SIGKILL');
+    await once(child, 'exit');
+    const restarted = new PostgresEventDeduplicator(pool);
+    expect(await restarted.run(id, async () => 'retentativa'))
+      .toEqual({ duplicate: false, value: 'retentativa' });
+  });
+
+  it('restart do worker nao republica NFC e replay antigo nao gera decisao', async () => {
+    const terminalId = 'dt05-nao-cadastrado';
+    const topic = `terminals/${terminalId}/access-events`;
+    const event: AccessEventMessage = {
+      v: 1, messageId: randomUUID(), terminalId, timestamp: new Date().toISOString(),
+      type: 'nfc_read', uid: NFC_UID,
+    };
+    const received: string[] = [];
+    const record = (receivedTopic: string, payload: Buffer) => {
+      if (receivedTopic === `terminals/${terminalId}/commands`) {
+        received.push((JSON.parse(payload.toString()) as { commandId: string }).commandId);
+      }
+    };
+    observer.on('message', record);
+    try {
+      await observer.publishAsync(topic, JSON.stringify(event), { qos: 1 });
+      await completedMessage(event.messageId);
+      const original = await waitCommandAck(event.messageId);
+      await stopChild(worker);
+      await startWorker();
+      await publishAttempt(event);
+      // Confirma a causa exata do descarte; expirar o evento nao satisfaz o teste.
+      await waitFor(() => workerOutput().split('\n').some((line) =>
+        line.includes('tentativa duplicada descartada') && line.includes(event.messageId)), Boolean);
+      const stale = { ...event, messageId: randomUUID(), timestamp: new Date(Date.now() - 60_000).toISOString() };
+      await observer.publishAsync(topic, JSON.stringify(stale), { qos: 1 });
+      await waitFor(() => workerOutput().split('\n').some((line) =>
+        line.includes('mensagem descartada') && line.includes('"code":"stale"') && line.includes(topic)), Boolean);
+      expect(received.filter((id) => id === original!.payload.commandId)).toHaveLength(1);
+      expect((await pool.query('SELECT 1 FROM "AccessEvent" WHERE id=$1', [stale.messageId])).rowCount).toBe(0);
+      expect(await commandRow(stale.messageId)).toBeUndefined();
+    } finally {
+      observer.off('message', record);
+    }
+  });
+
+  it('sobrevive a restart da pool e a mais de 1.000 IDs sem eviccao', async () => {
+    const id = randomUUID();
+    const firstPool = new pg.Pool({ connectionString: databaseUrl });
+    try {
+      const first = new PostgresEventDeduplicator(firstPool);
+      expect(await first.run(id, async () => 'primeiro')).toEqual({ duplicate: false, value: 'primeiro' });
+      for (let i = 0; i < 1_001; i++) {
+        await first.run(randomUUID(), async () => i);
+      }
+    } finally {
+      await firstPool.end();
+    }
+    const restartedPool = new pg.Pool({ connectionString: databaseUrl });
+    try {
+      const restarted = new PostgresEventDeduplicator(restartedPool);
+      expect(await restarted.run(id, async () => { throw new Error('nao deve executar'); }))
+        .toEqual({ duplicate: true });
+    } finally {
+      await restartedPool.end();
+    }
+  });
+
+  it('rollback libera o ID para outra instancia e concorrencia executa uma vez', async () => {
+    const id = randomUUID();
+    const first = new PostgresEventDeduplicator(pool);
+    const second = new PostgresEventDeduplicator(pool);
+    await expect(first.run(id, async () => { throw new Error('decisao falhou'); }))
+      .rejects.toThrow('decisao falhou');
+    let executions = 0;
+    const work = async () => { executions++; return 'ok'; };
+    const results = await Promise.all([first.run(id, work), second.run(id, work)]);
+    expect(executions).toBe(1);
+    expect(results.filter((result) => result.duplicate)).toHaveLength(1);
   });
 });
 

@@ -37,3 +37,7 @@ export class ForbiddenError extends DomainError {
 export class ServiceUnavailableError extends DomainError {
   readonly code = 'SERVICE_UNAVAILABLE';
 }
+
+export class StaleEventError extends DomainError {
+  readonly code = 'STALE_EVENT';
+}

@@ -4,6 +4,7 @@ import {
   IssueQrCredentialUseCase,
   ValidateQrCredentialUseCase,
 } from '../../src/application/terminal/qr-credential.use-cases.js';
+import { StaleEventError } from '../../src/domain/errors/domain-error.js';
 import type { AccessRepository, AccessTransaction } from '../../src/domain/ports/access-repository.js';
 import { PendingCommands } from '../../src/domain/terminal/pending-commands.js';
 import { HmacQrTokenSigner } from '../../src/infrastructure/ids/hmac-qr-token-signer.js';
@@ -58,6 +59,27 @@ function setup(options: { terminal?: boolean } = {}) {
 const attempt = { id: UUID_A, terminalId: TERMINAL, method: 'NFC' as const, uid: '04a1b2c3' };
 
 describe('validade temporal apos o lock', () => {
+  it('descarta NFC que envelhece enquanto espera a autorizacao', async () => {
+    const { useCase, tx, clock, authorization } = setup();
+    tx.findAuthorizations.mockImplementation(async () => {
+      // 29 s na entrada + 2 s de espera = 31 s > janela de 30 s.
+      clock.date = new Date(NOW.getTime() + 2_000);
+      return [authorization];
+    });
+
+    await expect(
+      useCase.execute({
+        id: UUID_A,
+        terminalId: TERMINAL,
+        method: 'NFC',
+        uid: '04a1b2c3',
+        occurredAt: new Date(NOW.getTime() - 29_000),
+      }),
+    ).rejects.toBeInstanceOf(StaleEventError);
+    expect(tx.consumeAuthorization).not.toHaveBeenCalled();
+    expect(tx.saveCommand).not.toHaveBeenCalled();
+  });
+
   it('rejeita QR que vence enquanto espera a autorizacao', async () => {
     const { useCase, tx, clock, authorization } = setup();
     const token = new IssueQrCredentialUseCase(clock, new SequentialIds(), signer).execute(TERMINAL).token;
