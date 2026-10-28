@@ -97,12 +97,6 @@ class PostgresAccessTransaction implements AccessTransaction {
   }
 
   async findAuthorizations(userId: string, locationId: string, now: Date): Promise<AccessAuthorization[]> {
-    // A primeira linha da ordem de escolha vem sempre: e o motivo da negativa
-    // quando nada estiver utilizavel (mesmo comportamento da lista completa).
-    const first = await this.connection.query<AccessAuthorization>(AUTHORIZATION_FIRST_SQL, [userId, locationId]);
-    const head = first.rows[0];
-    if (!head) return [];
-
     // DT-17: carrega e trava apenas o que ainda pode valer; o historico morto
     // (cancelada, esgotada, terminada) nao entra na consulta nem no lock.
     const candidates = await this.connection.query<AccessAuthorization>(AUTHORIZATION_CANDIDATES_SQL, [
@@ -110,6 +104,15 @@ class PostgresAccessTransaction implements AccessTransaction {
       locationId,
       now.toISOString(),
     ]);
+
+    // A primeira linha da ordem de escolha vem sempre: e o motivo da negativa
+    // quando nada estiver utilizavel (mesmo comportamento da lista completa).
+    // Lida depois da consulta bloqueante: se uma concorrente esgotou ou cancelou
+    // uma linha durante a espera, o motivo reflete o estado ja commitado.
+    const first = await this.connection.query<AccessAuthorization>(AUTHORIZATION_FIRST_SQL, [userId, locationId]);
+    const head = first.rows[0];
+    if (!head) return [];
+
     // `head` tem o menor `(endsAt, id)` de todas: quando tambem e candidata, ja e a primeira.
     return candidates.rows[0]?.id === head.id ? candidates.rows : [head, ...candidates.rows];
   }

@@ -17,17 +17,18 @@ const pool = connectionString
 const TERMINAL_PREFIX = 'terminal-lock-';
 const UID_PREFIX = 'LOCKTEST';
 
-/** Espera a sessao da decisao ficar bloqueada em algum lock: sem isso o teste nao prova nada. */
-async function waitForBlockedSession(timeoutMs = 10_000): Promise<void> {
+/** Espera a sessao da decisao ficar bloqueada pelo `blockerPid`: sem isso o teste nao prova nada. */
+async function waitForBlockedSession(blockerPid: number, timeoutMs = 10_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const waiting = await pool!.query<{ total: number }>(
-      `SELECT count(*)::int AS total FROM pg_locks WHERE NOT granted`,
+      `SELECT count(*)::int AS total FROM pg_stat_activity WHERE $1::int = ANY(pg_blocking_pids(pid))`,
+      [blockerPid],
     );
     if (waiting.rows[0]!.total > 0) return;
     await delay(20);
   }
-  throw new Error('a decisao nao chegou a esperar o lock');
+  throw new Error('a decisao nao chegou a esperar o lock do cenario');
 }
 
 // Sem banco local o teste e pulado; no CI o Postgres do job sempre existe.
@@ -114,19 +115,27 @@ describe.skipIf(!pool)('DT-17: candidata que muda de estado durante a espera do 
 
   /**
    * Segura o lock da primeira candidata, dispara a decisao e so libera depois de
-   * confirmar que ela esta esperando e de avancar o relogio.
+   * confirmar (por `pg_blocking_pids`) que ela esta esperando e de avancar o relogio.
    */
   async function decideWhileFirstIsLocked(
     seedData: Awaited<ReturnType<typeof seed>>,
     advanceMs: number,
+    mutation: 'lock' | 'exhaust' | 'cancel' = 'lock',
   ) {
     const { clock, decide, first, terminalId, uid } = seedData;
     const locker = await pool!.connect();
     try {
+      const { rows } = await locker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid');
       await locker.query('BEGIN');
-      await locker.query('SELECT 1 FROM "Authorization" WHERE id=$1 FOR UPDATE', [first]);
+      if (mutation === 'exhaust') {
+        await locker.query('UPDATE "Authorization" SET "usedCount"="maxUses" WHERE id=$1', [first]);
+      } else if (mutation === 'cancel') {
+        await locker.query('UPDATE "Authorization" SET "canceledAt"=now() WHERE id=$1', [first]);
+      } else {
+        await locker.query('SELECT 1 FROM "Authorization" WHERE id=$1 FOR UPDATE', [first]);
+      }
       const pending = decide.execute({ id: randomUUID(), terminalId, method: 'NFC', uid });
-      await waitForBlockedSession();
+      await waitForBlockedSession(rows[0]!.pid);
       clock.date = new Date(clock.date.getTime() + advanceMs);
       await locker.query('COMMIT');
       return await pending;
@@ -173,5 +182,24 @@ describe.skipIf(!pool)('DT-17: candidata que muda de estado durante a espera do 
     const event = await decideWhileFirstIsLocked(seedData, 2_000);
 
     expect(event).toMatchObject({ decision: 'DENIED', reason: 'AUTHORIZATION_CANCELED', authorizationId: null });
+  });
+
+  it('ignora a primeira quando ela e esgotada durante a espera e libera pela seguinte', async () => {
+    const seedData = await seed({ firstEndsInMs: 600_000, secondUsable: true });
+
+    const event = await decideWhileFirstIsLocked(seedData, 0, 'exhaust');
+
+    expect(event).toMatchObject({ decision: 'GRANTED', authorizationId: seedData.second });
+    expect(await usedCount(seedData.first)).toBe(1);
+    expect(await usedCount(seedData.second!)).toBe(1);
+  });
+
+  it('ignora a primeira quando ela e cancelada durante a espera e libera pela seguinte', async () => {
+    const seedData = await seed({ firstEndsInMs: 600_000, secondUsable: true });
+
+    const event = await decideWhileFirstIsLocked(seedData, 0, 'cancel');
+
+    expect(event).toMatchObject({ decision: 'GRANTED', authorizationId: seedData.second });
+    expect(await usedCount(seedData.second!)).toBe(1);
   });
 });
