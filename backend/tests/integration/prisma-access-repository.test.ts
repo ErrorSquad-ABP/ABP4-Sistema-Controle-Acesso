@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { decideAccess } from '../../src/domain/access/access-policy.js';
 import type { AccessTransaction } from '../../src/domain/ports/access-repository.js';
 import {
-  AUTHORIZATION_CANDIDATE_SQL,
+  AUTHORIZATION_CANDIDATES_SQL,
   PostgresAccessRepository,
 } from '../../src/infrastructure/database/postgres-access-repository.js';
 
@@ -171,7 +171,7 @@ describe.skipIf(!repository)('PostgresAccessRepository (DT-17)', () => {
     await pool!.query('ANALYZE "Authorization"');
 
     const explained = await pool!.query<{ 'QUERY PLAN': unknown }>(
-      `EXPLAIN (FORMAT JSON) ${AUTHORIZATION_CANDIDATE_SQL}`,
+      `EXPLAIN (FORMAT JSON) ${AUTHORIZATION_CANDIDATES_SQL}`,
       [userId, locationId, now.toISOString()],
     );
     const serialized = JSON.stringify(explained.rows[0]!['QUERY PLAN']);

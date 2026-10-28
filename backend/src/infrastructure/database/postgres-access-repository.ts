@@ -29,11 +29,17 @@ const AUTHORIZATION_SELECT = `SELECT id,"userId","locationId","maxUses","usedCou
   "startsAt" AT TIME ZONE 'UTC' AS "startsAt", "endsAt" AT TIME ZONE 'UTC' AS "endsAt",
   "canceledAt" AT TIME ZONE 'UTC' AS "canceledAt" FROM "Authorization"`;
 
-/** DT-17: candidata utilizavel pelo criterio de escolha (`endsAt`, `id`). */
-export const AUTHORIZATION_CANDIDATE_SQL = `${AUTHORIZATION_SELECT}
+/**
+ * DT-17: candidatas utilizaveis pelo criterio de escolha (`endsAt`, `id`).
+ * Traz todas as utilizaveis — nao apenas a primeira — porque a politica revalida
+ * o instante depois da espera pelo lock: se a primeira vencer durante a espera,
+ * a proxima vira a escolhida (mesma decisao da leitura completa). O que fica de
+ * fora e o historico: cancelada, vencida e esgotada nao sao lidas nem travadas.
+ */
+export const AUTHORIZATION_CANDIDATES_SQL = `${AUTHORIZATION_SELECT}
   WHERE "userId"=$1 AND "locationId"=$2 AND "canceledAt" IS NULL
     AND "startsAt" <= $3 AND "endsAt" >= $3 AND "usedCount" < "maxUses"
-  ORDER BY "Authorization"."endsAt", id LIMIT 1 FOR UPDATE`;
+  ORDER BY "Authorization"."endsAt", id FOR UPDATE`;
 
 /** Mesma primeira linha da ordem de escolha, sem lock: define o motivo da negativa. */
 const AUTHORIZATION_REASON_SQL = `${AUTHORIZATION_SELECT}
@@ -86,14 +92,14 @@ class PostgresAccessTransaction implements AccessTransaction {
   }
 
   async findAuthorizations(userId: string, locationId: string, now: Date): Promise<AccessAuthorization[]> {
-    // DT-17: ordem estavel e lock apenas na primeira candidata utilizavel; o
-    // historico (cancelada, vencida, esgotada) nao e carregado nem bloqueado.
-    const candidate = await this.connection.query<AccessAuthorization>(AUTHORIZATION_CANDIDATE_SQL, [
+    // DT-17: ordem estavel e lock apenas nas candidatas utilizaveis; cancelada,
+    // vencida e esgotada nao sao carregadas nem travadas.
+    const candidates = await this.connection.query<AccessAuthorization>(AUTHORIZATION_CANDIDATES_SQL, [
       userId,
       locationId,
       now.toISOString(),
     ]);
-    if (candidate.rowCount) return candidate.rows;
+    if (candidates.rowCount) return candidates.rows;
 
     // Sem candidata: a negativa usa a primeira linha da ordem de escolha, como a
     // politica ja fazia quando recebia todas as autorizacoes.
