@@ -24,7 +24,7 @@ describe.skipIf(!pool)('PostgresCommandStore (DT-18)', () => {
     await pool!.query(
       `INSERT INTO "TerminalCommand" ("commandId","requestId","terminalId",payload,"expiresAt")
        VALUES ($1,$2,$3,$4,$5)`,
-      [commandId, randomUUID(), 'terminal-01', JSON.stringify({ commandId }), expiresAt],
+      [commandId, randomUUID(), 'terminal-01', JSON.stringify({ commandId }), expiresAt.toISOString()],
     );
     return commandId;
   }
@@ -101,12 +101,12 @@ describe.skipIf(!pool)('PostgresCommandStore (DT-18)', () => {
     await pool!.query(
       `INSERT INTO "AccessEvent" (id,method,decision,reason,"occurredAt")
        VALUES ($1,'QR','GRANTED',NULL,$2)`,
-      [requestId, occurredAt],
+      [requestId, occurredAt.toISOString()],
     );
     await pool!.query(
       `INSERT INTO "TerminalCommand" ("commandId","requestId","terminalId",payload,"expiresAt")
        VALUES ($1,$2,$3,$4,$5)`,
-      [commandId, requestId, 'terminal-01', JSON.stringify({ commandId }), new Date(occurredAt.getTime() + COMMAND_TTL_MS)],
+      [commandId, requestId, 'terminal-01', JSON.stringify({ commandId }), new Date(occurredAt.getTime() + COMMAND_TTL_MS).toISOString()],
     );
 
     expect(await store!.purgeExpired(new Date(clock.now().getTime() - COMMAND_RETENTION_MS), 500)).toBeGreaterThan(0);

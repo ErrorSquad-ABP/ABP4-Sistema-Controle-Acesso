@@ -31,7 +31,7 @@ export class PostgresCommandStore implements CommandStore {
     const result = await this.pool.query(
       `DELETE FROM "TerminalCommand" WHERE "commandId" IN (
         SELECT "commandId" FROM "TerminalCommand" WHERE "expiresAt" < $1 ORDER BY "expiresAt" LIMIT $2)`,
-      [before, limit],
+      [before.toISOString(), limit],
     );
     return result.rowCount ?? 0;
   }
