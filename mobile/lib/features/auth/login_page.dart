@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../core/router/app_router.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/feedback_banner.dart';
-import 'login_contract.dart';
+import 'auth_contract.dart';
+import 'session_controller.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -20,7 +19,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _password = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
-  String? _message;
+  (FeedbackTone, String)? _message;
 
   @override
   void dispose() {
@@ -36,23 +35,56 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     FocusScope.of(context).unfocus();
     setState(() => _loading = true);
     try {
+      // Sucesso muda a sessão e o redirect do router leva à Home.
       await ref
-          .read(loginGatewayProvider)
+          .read(sessionControllerProvider.notifier)
           .login(LoginRequest(email: _email.text, password: _password.text));
-    } on LoginUnavailable {
+    } on AuthFailure catch (failure) {
       if (!mounted) return;
-      setState(() {
-        _message =
-            'O login ainda não está disponível. Tente novamente após '
-            'a liberação do serviço de autenticação.';
-      });
+      setState(() => _message = _failureMessage(failure.reason));
     } catch (_) {
       if (!mounted) return;
-      setState(() => _message = 'Não foi possível entrar. Tente novamente.');
+      setState(
+        () => _message = (
+          FeedbackTone.error,
+          'Não foi possível entrar. Tente novamente.',
+        ),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  static (FeedbackTone, String) _failureMessage(AuthFailureReason reason) =>
+      switch (reason) {
+        AuthFailureReason.unauthorized => (
+          FeedbackTone.error,
+          'E-mail ou senha incorretos. Se o problema continuar, procure a '
+              'administração.',
+        ),
+        AuthFailureReason.invalidRequest => (
+          FeedbackTone.error,
+          'Confira o e-mail e a senha informados.',
+        ),
+        AuthFailureReason.tooManyRequests => (
+          FeedbackTone.warning,
+          'Muitas tentativas seguidas. Aguarde alguns minutos e tente '
+              'novamente.',
+        ),
+        AuthFailureReason.unavailable => (
+          FeedbackTone.warning,
+          'O serviço de acesso está fora do ar. Tente novamente em instantes.',
+        ),
+        AuthFailureReason.network => (
+          FeedbackTone.warning,
+          'Sem conexão com o servidor. Verifique sua internet e tente '
+              'novamente.',
+        ),
+        AuthFailureReason.unexpected => (
+          FeedbackTone.error,
+          'Não foi possível entrar. Tente novamente.',
+        ),
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -156,8 +188,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               const SizedBox(height: AppSpacing.md),
                               if (_message != null) ...[
                                 FeedbackBanner(
-                                  tone: FeedbackTone.warning,
-                                  message: _message!,
+                                  tone: _message!.$1,
+                                  message: _message!.$2,
                                 ),
                                 const SizedBox(height: AppSpacing.md),
                               ],
@@ -220,22 +252,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             ],
                           ),
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      const Divider(),
-                      const SizedBox(height: AppSpacing.md),
-                      OutlinedButton.icon(
-                        onPressed: _loading
-                            ? null
-                            : () => context.go(AppRoutes.home),
-                        icon: const Icon(Icons.visibility_outlined),
-                        label: const Text('Entrar em modo demonstração'),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Abre a Home sem autenticar: nenhuma sessão é criada.',
-                        style: text.bodySmall,
-                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: AppSpacing.lg),
                     ],

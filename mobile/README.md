@@ -16,12 +16,13 @@ lib/
 │  │  ├─ app_theme.dart      AppTheme.light() / AppTheme.dark()
 │  │  └─ theme_mode_provider.dart  aparência (sistema/claro/escuro)
 │  ├─ widgets/feedback_banner.dart  aviso de estado (sucesso/erro/atenção) com contraste AA
-│  └─ router/app_router.dart rotas (AppRoutes) + appRouterProvider
+│  ├─ network/api.dart       endereço do backend (API_BASE_URL) + cliente HTTP
+│  └─ router/app_router.dart rotas (AppRoutes), guarda de sessão + appRouterProvider
 └─ features/                 uma pasta por feature (auth, scanner, authorizations, admin…)
-   ├─ auth/                  login mock (US-06/US-10)
-   ├─ home/                  tela inicial provisória do esqueleto
+   ├─ auth/                  login real + sessão persistida (US-27)
+   ├─ home/                  tela inicial com o usuário logado e "Sair"
    └─ scanner/               leitura de QR + posição (US-10)
-test/                        widget tests do app, do tema, do login e do scanner
+test/                        widget tests do app, do tema, do login, da sessão e do scanner
 assets/fonts/figtree/        Figtree 400/500/600/700 + OFL.txt
 ```
 
@@ -30,8 +31,13 @@ assets/fonts/figtree/        Figtree 400/500/600/700 + OFL.txt
 ```bash
 cd mobile
 flutter pub get
-flutter run -d chrome     # ou: flutter run (emulador/aparelho Android)
+flutter run               # emulador/aparelho Android, contra o backend de produção
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000   # backend local no emulador
 ```
+
+Sem `API_BASE_URL`, o app usa o backend de produção (`https://abp-4-sistema-controle-acesso.vercel.app`). No emulador Android, `10.0.2.2` é o `localhost` da máquina; num aparelho físico use `adb reverse tcp:3000 tcp:3000` e `http://localhost:3000`. O `http` em texto claro só é liberado no build de debug (`android/app/src/debug/AndroidManifest.xml`). Para entrar no backend local use as contas da seed de demonstração ([`docs/guides/como-rodar.md`](../docs/guides/como-rodar.md)).
+
+`flutter run -d chrome` abre a tela, mas o login falha no navegador: o backend ainda não responde CORS. O alvo do app é Android.
 
 | Comando | O que faz |
 |---|---|
@@ -55,19 +61,26 @@ Espelha o design system **Monochrome Premium** do Figma ([`design/README.md`](..
 
 A fonte Figtree é empacotada no app (declarada no `pubspec.yaml`): funciona offline e mantém os testes determinísticos.
 
+## Login e sessão (US-27)
+
+O app abre em `/carregando` enquanto restaura a sessão salva e depois segue para a Home (logado) ou para `/login`.
+
+- **Login**: o formulário valida o `LoginRequest` da US-06 (e-mail de até 254 caracteres, normalizado para minúsculas; senha de 1 a 72, preservada) e chama `POST /api/v1/auth/login` (`HttpAuthGateway`). Cada falha tem mensagem própria em `FeedbackBanner`: credencial recusada ou conta desativada (401), entrada recusada (400), muitas tentativas (429), serviço fora do ar (5xx), sem conexão/tempo esgotado e resposta fora do contrato. A recuperação de senha orienta procurar a administração, pois não há endpoint no contrato v1.
+- **Sessão**: `SessionController` (`sessionControllerProvider`) guarda `AuthSession` (JWT, vencimento calculado de `expiresIn` e usuário). `SecureSessionStore` persiste em `flutter_secure_storage` (Keystore no Android); a senha nunca é gravada. Valor corrompido é descartado e pede novo login.
+- **Restauração**: sessão vencida é apagada sem chamar o backend; válida é conferida em `GET /auth/me` (401 apaga a sessão; sem rede mantém até vencer) e atualiza o usuário salvo.
+- **Expiração e saída**: um timer encerra a sessão quando o token vence (com 30 s de folga) e o router volta ao login. "Sair", na Home, pede confirmação e apaga a sessão local; o JWT é stateless, então não há chamada de logout no backend.
+- **Para as próximas telas** (US-28/US-29): leia o token em `ref.read(sessionControllerProvider).value?.accessToken`; numa resposta 401, chame `ref.read(sessionControllerProvider.notifier).logout()`.
+- **Testes**: `test/features/auth/fakes.dart` traz `FakeAuthGateway`, `InMemorySessionStore` e `authOverrides()`; todo teste que monta o `App` precisa desses overrides (o `flutter_secure_storage` real não responde no `flutter test`).
+
 ## Rotas
 
-A abertura do app aponta para `/login`, com o mock da tela Entrar baseado nos exports do Figma. Usa os temas existentes e funciona sem backend. O formulário valida o `LoginRequest` da US-06: e-mail de até 254 caracteres e senha de 1 a 72; normaliza o e-mail para minúsculas e preserva a senha.
+Declaradas em `lib/core/router/app_router.dart`. Para uma tela nova: crie a página em `lib/features/<feature>/`, adicione o caminho em `AppRoutes` e um `GoRoute` na lista. O `sessionRedirect` protege toda rota que não seja `/login` ou `/carregando`: deslogado vai ao login, logado sai das telas públicas. O router não é recriado quando a sessão muda: o `refreshListenable` reavalia o redirect.
 
-O `loginGatewayProvider` fornece um `StubLoginGateway`: após um breve carregamento, simula `501 NOT_IMPLEMENTED` da US-14 e mostra um aviso, sem criar sessão ou armazenar credenciais. Para testar, use `maria.souza@exemplo.com` e `senha-forte-123`; campos inválidos mostram mensagens individuais. A recuperação de senha orienta procurar a administração, pois não há endpoint no contrato v1. A futura integração HTTP deve substituir esse gateway por `POST /api/v1/auth/login` e tratar a resposta de autenticação.
-
-Enquanto o login não existe, o botão **Entrar em modo demonstração** abre a Home (`/`) sem autenticar e sem criar sessão — serve apenas para percorrer o fluxo da US-10.
-
-Declaradas em `lib/core/router/app_router.dart`. Para uma tela nova: crie a página em `lib/features/<feature>/`, adicione o caminho em `AppRoutes` e um `GoRoute` na lista. Redirects (ex.: exigir login) entram no próprio `GoRouter`, lendo providers via `ref`.
+O antigo **modo demonstração** (Home sem autenticar) saiu com o login real.
 
 ## Scanner de QR (`/scan`, US-10)
 
-A Home leva ao scanner. A tela pede a permissão de localização, abre a câmera com `mobile_scanner` e, ao ler um QR, mostra o valor lido e a latitude/longitude obtidas com `geolocator`. **Ela não libera acesso nem chama o backend**: a liberação é a US-29.
+A Home (logado) leva ao scanner. A tela pede a permissão de localização, abre a câmera com `mobile_scanner` e, ao ler um QR, mostra o valor lido e a latitude/longitude obtidas com `geolocator`. **Ela não libera acesso nem chama o backend**: a liberação é a US-29.
 
 - **Estados**: permissão pendente, permissão negada (com nova tentativa), escaneando, lendo posição, sucesso e erro — cada um com mensagem própria em `FeedbackBanner` (`successSoft`/`errorSoft`, texto `onSoft`, contraste AA nos dois temas).
 - **Portas de teste**: `QrScannerGateway` (preview da câmera) e `LocationGateway` (permissão e posição) em `scanner_contracts.dart`; `scanner_gateways.dart` traz os adaptadores reais (`MobileScannerGateway`, `GeolocatorLocationGateway`) e os providers `qrScannerGatewayProvider`/`locationGatewayProvider`, sobrescritos nos testes por fakes.

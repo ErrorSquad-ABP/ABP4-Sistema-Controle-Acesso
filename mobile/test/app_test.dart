@@ -5,14 +5,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'features/auth/fakes.dart';
+
 void main() {
   Color scaffoldBackground(WidgetTester tester) {
     final context = tester.element(find.byType(Scaffold));
     return Theme.of(context).scaffoldBackgroundColor;
   }
 
-  testWidgets('abre na tela inicial com o tema claro', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: App()));
+  testWidgets('sem sessão abre no login com o tema claro', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(overrides: authOverrides(), child: const App()),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Bem-vindo de volta'), findsOneWidget);
@@ -23,7 +27,9 @@ void main() {
   testWidgets('troca para o tema escuro pelo themeModeProvider', (
     tester,
   ) async {
-    await tester.pumpWidget(const ProviderScope(child: App()));
+    await tester.pumpWidget(
+      ProviderScope(overrides: authOverrides(), child: const App()),
+    );
     await tester.pumpAndSettle();
 
     final container = ProviderScope.containerOf(
