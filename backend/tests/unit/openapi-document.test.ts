@@ -65,6 +65,8 @@ describe('documento OpenAPI v1', () => {
       'listMyAuthorizations',
       'listMyAccessEvents',
       'listAccessEvents',
+      'validateQrCredential',
+      'requestQrAccess',
     ]) {
       expect(documented(byId(operationId)).responses, operationId).toHaveProperty('503');
     }
@@ -82,6 +84,8 @@ describe('documento OpenAPI v1', () => {
       'listMyAuthorizations',
       'listMyAccessEvents',
       'listAccessEvents',
+      'validateQrCredential',
+      'requestQrAccess',
     ]) {
       expect(documented(byId(operationId)).responses, operationId).toHaveProperty('429');
     }
