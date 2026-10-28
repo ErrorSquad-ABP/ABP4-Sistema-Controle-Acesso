@@ -14,6 +14,8 @@ import { buildMqttConsumer } from '../mqtt-composition-root.js';
 import { connectBusOrExit } from './connect-bus.js';
 
 const QR_INTERVAL_MS = 10_000;
+/** O comando vale 10 s: 1 s entre ciclos deixa varias tentativas dentro do prazo. */
+const COMMAND_RELAY_INTERVAL_MS = 1_000;
 
 export interface WorkerRuntime {
   stop(): Promise<void>;
@@ -58,7 +60,7 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
 
   // Terminais vistos online recebem um QR assinado a cada 10 s.
   const onlineTerminals = new Set<string>();
-  const { router, publishQr } = buildMqttConsumer(
+  const { router, publishQr, dispatchPending } = buildMqttConsumer(
     bus,
     logger,
     (terminalId, online) => {
@@ -66,7 +68,12 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
       else onlineTerminals.delete(terminalId);
     },
     env,
-    { decider, commands: access?.commands ?? new PendingCommands(), events: access?.events ?? new SeenMessages() },
+    {
+      decider,
+      commands: access?.commands ?? new PendingCommands(),
+      events: access?.events ?? new SeenMessages(),
+      access: access?.repository,
+    },
   );
 
   await bus.subscribe(
@@ -92,12 +99,33 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
     }
   }, QR_INTERVAL_MS);
 
+  // Outbox (DT-13): entrega intencoes que a API ou um processo anterior nao publicou.
+  // Roda ja no boot para recuperar o que ficou pendente no reinicio.
+  let relaying = false;
+  const relay = () => {
+    if (!dispatchPending || relaying) return;
+    relaying = true;
+    dispatchPending
+      .execute()
+      .catch((err: unknown) => {
+        logger.error('falha no relay de comandos', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      })
+      .finally(() => {
+        relaying = false;
+      });
+  };
+  relay();
+  const relayTimer = dispatchPending ? setInterval(relay, COMMAND_RELAY_INTERVAL_MS) : undefined;
+
   let stopped = false;
   return {
     async stop(): Promise<void> {
       if (stopped) return;
       stopped = true;
       clearInterval(qrTimer);
+      clearInterval(relayTimer);
       await bus.close();
       await access?.pool.end();
       await access?.eventPool.end();
