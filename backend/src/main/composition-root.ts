@@ -160,6 +160,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
               new PublishCommandUseCase(access.commands, accessBus, clock, ids),
               ids,
               access.repository,
+              logger,
             )
           : undefined,
     },

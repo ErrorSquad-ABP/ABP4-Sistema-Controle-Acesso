@@ -52,6 +52,22 @@ describe('DT-02: envio e ACK pelo mesmo contrato de armazenamento', () => {
     expect(bus.published).toHaveLength(1);
   });
 
+  it('DT-13: so tira da outbox depois da entrega ao broker', async () => {
+    const store = new PendingCommands();
+    const bus = new RecordingBus();
+    const publish = bus.publish.bind(bus);
+    bus.publish = () => Promise.reject(new Error('conexao perdida'));
+    const useCase = new PublishCommandUseCase(store, bus, new FixedClock(NOW), new SequentialIds());
+    const pending = () => store.listUndispatched(NOW, NOW, 10);
+
+    await expect(useCase.execute(input)).rejects.toThrow('conexao perdida');
+    expect(await pending()).toHaveLength(1);
+
+    bus.publish = publish;
+    await useCase.execute(input);
+    expect(await pending()).toHaveLength(0);
+  });
+
   it('retentativa depois da janela nao publica abertura nem cria prazo novo', async () => {
     const store = new PendingCommands();
     const bus = new RecordingBus();

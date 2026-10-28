@@ -9,4 +9,11 @@ export interface CommandStore {
   save(command: CommandMessage, requestId: string): Promise<CommandMessage>;
   findByRequestId(requestId: string): Promise<CommandMessage | undefined>;
   acknowledge(ack: AckMessage): Promise<AckResult>;
+  /** Marca a entrega ao broker; sem a marca o relay ainda tenta publicar (DT-13). */
+  markPublished(commandId: string, at: Date): Promise<void>;
+  /**
+   * Intencoes ainda nao entregues e nao vencidas em `now`, decididas ate `decidedBefore`
+   * (folga para nao disputar com a publicacao em curso), das que vencem primeiro.
+   */
+  listUndispatched(now: Date, decidedBefore: Date, limit: number): Promise<CommandMessage[]>;
 }

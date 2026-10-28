@@ -16,6 +16,18 @@ export class PostgresCommandStore implements CommandStore {
     if (!saved) throw new Error('Comando nao persistido');
     return saved;
   }
+  async markPublished(commandId: string, at: Date): Promise<void> {
+    await this.pool.query('UPDATE "TerminalCommand" SET "publishedAt"=$2 WHERE "commandId"=$1 AND "publishedAt" IS NULL',
+      [commandId, at.toISOString()]);
+  }
+  async listUndispatched(now: Date, decidedBefore: Date, limit: number): Promise<CommandMessage[]> {
+    // ISO em texto: as colunas sao TIMESTAMP sem fuso gravadas em UTC (ver save).
+    const result = await this.pool.query<{ payload: CommandMessage }>(`SELECT payload FROM "TerminalCommand"
+      WHERE "publishedAt" IS NULL AND "ackStatus" IS NULL AND "expiresAt" > $1
+      AND (payload->>'timestamp')::timestamptz <= $2::timestamptz ORDER BY "expiresAt" LIMIT $3`,
+    [now.toISOString(), decidedBefore.toISOString(), limit]);
+    return result.rows.map((row) => row.payload);
+  }
   async acknowledge(ack: AckMessage): Promise<AckResult> {
     const result = await this.pool.query<{ payload: CommandMessage }>(`UPDATE "TerminalCommand"
       SET "ackStatus"=$3,"ackMessageId"=$4,"ackReason"=$5,"acknowledgedAt"=now()

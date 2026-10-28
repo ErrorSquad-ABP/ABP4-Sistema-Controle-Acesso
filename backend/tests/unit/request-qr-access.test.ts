@@ -11,7 +11,8 @@ import type { AccessRecord, AccessRepository } from '../../src/domain/ports/acce
 import type { AckResult, CommandStore } from '../../src/domain/ports/command-store.js';
 import type { AckMessage, CommandMessage } from '../../src/domain/terminal/messages.js';
 import { HmacQrTokenSigner } from '../../src/infrastructure/ids/hmac-qr-token-signer.js';
-import { FixedClock, NOW, RecordingBus, SequentialIds } from '../support/terminal-fakes.js';
+import { DispatchPendingCommandsUseCase } from '../../src/application/terminal/dispatch-pending-commands.use-case.js';
+import { FixedClock, NOW, RecordingBus, SequentialIds, silentLogger } from '../support/terminal-fakes.js';
 
 const TERMINAL = 'terminal-01';
 const USER = '2b0f2c7e-8a41-4a47-9b0e-6a8f5d2f1c10';
@@ -23,6 +24,7 @@ class MapCommandStore implements CommandStore {
     readonly byRequest = new Map<string, CommandMessage>(),
     readonly byId = new Map<string, CommandMessage>(),
     readonly acked = new Map<string, string>(),
+    readonly published = new Set<string>(),
   ) {}
 
   async findByRequestId(requestId: string) {
@@ -46,8 +48,24 @@ class MapCommandStore implements CommandStore {
     return { status: 'correlated', command };
   }
 
+  async markPublished(commandId: string) {
+    this.published.add(commandId);
+  }
+
+  async listUndispatched(now: Date, decidedBefore: Date, limit: number) {
+    return [...this.byRequest.values()]
+      .filter((command) =>
+        !this.published.has(command.commandId) &&
+        !this.acked.has(command.commandId) &&
+        Date.parse(command.expiresAt) > now.getTime() &&
+        Date.parse(command.timestamp) <= decidedBefore.getTime())
+      .slice(0, limit);
+  }
+
   clone(): MapCommandStore {
-    return new MapCommandStore(new Map(this.byRequest), new Map(this.byId), new Map(this.acked));
+    return new MapCommandStore(
+      new Map(this.byRequest), new Map(this.byId), new Map(this.acked), new Set(this.published),
+    );
   }
 
   restore(other: MapCommandStore): void {
@@ -57,6 +75,8 @@ class MapCommandStore implements CommandStore {
     for (const [key, value] of other.byId) this.byId.set(key, value);
     this.acked.clear();
     for (const [key, value] of other.acked) this.acked.set(key, value);
+    this.published.clear();
+    for (const id of other.published) this.published.add(id);
   }
 }
 
@@ -148,12 +168,23 @@ function setup() {
   const repository = new InMemoryAccessRepository();
   const qr = new ValidateQrCredentialUseCase(clock, signer);
   const bus = new RecordingBus();
+  const publish = new PublishCommandUseCase(repository.store, bus, clock, ids);
   const useCase = new RequestQrAccessUseCase(
     new DecideAccessUseCase(repository, clock, qr, ids),
-    new PublishCommandUseCase(repository.store, bus, clock, ids),
+    publish,
     ids,
     repository,
+    silentLogger,
   );
+  // Um relay novo por chamada simula o worker reiniciado sobre o mesmo banco.
+  const relay = () =>
+    new DispatchPendingCommandsUseCase(
+      repository.store,
+      repository,
+      new PublishCommandUseCase(repository.store, bus, clock, ids),
+      clock,
+      silentLogger,
+    );
   const token = new IssueQrCredentialUseCase(clock, ids, signer).execute(TERMINAL).token;
   const request = {
     requestId: REQUEST_ID,
@@ -162,8 +193,20 @@ function setup() {
     qrToken: token,
     position: { latitude: -23, longitude: -45 },
   };
-  return { useCase, repository, bus, request };
+  return { useCase, repository, bus, request, clock, relay };
 }
+
+function failTransport(bus: RecordingBus): () => void {
+  const publish = bus.publish.bind(bus);
+  bus.publish = () => Promise.reject(new Error('broker fora'));
+  return () => {
+    bus.publish = publish;
+  };
+}
+
+const after = (clock: FixedClock, ms: number) => {
+  clock.date = new Date(NOW.getTime() + ms);
+};
 
 const published = (bus: RecordingBus, index: number) => bus.published[index]?.message as CommandMessage;
 
@@ -196,12 +239,12 @@ describe('DT-02: pedido QR idempotente', () => {
 
   it('repetir apos falha de publicacao nao consome a autorizacao de novo', async () => {
     const { useCase, repository, bus, request } = setup();
-    const publish = bus.publish.bind(bus);
-    bus.publish = () => Promise.reject(new Error('broker fora'));
+    const restore = failTransport(bus);
 
-    await expect(useCase.execute(request)).rejects.toThrow('broker fora');
+    const first = await useCase.execute(request);
+    expect(first).toMatchObject({ decision: 'GRANTED', commandPublished: false });
     const persisted = repository.store.byRequest.get(REQUEST_ID);
-    bus.publish = publish;
+    restore();
 
     const retry = await useCase.execute(request);
 
@@ -217,5 +260,71 @@ describe('DT-02: pedido QR idempotente', () => {
     await useCase.execute(request);
     await expect(useCase.execute({ ...request, userId: 'outro-usuario' }))
       .rejects.toMatchObject({ code: 'CONFLICT' });
+  });
+});
+
+describe('DT-13: relay recupera a publicacao QR apos falha de transporte', () => {
+  it('entrega a intencao pendente sem novo consumo e com o mesmo commandId e prazo', async () => {
+    const { useCase, repository, bus, request, clock, relay } = setup();
+    const restore = failTransport(bus);
+    await useCase.execute(request);
+    const persisted = repository.store.byRequest.get(REQUEST_ID);
+
+    // Broker ainda fora: o ciclo para e a intencao continua pendente.
+    after(clock, 2_000);
+    expect(await relay().execute()).toMatchObject({ published: 0, interrupted: true });
+
+    restore();
+    after(clock, 3_000);
+    // Relay novo: mesmo resultado depois de reiniciar o worker.
+    expect(await relay().execute()).toMatchObject({ published: 1, interrupted: false });
+
+    expect(bus.published).toHaveLength(1);
+    expect(published(bus, 0)).toEqual(persisted);
+    expect(repository.consumeCount()).toBe(1);
+    expect(await relay().execute()).toMatchObject({ published: 0 });
+    expect(bus.published).toHaveLength(1);
+  });
+
+  it('nao republica o que ja foi entregue no pedido', async () => {
+    const { useCase, bus, request, clock, relay } = setup();
+    await useCase.execute(request);
+
+    after(clock, 2_000);
+    expect(await relay().execute()).toMatchObject({ published: 0 });
+    expect(bus.published).toHaveLength(1);
+  });
+
+  it('espera a folga antes de disputar com a publicacao em curso', async () => {
+    const { useCase, bus, request, relay } = setup();
+    const restore = failTransport(bus);
+    await useCase.execute(request);
+    restore();
+
+    expect(await relay().execute()).toMatchObject({ published: 0 });
+    expect(bus.published).toHaveLength(0);
+  });
+
+  it('nunca publica abertura vencida', async () => {
+    const { useCase, bus, request, clock, relay } = setup();
+    const restore = failTransport(bus);
+    await useCase.execute(request);
+    restore();
+
+    after(clock, 10_000);
+    expect(await relay().execute()).toMatchObject({ published: 0 });
+    expect(bus.published).toHaveLength(0);
+  });
+
+  it('nao publica para terminal ou local desativado', async () => {
+    const { useCase, repository, bus, request, clock, relay } = setup();
+    const restore = failTransport(bus);
+    await useCase.execute(request);
+    restore();
+    repository.dispatchable = false;
+
+    after(clock, 2_000);
+    expect(await relay().execute()).toMatchObject({ published: 0, skipped: 1 });
+    expect(bus.published).toHaveLength(0);
   });
 });
