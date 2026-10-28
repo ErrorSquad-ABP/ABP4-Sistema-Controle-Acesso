@@ -879,3 +879,109 @@ describe('US-19 + DT-02: pedido QR assinado, comando persistido e ACK', () => {
     expect(AccessEventPage.parse(await mine.json()).items.length).toBeGreaterThan(0);
   });
 });
+
+/** API em outra porta e sem broker: toda publicacao de comando falha no transporte. */
+async function launchApiWithoutBroker() {
+  const port = await freePort();
+  const deadBroker = `mqtt://127.0.0.1:${await freePort()}`;
+  const apiProcess = launch('server', { PORT: String(port), MQTT_URL: deadBroker });
+  const url = `http://127.0.0.1:${port}`;
+  await waitFor(
+    async () => {
+      if (apiProcess.child.exitCode !== null) throw new Error(apiProcess.output());
+      try {
+        return (await fetch(`${url}/health`)).ok;
+      } catch {
+        return false;
+      }
+    },
+    Boolean,
+  );
+  const requestQr = async (body: unknown) => {
+    const response = await fetch(`${url}/api/v1/access-events/qr`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${memberToken}`, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    expect(response.status, await response.clone().text()).toBe(200);
+    return AccessResult.parse(await response.json());
+  };
+  return { child: apiProcess.child, output: apiProcess.output, requestQr };
+}
+
+async function usedCount(): Promise<number> {
+  return (
+    await pool.query('SELECT "usedCount" FROM "Authorization" WHERE id=$1', [
+      'a1000000-0000-4000-8000-000000000004',
+    ])
+  ).rows[0].usedCount as number;
+}
+
+describe('DT-13: publicacao QR recuperada apos falha de transporte', () => {
+  it('API sem broker libera e o worker entrega o mesmo comando sem novo consumo', async () => {
+    const api = await launchApiWithoutBroker();
+    try {
+      const qr = await freshQr();
+      const requestId = randomUUID();
+      const before = await usedCount();
+
+      const result = await api.requestQr({ terminalId: TERMINAL, qrToken: qr.token, position: DEMO_LOCATION, requestId });
+      expect(result.decision).toBe('GRANTED');
+      expect(api.output()).toContain('publicacao do comando adiada para o relay');
+
+      const command = await waitCommandAck(requestId);
+      expect(command?.ackStatus).toBe('executed');
+      expect(receivedCommands.filter((sent) => sent.commandId === command?.payload.commandId))
+        .toEqual([command?.payload]);
+      expect(await usedCount()).toBe(before + 1);
+    } finally {
+      await stopChild(api.child);
+    }
+  });
+
+  it('intencao pendente sobrevive ao reinicio do worker dentro do prazo', async () => {
+    const api = await launchApiWithoutBroker();
+    try {
+      const qr = await freshQr();
+      await stopChild(worker);
+      const requestId = randomUUID();
+      const before = await usedCount();
+
+      const result = await api.requestQr({ terminalId: TERMINAL, qrToken: qr.token, position: DEMO_LOCATION, requestId });
+      expect(result.decision).toBe('GRANTED');
+      const pending = await commandRow(requestId);
+      expect(Date.parse(pending!.payload.expiresAt)).toBeGreaterThan(Date.now());
+
+      await startWorker();
+      const command = await waitCommandAck(requestId);
+      expect(command?.payload).toEqual(pending?.payload);
+      expect(command?.ackStatus).toBe('executed');
+      expect(await usedCount()).toBe(before + 1);
+    } finally {
+      await stopChild(api.child);
+      if (worker.exitCode !== null || worker.signalCode !== null) await startWorker();
+    }
+  });
+
+  it('nao entrega abertura pendente para terminal desativado nem depois do prazo', async () => {
+    const api = await launchApiWithoutBroker();
+    try {
+      const qr = await freshQr();
+      const requestId = randomUUID();
+      const result = await api.requestQr({ terminalId: TERMINAL, qrToken: qr.token, position: DEMO_LOCATION, requestId });
+      expect(result.decision).toBe('GRANTED');
+      await pool.query('UPDATE "Terminal" SET active=false WHERE id=$1', [TERMINAL]);
+      const pending = await commandRow(requestId);
+      try {
+        await waitFor(() => Date.now(), (now) => now > Date.parse(pending!.payload.expiresAt), 15_000);
+      } finally {
+        await pool.query('UPDATE "Terminal" SET active=true WHERE id=$1', [TERMINAL]);
+      }
+      // Reativado depois do prazo: o relay continua sem publicar.
+      await delay(2_500);
+      expect(receivedCommands.filter((sent) => sent.commandId === pending?.payload.commandId)).toHaveLength(0);
+    } finally {
+      await stopChild(api.child);
+    }
+  });
+});
