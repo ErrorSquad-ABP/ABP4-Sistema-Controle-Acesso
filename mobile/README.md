@@ -9,6 +9,7 @@ lib/
 ├─ main.dart                 ProviderScope + runApp
 ├─ app.dart                  MaterialApp.router: temas, themeMode, pt-BR e router via Riverpod
 ├─ core/
+│  ├─ clock.dart             relógio injetável (clockProvider)
 │  ├─ theme/                 tokens e ThemeData do design system
 │  │  ├─ app_colors.dart     AppPalette (ThemeExtension): base monocromática + feedback
 │  │  ├─ app_typography.dart escala Figtree (Display 32 … Micro 11)
@@ -42,7 +43,7 @@ Sem `API_BASE_URL`, o app usa o backend de produção (`https://abp-4-sistema-co
 | Comando | O que faz |
 |---|---|
 | `flutter analyze` | lints (`flutter_lints` + regras extras em `analysis_options.yaml`) |
-| `flutter test` | widget test do app e testes do tema |
+| `flutter test` | testes do app, do tema, do login/sessão e do scanner |
 | `dart format lib test` | formatação |
 | `flutter build apk` | build Android (exige Android SDK) |
 | `flutter build web` | build web |
@@ -63,18 +64,21 @@ A fonte Figtree é empacotada no app (declarada no `pubspec.yaml`): funciona off
 
 ## Login e sessão (US-27)
 
-O app abre em `/carregando` enquanto restaura a sessão salva e depois segue para a Home (logado) ou para `/login`.
+O app abre em `/loading` (estado "carregando" do Figma) enquanto restaura a sessão salva e depois segue para a Home (logado) ou para `/login`.
 
-- **Login**: o formulário valida o `LoginRequest` da US-06 (e-mail de até 254 caracteres, normalizado para minúsculas; senha de 1 a 72, preservada) e chama `POST /api/v1/auth/login` (`HttpAuthGateway`). Cada falha tem mensagem própria em `FeedbackBanner`: credencial recusada ou conta desativada (401), entrada recusada (400), muitas tentativas (429), serviço fora do ar (5xx), sem conexão/tempo esgotado e resposta fora do contrato. A recuperação de senha orienta procurar a administração, pois não há endpoint no contrato v1.
-- **Sessão**: `SessionController` (`sessionControllerProvider`) guarda `AuthSession` (JWT, vencimento calculado de `expiresIn` e usuário). `SecureSessionStore` persiste em `flutter_secure_storage` (Keystore no Android); a senha nunca é gravada. Valor corrompido é descartado e pede novo login.
+- **Login**: tela Entrar do Figma (inclusive o rodapé "ERRORSQUAD · FATEC"). O formulário valida o `LoginRequest` da US-06 (e-mail de até 254 caracteres, normalizado para minúsculas; senha de 1 a 72, preservada) e chama `POST /api/v1/auth/login` (`HttpAuthGateway`). Cada falha tem mensagem própria em `FeedbackBanner`: credencial recusada ou conta desativada (401), entrada recusada (400), muitas tentativas (429), serviço fora do ar (5xx), sem conexão/tempo esgotado e resposta fora do contrato. A recuperação de senha orienta procurar a administração, pois não há endpoint no contrato v1.
+- **Sessão**: `SessionController` (`sessionControllerProvider`) mantém um `SessionState`: a `AuthSession` ativa (JWT, vencimento calculado de `expiresIn` e usuário) ou, deslogado, o motivo de a sessão anterior ter acabado. `currentSessionProvider` expõe só a sessão ativa. `SecureSessionStore` persiste em `flutter_secure_storage` (Keystore no Android); a senha nunca é gravada e valor corrompido é descartado. Se o Keystore falhar ao gravar, o login vale só em memória; se falhar ao apagar, a saída acontece mesmo assim.
 - **Restauração**: sessão vencida é apagada sem chamar o backend; válida é conferida em `GET /auth/me` (401 apaga a sessão; sem rede mantém até vencer) e atualiza o usuário salvo.
-- **Expiração e saída**: um timer encerra a sessão quando o token vence (com 30 s de folga) e o router volta ao login. "Sair", na Home, pede confirmação e apaga a sessão local; o JWT é stateless, então não há chamada de logout no backend.
-- **Para as próximas telas** (US-28/US-29): leia o token em `ref.read(sessionControllerProvider).value?.accessToken`; numa resposta 401, chame `ref.read(sessionControllerProvider.notifier).logout()`.
-- **Testes**: `test/features/auth/fakes.dart` traz `FakeAuthGateway`, `InMemorySessionStore` e `authOverrides()`; todo teste que monta o `App` precisa desses overrides (o `flutter_secure_storage` real não responde no `flutter test`).
+- **Expiração**: um timer encerra a sessão quando o token vence (com 30 s de folga), e a volta do app do segundo plano confere de novo (o timer não conta o tempo com o aparelho suspenso).
+- **Aviso no login**: sessão vencida mostra "Sua sessão expirou. Entre novamente."; recusada pelo backend, "Sua sessão foi encerrada. Entre novamente.". O e-mail vem preenchido e o aviso some na próxima tentativa. A saída pedida pelo usuário não gera aviso.
+- **Saída**: o botão "Sair da conta" fica provisoriamente na Home, com confirmação; no Figma ele mora no Perfil, que entra com o shell da US-28. O JWT é stateless, então não há chamada de logout no backend.
+- **Rotas protegidas das próximas telas** (US-28, US-29, admin): use `authenticatedClientProvider` no lugar do `httpClientProvider`. Ele põe o `Authorization: Bearer` da sessão e, numa resposta 401, encerra a sessão com o aviso de sessão encerrada; sem sessão, lança `AuthFailure(unauthorized)` sem fazer a requisição.
+- **Android**: `allowBackup="false"` e `data_extraction_rules.xml` tiram a sessão do backup e da transferência entre aparelhos (a chave do Keystore não vai junto).
+- **Testes**: `test/features/auth/fakes.dart` traz `FakeAuthGateway`, `InMemorySessionStore` (com falhas simuladas do Keystore), `FakeClock` e `authOverrides()`. Todo teste que monta o `App` precisa desses overrides, porque o `flutter_secure_storage` real não responde no `flutter test`.
 
 ## Rotas
 
-Declaradas em `lib/core/router/app_router.dart`. Para uma tela nova: crie a página em `lib/features/<feature>/`, adicione o caminho em `AppRoutes` e um `GoRoute` na lista. O `sessionRedirect` protege toda rota que não seja `/login` ou `/carregando`: deslogado vai ao login, logado sai das telas públicas. O router não é recriado quando a sessão muda: o `refreshListenable` reavalia o redirect.
+Declaradas em `lib/core/router/app_router.dart`. Para uma tela nova: crie a página em `lib/features/<feature>/`, adicione o caminho em `AppRoutes` e um `GoRoute` na lista. O `sessionRedirect` protege toda rota que não seja `/login` ou `/loading`: deslogado vai ao login, logado sai das telas públicas. O router não é recriado quando a sessão muda: o `refreshListenable` reavalia o redirect.
 
 O antigo **modo demonstração** (Home sem autenticar) saiu com o login real.
 

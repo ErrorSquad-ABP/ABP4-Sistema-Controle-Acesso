@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:controle_acesso/app.dart';
+import 'package:controle_acesso/core/widgets/feedback_banner.dart';
 import 'package:controle_acesso/features/auth/auth_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -89,34 +90,54 @@ void main() {
     expect(find.text('Condômino · maria.souza@exemplo.com'), findsOneWidget);
   });
 
-  testWidgets('credencial recusada mostra erro e continua no login', (
+  testWidgets('cada falha do login tem mensagem e tom próprios', (
     tester,
   ) async {
+    const cases = {
+      AuthFailureReason.unauthorized: (
+        'E-mail ou senha incorretos',
+        FeedbackTone.error,
+      ),
+      AuthFailureReason.invalidRequest: (
+        'Confira o e-mail e a senha',
+        FeedbackTone.error,
+      ),
+      AuthFailureReason.tooManyRequests: (
+        'Muitas tentativas seguidas',
+        FeedbackTone.warning,
+      ),
+      AuthFailureReason.unavailable: (
+        'O serviço de acesso está fora do ar',
+        FeedbackTone.warning,
+      ),
+      AuthFailureReason.network: (
+        'Sem conexão com o servidor',
+        FeedbackTone.warning,
+      ),
+      AuthFailureReason.unexpected: (
+        'Não foi possível entrar',
+        FeedbackTone.error,
+      ),
+    };
+    final gateway = FakeAuthGateway();
     final store = InMemorySessionStore();
-    await pumpApp(
-      tester,
-      gateway: FakeAuthGateway(loginFailure: AuthFailureReason.unauthorized),
-      store: store,
-    );
+    await pumpApp(tester, gateway: gateway, store: store);
 
-    await submit(tester);
-    await tester.pumpAndSettle();
+    for (final MapEntry(key: reason, value: (message, tone)) in cases.entries) {
+      gateway.loginFailure = reason;
+      await submit(tester);
+      await tester.pumpAndSettle();
 
-    expect(find.textContaining('E-mail ou senha incorretos'), findsOneWidget);
-    expect(find.text('Bem-vindo de volta'), findsOneWidget);
-    expect(find.text('Entrar'), findsOneWidget);
-    expect(store.session, isNull);
+      final banner = tester.widget<FeedbackBanner>(find.byType(FeedbackBanner));
+      expect(banner.message, startsWith(message), reason: reason.name);
+      expect(banner.tone, tone, reason: reason.name);
+      expect(find.text('Bem-vindo de volta'), findsOneWidget);
+      expect(store.session, isNull);
+    }
   });
 
-  testWidgets('sem conexão orienta verificar a internet', (tester) async {
-    await pumpApp(
-      tester,
-      gateway: FakeAuthGateway(loginFailure: AuthFailureReason.network),
-    );
-
-    await submit(tester);
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('Sem conexão com o servidor'), findsOneWidget);
+  testWidgets('mostra o rodapé do Figma', (tester) async {
+    await pumpApp(tester);
+    expect(find.text('ERRORSQUAD · FATEC'), findsOneWidget);
   });
 }

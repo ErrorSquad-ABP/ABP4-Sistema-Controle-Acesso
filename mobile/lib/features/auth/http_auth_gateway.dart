@@ -4,11 +4,9 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import '../../core/clock.dart';
 import '../../core/network/api.dart';
 import 'auth_contract.dart';
-
-/// Relógio injetável: a validade da sessão é contada a partir dele.
-final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 final authGatewayProvider = Provider<AuthGateway>(
   (ref) => HttpAuthGateway(
@@ -77,6 +75,9 @@ class HttpAuthGateway implements AuthGateway {
       throw const AuthFailure(AuthFailureReason.network);
     } on http.ClientException {
       throw const AuthFailure(AuthFailureReason.network);
+    } on FormatException {
+      // API_BASE_URL que não forma uma URL válida.
+      throw const AuthFailure(AuthFailureReason.unexpected);
     }
 
     final status = response.statusCode;

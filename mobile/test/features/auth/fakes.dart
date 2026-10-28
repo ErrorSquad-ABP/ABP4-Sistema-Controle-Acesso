@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:controle_acesso/core/clock.dart';
 import 'package:controle_acesso/features/auth/auth_contract.dart';
 import 'package:controle_acesso/features/auth/http_auth_gateway.dart';
 import 'package:controle_acesso/features/auth/session_store.dart';
@@ -30,20 +31,42 @@ class InMemorySessionStore implements SessionStore {
 
   AuthSession? session;
 
-  @override
-  Future<AuthSession?> read() async => session;
+  /// Simulam o Keystore indisponível.
+  bool failWrite = false;
+  bool failClear = false;
+
+  /// Quando definido, a leitura só responde ao completar este completer.
+  Completer<void>? readGate;
 
   @override
-  Future<void> write(AuthSession session) async => this.session = session;
+  Future<AuthSession?> read() async {
+    await readGate?.future;
+    return session;
+  }
 
   @override
-  Future<void> clear() async => session = null;
+  Future<void> write(AuthSession session) async {
+    if (failWrite) throw Exception('keystore');
+    this.session = session;
+  }
+
+  @override
+  Future<void> clear() async {
+    if (failClear) throw Exception('keystore');
+    session = null;
+  }
+}
+
+/// Relógio que o teste avança.
+class FakeClock {
+  DateTime now = fixedNow;
+
+  void advance(Duration by) => now = now.add(by);
 }
 
 class FakeAuthGateway implements AuthGateway {
-  FakeAuthGateway({this.loginResult, this.loginFailure, this.meFailure});
+  FakeAuthGateway({this.loginFailure, this.meFailure});
 
-  AuthSession? loginResult;
   AuthFailureReason? loginFailure;
   AuthFailureReason? meFailure;
   AuthUser meUser = maria;
@@ -59,7 +82,7 @@ class FakeAuthGateway implements AuthGateway {
     logins.add(request);
     await loginGate?.future;
     if (loginFailure != null) throw AuthFailure(loginFailure!);
-    return loginResult ?? sessionFor();
+    return sessionFor();
   }
 
   @override
@@ -73,8 +96,11 @@ class FakeAuthGateway implements AuthGateway {
 List<Override> authOverrides({
   FakeAuthGateway? gateway,
   InMemorySessionStore? store,
+  FakeClock? clock,
 }) => [
   authGatewayProvider.overrideWithValue(gateway ?? FakeAuthGateway()),
   sessionStoreProvider.overrideWithValue(store ?? InMemorySessionStore()),
-  clockProvider.overrideWithValue(() => fixedNow),
+  clockProvider.overrideWithValue(
+    clock == null ? () => fixedNow : () => clock.now,
+  ),
 ];

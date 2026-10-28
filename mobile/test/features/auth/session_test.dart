@@ -4,6 +4,7 @@ import 'package:controle_acesso/core/router/app_router.dart';
 import 'package:controle_acesso/features/auth/auth_contract.dart';
 import 'package:controle_acesso/features/auth/session_controller.dart';
 import 'package:controle_acesso/features/auth/session_store.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,92 +12,115 @@ import 'package:flutter_test/flutter_test.dart';
 import 'fakes.dart';
 
 void main() {
+  // O controller escuta o ciclo de vida do app.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   ProviderContainer containerWith({
     FakeAuthGateway? gateway,
     InMemorySessionStore? store,
+    FakeClock? clock,
   }) => ProviderContainer.test(
-    overrides: authOverrides(gateway: gateway, store: store),
+    overrides: authOverrides(gateway: gateway, store: store, clock: clock),
   );
 
-  group('SessionController', () {
-    test('sem sessão salva começa deslogado', () async {
-      final container = containerWith();
-      expect(await container.read(sessionControllerProvider.future), isNull);
+  Future<SessionState> restored(ProviderContainer container) =>
+      container.read(sessionControllerProvider.future);
+
+  SessionState current(ProviderContainer container) =>
+      container.read(sessionControllerProvider).requireValue;
+
+  final request = LoginRequest(
+    email: 'maria.souza@exemplo.com',
+    password: 'senha-forte-123',
+  );
+
+  group('restauração', () {
+    test('sem sessão salva começa deslogado e sem aviso', () async {
+      final state = await restored(containerWith());
+      expect(state.session, isNull);
+      expect(state.ended, isNull);
     });
 
-    test(
-      'restaura a sessão salva e atualiza o usuário pelo /auth/me',
-      () async {
-        final gateway = FakeAuthGateway()
-          ..meUser = const AuthUser(
-            id: 'id',
-            name: 'Maria S. Lima',
-            email: 'maria.souza@exemplo.com',
-            role: UserRole.resident,
-          );
-        final store = InMemorySessionStore(sessionFor());
-        final container = containerWith(gateway: gateway, store: store);
+    test('confere a sessão no /auth/me e atualiza o usuário', () async {
+      final gateway = FakeAuthGateway()
+        ..meUser = const AuthUser(
+          id: 'id',
+          name: 'Maria S. Lima',
+          email: 'maria.souza@exemplo.com',
+          role: UserRole.resident,
+        );
+      final store = InMemorySessionStore(sessionFor());
+      final container = containerWith(gateway: gateway, store: store);
 
-        final session = await container.read(sessionControllerProvider.future);
+      final state = await restored(container);
 
-        expect(gateway.meTokens, ['jwt-maria']);
-        expect(session?.user.name, 'Maria S. Lima');
-        expect(store.session?.user.name, 'Maria S. Lima');
-      },
-    );
+      expect(gateway.meTokens, ['jwt-maria']);
+      expect(state.session?.user.name, 'Maria S. Lima');
+      expect(store.session?.user.name, 'Maria S. Lima');
+      expect(container.read(currentSessionProvider), same(state.session));
+    });
 
-    test('descarta sessão vencida sem chamar o backend', () async {
+    test('sessão vencida é apagada sem chamar o backend', () async {
       final gateway = FakeAuthGateway();
       final store = InMemorySessionStore(
         sessionFor(validFor: const Duration(seconds: 10)),
       );
-      final container = containerWith(gateway: gateway, store: store);
 
-      expect(await container.read(sessionControllerProvider.future), isNull);
+      final state = await restored(
+        containerWith(gateway: gateway, store: store),
+      );
+
+      expect(state.session, isNull);
+      expect(state.ended?.reason, SessionEndReason.expired);
+      expect(state.ended?.email, maria.email);
       expect(gateway.meTokens, isEmpty);
       expect(store.session, isNull);
     });
 
-    test('descarta sessão recusada pelo backend (401)', () async {
+    test('sessão recusada pelo backend (401) é apagada', () async {
       final store = InMemorySessionStore(sessionFor());
-      final container = containerWith(
-        gateway: FakeAuthGateway(meFailure: AuthFailureReason.unauthorized),
-        store: store,
+
+      final state = await restored(
+        containerWith(
+          gateway: FakeAuthGateway(meFailure: AuthFailureReason.unauthorized),
+          store: store,
+        ),
       );
 
-      expect(await container.read(sessionControllerProvider.future), isNull);
+      expect(state.session, isNull);
+      expect(state.ended?.reason, SessionEndReason.revoked);
       expect(store.session, isNull);
     });
 
     test('sem rede mantém a sessão salva até vencer', () async {
       final store = InMemorySessionStore(sessionFor());
-      final container = containerWith(
-        gateway: FakeAuthGateway(meFailure: AuthFailureReason.network),
-        store: store,
+
+      final state = await restored(
+        containerWith(
+          gateway: FakeAuthGateway(meFailure: AuthFailureReason.network),
+          store: store,
+        ),
       );
 
-      final session = await container.read(sessionControllerProvider.future);
-      expect(session?.accessToken, 'jwt-maria');
+      expect(state.session?.accessToken, 'jwt-maria');
       expect(store.session, isNotNull);
     });
+  });
 
-    test('login persiste a sessão e logout apaga', () async {
+  group('login e saída', () {
+    test('login persiste a sessão e logout apaga sem aviso', () async {
       final store = InMemorySessionStore();
       final container = containerWith(store: store);
-      await container.read(sessionControllerProvider.future);
+      await restored(container);
       final controller = container.read(sessionControllerProvider.notifier);
 
-      await controller.login(
-        LoginRequest(email: 'maria.souza@exemplo.com', password: 'x'),
-      );
-      expect(
-        container.read(sessionControllerProvider).value?.user.id,
-        maria.id,
-      );
+      await controller.login(request);
+      expect(current(container).session?.user.id, maria.id);
       expect(store.session?.accessToken, 'jwt-maria');
 
       await controller.logout();
-      expect(container.read(sessionControllerProvider).value, isNull);
+      expect(current(container).session, isNull);
+      expect(current(container).ended, isNull);
       expect(store.session, isNull);
     });
 
@@ -106,17 +130,99 @@ void main() {
         gateway: FakeAuthGateway(loginFailure: AuthFailureReason.unauthorized),
         store: store,
       );
-      await container.read(sessionControllerProvider.future);
+      await restored(container);
 
       await expectLater(
-        container
-            .read(sessionControllerProvider.notifier)
-            .login(LoginRequest(email: 'a@exemplo.com', password: 'x')),
+        container.read(sessionControllerProvider.notifier).login(request),
         throwsA(isA<AuthFailure>()),
       );
-      expect(container.read(sessionControllerProvider).value, isNull);
+      expect(current(container).session, isNull);
       expect(store.session, isNull);
     });
+
+    test('Keystore sem gravar ainda deixa entrar, só em memória', () async {
+      final store = InMemorySessionStore()..failWrite = true;
+      final container = containerWith(store: store);
+      await restored(container);
+
+      await container.read(sessionControllerProvider.notifier).login(request);
+
+      expect(current(container).session?.accessToken, 'jwt-maria');
+      expect(store.session, isNull);
+    });
+
+    test('Keystore sem apagar não prende o usuário logado', () async {
+      final store = InMemorySessionStore(sessionFor())..failClear = true;
+      final container = containerWith(store: store);
+      await restored(container);
+
+      await container.read(sessionControllerProvider.notifier).logout();
+
+      expect(current(container).session, isNull);
+    });
+  });
+
+  group('encerramento pelo backend e pelo relógio', () {
+    test('revoke encerra a sessão com aviso', () async {
+      final container = containerWith(
+        store: InMemorySessionStore(sessionFor()),
+      );
+      await restored(container);
+
+      await container
+          .read(sessionControllerProvider.notifier)
+          .revoke('jwt-maria');
+
+      expect(current(container).session, isNull);
+      expect(current(container).ended?.reason, SessionEndReason.revoked);
+    });
+
+    test('revoke de um token antigo não derruba a sessão nova', () async {
+      final container = containerWith(
+        store: InMemorySessionStore(sessionFor()),
+      );
+      await restored(container);
+
+      await container
+          .read(sessionControllerProvider.notifier)
+          .revoke('jwt-de-outra-sessao');
+
+      expect(current(container).session?.accessToken, 'jwt-maria');
+    });
+
+    test('dismissNotice tira o aviso da sessão anterior', () async {
+      final container = containerWith(
+        store: InMemorySessionStore(
+          sessionFor(validFor: const Duration(seconds: 1)),
+        ),
+      );
+      await restored(container);
+      expect(current(container).ended, isNotNull);
+
+      container.read(sessionControllerProvider.notifier).dismissNotice();
+
+      expect(current(container).ended, isNull);
+    });
+
+    test(
+      'ao voltar do segundo plano, token vencido encerra a sessão',
+      () async {
+        final clock = FakeClock();
+        final store = InMemorySessionStore(sessionFor());
+        final container = containerWith(store: store, clock: clock);
+        await restored(container);
+
+        clock.advance(const Duration(hours: 2));
+        final binding = TestWidgetsFlutterBinding.instance;
+        binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+        binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+        await pumpEventQueue();
+
+        expect(current(container).session, isNull);
+        expect(current(container).ended?.reason, SessionEndReason.expired);
+        expect(store.session, isNull);
+      },
+    );
   });
 
   test('AuthSession vence com a folga de segurança', () {
@@ -158,9 +264,9 @@ void main() {
   });
 
   group('sessionRedirect', () {
-    const loading = AsyncLoading<AuthSession?>();
-    const loggedOut = AsyncData<AuthSession?>(null);
-    final loggedIn = AsyncData<AuthSession?>(sessionFor());
+    const loading = AsyncLoading<SessionState>();
+    const loggedOut = AsyncData(SessionState.signedOut());
+    final loggedIn = AsyncData(SessionState.signedIn(sessionFor()));
 
     test('segura na abertura enquanto restaura', () {
       expect(sessionRedirect(loading, AppRoutes.scan), AppRoutes.loading);

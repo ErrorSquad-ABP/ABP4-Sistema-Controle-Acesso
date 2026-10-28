@@ -22,6 +22,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   (FeedbackTone, String)? _message;
 
   @override
+  void initState() {
+    super.initState();
+    // Sessão encerrada sem o usuário pedir: explica o motivo e já traz o
+    // e-mail preenchido.
+    final ended = ref.read(sessionControllerProvider).value?.ended;
+    if (ended != null) {
+      _email.text = ended.email;
+      _message = (
+        FeedbackTone.warning,
+        switch (ended.reason) {
+          SessionEndReason.expired => 'Sua sessão expirou. Entre novamente.',
+          SessionEndReason.revoked =>
+            'Sua sessão foi encerrada. Entre novamente.',
+        },
+      );
+    }
+  }
+
+  @override
   void dispose() {
     _email.dispose();
     _password.dispose();
@@ -31,6 +50,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _submit() async {
     if (_loading) return;
     setState(() => _message = null);
+    ref.read(sessionControllerProvider.notifier).dismissNotice();
     if (!_form.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
     setState(() => _loading = true);
@@ -253,7 +273,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: AppSpacing.xl),
+                      Text(
+                        'ERRORSQUAD · FATEC',
+                        style: text.labelSmall,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
                     ],
                   ),
                 ),

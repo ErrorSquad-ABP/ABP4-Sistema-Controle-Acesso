@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_spacing.dart';
 
-/// Abertura do app enquanto a sessão salva é restaurada e conferida.
+/// Abertura do app enquanto a sessão salva é restaurada e conferida
+/// (estado "carregando" do Figma: indicador + texto).
 class SessionLoadingPage extends StatelessWidget {
   const SessionLoadingPage({super.key});
 
@@ -16,8 +17,6 @@ class SessionLoadingPage extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.verified_user_outlined, size: AppSpacing.lg),
-              const SizedBox(height: AppSpacing.md),
               const CircularProgressIndicator(),
               const SizedBox(height: AppSpacing.md),
               Text('Verificando sua sessão…', style: text.bodyMedium),

@@ -134,6 +134,18 @@ void main() {
     });
   });
 
+  test('API_BASE_URL inválida vira unexpected', () async {
+    final gateway = HttpAuthGateway(
+      client: MockClient((_) async => _json({}, 200)),
+      baseUrl: 'http://[::1',
+      now: () => fixedNow,
+    );
+    await expectLater(
+      gateway.login(request),
+      _failsWith(AuthFailureReason.unexpected),
+    );
+  });
+
   group('currentUser', () {
     test('envia o Bearer e devolve o usuário', () async {
       late http.Request sent;

@@ -1,18 +1,52 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/clock.dart';
 import 'auth_contract.dart';
 import 'http_auth_gateway.dart';
 import 'session_store.dart';
 
-/// Sessão do app: `AsyncLoading` enquanto restaura, `null` deslogado.
+enum SessionEndReason {
+  /// O token venceu.
+  expired,
+
+  /// O backend recusou o token (401): usuário desativado ou token inválido.
+  revoked,
+}
+
+/// Por que a sessão anterior acabou sem o usuário pedir; vira aviso no login.
+class SessionEnd {
+  const SessionEnd(this.reason, this.email);
+
+  final SessionEndReason reason;
+  final String email;
+}
+
+class SessionState {
+  const SessionState.signedIn(AuthSession this.session) : ended = null;
+
+  const SessionState.signedOut([this.ended]) : session = null;
+
+  final AuthSession? session;
+
+  /// Só preenchido quando a saída não foi pedida pelo usuário.
+  final SessionEnd? ended;
+}
+
+/// Sessão do app: `AsyncLoading` enquanto restaura a sessão salva.
 final sessionControllerProvider =
-    AsyncNotifierProvider<SessionController, AuthSession?>(
+    AsyncNotifierProvider<SessionController, SessionState>(
       SessionController.new,
     );
 
-class SessionController extends AsyncNotifier<AuthSession?> {
+/// Sessão ativa, ou `null` (deslogado ou ainda restaurando).
+final currentSessionProvider = Provider<AuthSession?>(
+  (ref) => ref.watch(sessionControllerProvider).value?.session,
+);
+
+class SessionController extends AsyncNotifier<SessionState> {
   Timer? _expiry;
 
   SessionStore get _store => ref.read(sessionStoreProvider);
@@ -20,63 +54,129 @@ class SessionController extends AsyncNotifier<AuthSession?> {
   DateTime _now() => ref.read(clockProvider)();
 
   @override
-  Future<AuthSession?> build() async {
-    ref.onDispose(() => _expiry?.cancel());
+  Future<SessionState> build() async {
+    // O timer não avança com o aparelho suspenso: confere de novo na volta.
+    final lifecycle = AppLifecycleListener(onResume: _checkExpiry);
+    ref.onDispose(() {
+      _expiry?.cancel();
+      lifecycle.dispose();
+    });
     try {
       return _activate(await _restore());
     } catch (_) {
       // Falha inesperada ao restaurar não pode prender o app na abertura.
-      return null;
+      return const SessionState.signedOut();
     }
   }
 
-  /// Autentica e persiste. Falhas sobem como [AuthFailure] para a tela.
+  /// Autentica e persiste. Falhas de autenticação sobem como [AuthFailure].
   Future<void> login(LoginRequest request) async {
     final session = await _gateway.login(request);
-    await _store.write(session);
+    try {
+      await _store.write(session);
+    } catch (error) {
+      // Credencial aceita: entra mesmo sem persistir; só não sobrevive ao
+      // fechamento do app.
+      debugPrint('Sessao nao persistida: ${error.runtimeType}');
+    }
     if (!ref.mounted) return;
-    state = AsyncData(_activate(session));
+    state = AsyncData(_activate(SessionState.signedIn(session)));
   }
 
-  /// Encerra a sessão local. O JWT é stateless: não há logout no backend.
-  Future<void> logout() async {
-    _expiry?.cancel();
-    await _store.clear();
-    if (!ref.mounted) return;
-    state = const AsyncData(null);
+  /// Saída pedida pelo usuário. O JWT é stateless: não há logout no backend.
+  Future<void> logout() => _end(null);
+
+  /// O backend recusou [accessToken]. Ignora o token de uma sessão que já
+  /// foi trocada por outra.
+  Future<void> revoke(String accessToken) async {
+    if (state.value?.session?.accessToken != accessToken) return;
+    await _end(SessionEndReason.revoked);
   }
 
-  Future<AuthSession?> _restore() async {
+  /// Tira o aviso da sessão anterior (nova tentativa de login).
+  void dismissNotice() {
+    if (state.value?.ended == null) return;
+    state = const AsyncData(SessionState.signedOut());
+  }
+
+  Future<SessionState> _restore() async {
     final stored = await _store.read();
-    if (stored == null) return null;
+    if (stored == null) return const SessionState.signedOut();
+    final email = stored.user.email;
     if (stored.isExpiredAt(_now())) {
-      await _store.clear();
-      return null;
+      await _clearStore();
+      return SessionState.signedOut(
+        SessionEnd(SessionEndReason.expired, email),
+      );
     }
     try {
-      // Confere no backend: usuário desativado ou token revogado cai aqui.
-      final user = await _gateway.currentUser(stored.accessToken);
-      final refreshed = stored.withUser(user);
-      await _store.write(refreshed);
-      return refreshed;
+      // Confere no backend: usuário desativado ou token recusado cai aqui.
+      final refreshed = stored.withUser(
+        await _gateway.currentUser(stored.accessToken),
+      );
+      try {
+        await _store.write(refreshed);
+      } catch (error) {
+        debugPrint('Sessao nao atualizada: ${error.runtimeType}');
+      }
+      return SessionState.signedIn(refreshed);
     } on AuthFailure catch (failure) {
       if (failure.reason == AuthFailureReason.unauthorized) {
-        await _store.clear();
-        return null;
+        await _clearStore();
+        return SessionState.signedOut(
+          SessionEnd(SessionEndReason.revoked, email),
+        );
       }
       // Sem rede ou backend fora: mantém a sessão até o token vencer.
-      return stored;
+      return SessionState.signedIn(stored);
+    }
+  }
+
+  Future<void> _end(SessionEndReason? reason) async {
+    _expiry?.cancel();
+    final session = state.value?.session;
+    // Estado primeiro: falha do armazenamento não pode manter ninguém logado.
+    state = AsyncData(
+      SessionState.signedOut(
+        reason == null || session == null
+            ? null
+            : SessionEnd(reason, session.user.email),
+      ),
+    );
+    await _clearStore();
+  }
+
+  Future<void> _clearStore() async {
+    try {
+      await _store.clear();
+    } catch (error) {
+      debugPrint('Sessao local nao apagada: ${error.runtimeType}');
+    }
+  }
+
+  void _checkExpiry() {
+    final current = state.value;
+    final session = current?.session;
+    if (session == null) return;
+    if (session.isExpiredAt(_now())) {
+      unawaited(_end(SessionEndReason.expired));
+    } else {
+      _activate(current!);
     }
   }
 
   /// Agenda a saída automática para quando o token vencer.
-  AuthSession? _activate(AuthSession? session) {
+  SessionState _activate(SessionState next) {
     _expiry?.cancel();
-    if (session == null) return null;
+    final session = next.session;
+    if (session == null) return next;
     final remaining = session.expiresAt
         .subtract(AuthSession.expirySkew)
         .difference(_now().toUtc());
-    _expiry = Timer(remaining.isNegative ? Duration.zero : remaining, logout);
-    return session;
+    _expiry = Timer(
+      remaining.isNegative ? Duration.zero : remaining,
+      () => unawaited(_end(SessionEndReason.expired)),
+    );
+    return next;
   }
 }

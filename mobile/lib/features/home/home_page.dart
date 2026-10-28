@@ -40,54 +40,63 @@ class HomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
-    final user = ref.watch(sessionControllerProvider).value?.user;
+    final user = ref.watch(currentSessionProvider)?.user;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Início'),
-        actions: [
-          IconButton(
-            tooltip: 'Sair',
-            onPressed: () => _confirmLogout(context, ref),
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Início')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.screen),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.shield_outlined, size: AppSpacing.lg),
-              const SizedBox(height: AppSpacing.md),
-              Text('CONTROLE DE ACESSO', style: textTheme.labelSmall),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                user == null ? 'Controle de acesso' : 'Olá, ${user.firstName}',
-                style: textTheme.displaySmall,
+        // Rola com fonte ampliada (RNF04) sem perder a centralização.
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.screen),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: (constraints.maxHeight - AppSpacing.screen * 2)
+                    .clamp(0, double.infinity),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                user == null
-                    ? 'Acesso simples. Segurança em cada detalhe.'
-                    : '${user.role.label} · ${user.email}',
-                style: textTheme.bodyMedium,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.shield_outlined, size: AppSpacing.lg),
+                  const SizedBox(height: AppSpacing.md),
+                  Text('CONTROLE DE ACESSO', style: textTheme.labelSmall),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    user == null
+                        ? 'Controle de acesso'
+                        : 'Olá, ${user.firstName}',
+                    style: textTheme.displaySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    user == null
+                        ? 'Acesso simples. Segurança em cada detalhe.'
+                        : '${user.role.label} · ${user.email}',
+                    style: textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  FilledButton.icon(
+                    onPressed: () => context.push(AppRoutes.scan),
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: const Text('Escanear QR'),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Lê o QR e registra a posição. A liberação do acesso entra na '
+                    'US-29.',
+                    style: textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  // Provisório: no Figma a saída fica no Perfil (shell da US-28).
+                  OutlinedButton.icon(
+                    onPressed: () => _confirmLogout(context, ref),
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Sair da conta'),
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpacing.xl),
-              FilledButton.icon(
-                onPressed: () => context.push(AppRoutes.scan),
-                icon: const Icon(Icons.qr_code_scanner),
-                label: const Text('Escanear QR'),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Lê o QR e registra a posição. A liberação do acesso entra na '
-                'US-29.',
-                style: textTheme.bodySmall,
-              ),
-            ],
+            ),
           ),
         ),
       ),
