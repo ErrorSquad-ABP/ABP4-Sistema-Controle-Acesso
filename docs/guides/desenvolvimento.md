@@ -17,7 +17,7 @@ Guia interno do ErrorSquad para o projeto ABP4. Vale para todo mundo que mexe no
 ## PRs
 
 - Título: `tipo: US-XX descricao` (ex.: `feat: US-03 esqueleto do backend`).
-- Corpo: descreva o que mudou e informe **uma linha `Card: US-XX — <link do card>`** — o `trello-link.yml` usa só essa linha (título e branch não vinculam). Para outros cards citados, use `Dependências:`; o vínculo automático significa **story entregue**, não dependência.
+- Corpo: descreva o que mudou e informe **uma linha `Card: US-XX — <link do card>`** (user story) ou **`Card: DT-XX — <link do card>`** (débito técnico) — o `trello-link.yml` usa só essa linha (título e branch não vinculam). Para outros cards citados, use `Dependências:`; o vínculo automático significa **card entregue**, não dependência.
 - **1 review mínimo** antes do merge, com CI verde.
 - PR pequeno e direto; se ficou grande, quebre em PRs menores.
 
@@ -31,7 +31,7 @@ Cada stack tem seu workflow. **Em PR os três rodam sempre** (são os checks obr
 | [`ci-mobile.yml`](../../.github/workflows/ci-mobile.yml) | `mobile/` | `ci-mobile-check` | `flutter pub get` → `flutter analyze` → `flutter test` |
 | [`ci-firmware.yml`](../../.github/workflows/ci-firmware.yml) | `firmware/` | `ci-firmware-build` | testes C++ host → `pio run` (com `config.h` copiado do `config.example.h`) |
 | [`cd-backend.yml`](../../.github/workflows/cd-backend.yml) | `backend/` | `cd-backend-check` · `cd-backend-deploy` (não obrigatórios) | **só push na `main`**: lint → typecheck → testes → build → deploy na Vercel → smoke test do `/health` público (guia em [`deploy.md`](deploy.md)) |
-| [`trello-link.yml`](../../.github/workflows/trello-link.yml) | — | — | anexa o PR ao card da linha `Card: US-XX` e comenta o status |
+| [`trello-link.yml`](../../.github/workflows/trello-link.yml) | — | — | anexa o PR ao card da linha `Card: US-XX` ou `Card: DT-XX` e comenta o status (também a cada push, via `synchronize`) |
 
 - O `ci-firmware-build` sempre exige os testes host e o build; ausência de `firmware/platformio.ini` ou do exemplo de configuração falha o check, sem skip.
 - Os quatro checks acima são obrigatórios na `main`, além de 1 aprovação. Merge com check vermelho ou pendente não passa.
@@ -55,7 +55,7 @@ Review não é carimbo: aponte o problema com o caminho do arquivo e o que você
 
 ## Rastreio
 
-`US-XX` no card do Trello → nome da branch → linha `Card: US-XX` do PR. A partir do card se chega ao código e do código se chega ao card, sempre.
+`US-XX` (ou `DT-XX`) no card do Trello → nome da branch → linha `Card: US-XX — <link>` (ou `Card: DT-XX — <link>`) do PR. A partir do card se chega ao código e do código se chega ao card, sempre.
 
 ## Segredos
 

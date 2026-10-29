@@ -2,7 +2,7 @@ name: trello-link
 
 on:
   pull_request:
-    types: [opened, edited, reopened, ready_for_review, closed]
+    types: [opened, edited, reopened, synchronize, ready_for_review, closed]
 
 permissions:
   contents: read
@@ -17,8 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      # Vinculo = story entregue pelo PR. Uma unica linha "Card: US-XX" no corpo;
-      # "Card: nenhuma" para manutencao sem story. Título/branch nao vinculam.
+      # Vinculo = card entregue pelo PR. Uma unica linha "Card: US-XX" (user story) ou
+      # "Card: DT-XX" (debito tecnico) no corpo; "Card: nenhuma" para manutencao sem
+      # card. Titulo/branch nao vinculam. `synchronize` repete o vinculo a cada push.
       - name: Extrair o card do PR
         id: refs
         env:
@@ -28,15 +29,15 @@ jobs:
           card_lines=$(printf '%s\n' "$BODY" | grep -iE '^[[:space:]]*card:' || true)
           line_count=$(printf '%s\n' "$card_lines" | grep -c . || true)
           card_line=$(printf '%s\n' "$card_lines" | head -n1 || true)
-          refs=$(printf '%s\n' "$card_line" | grep -oiE 'US-[0-9]+' | tr '[:lower:]' '[:upper:]' | sort -u || true)
+          refs=$(printf '%s\n' "$card_line" | grep -oiE '(US|DT)-[0-9]+' | tr '[:lower:]' '[:upper:]' | sort -u || true)
           count=$(printf '%s\n' "$refs" | grep -c . || true)
           if [ "$line_count" -eq 0 ] || [ "$line_count" -gt 1 ]; then
-            echo "::warning::Informe exatamente uma linha 'Card: US-XX' (ou 'Card: nenhuma'). PR nao vinculado."
+            echo "::warning::Informe exatamente uma linha 'Card: US-XX' ou 'Card: DT-XX' (ou 'Card: nenhuma'). PR nao vinculado."
             count=0
           elif [ "$count" -eq 0 ] && printf '%s' "$card_line" | grep -qi 'nenhuma'; then
-            echo "::notice::Card: nenhuma - PR sem vinculo de story."
+            echo "::notice::Card: nenhuma - PR sem vinculo de card."
           elif [ "$count" -ne 1 ]; then
-            echo "::warning::A linha Card precisa de um unico US-XX. PR nao vinculado."
+            echo "::warning::A linha Card precisa de um unico US-XX ou DT-XX. PR nao vinculado."
             count=0
           fi
           echo "count=$count" >> "$GITHUB_OUTPUT"
