@@ -1,4 +1,5 @@
 import { ValidateQrCredentialUseCase } from '../../application/terminal/qr-credential.use-cases.js';
+import { PurgeExpiredCommandsUseCase } from '../../application/terminal/purge-expired-commands.use-case.js';
 import type { AccessDecider } from '../../domain/ports/access-decider.js';
 import { PendingCommands } from '../../domain/terminal/pending-commands.js';
 import { SeenMessages } from '../../domain/terminal/seen-messages.js';
@@ -11,7 +12,9 @@ import { buildAccessRuntime } from '../access-composition-root.js';
 import { resolveAccessDecider } from '../config/access-decider.js';
 import type { Env } from '../config/env.js';
 import { buildMqttConsumer } from '../mqtt-composition-root.js';
+import { scheduleCommandPurge } from './command-retention.js';
 import { connectBusOrExit } from './connect-bus.js';
+import { systemScheduler } from './keep-alive.js';
 
 const QR_INTERVAL_MS = 10_000;
 
@@ -92,12 +95,22 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
     }
   }, QR_INTERVAL_MS);
 
+  // DT-18: comandos expirados ha mais de 7 dias saem em lotes, uma vez por dia.
+  const stopPurge = access
+    ? scheduleCommandPurge(
+        new PurgeExpiredCommandsUseCase(access.commands, clock),
+        systemScheduler,
+        logger,
+      )
+    : undefined;
+
   let stopped = false;
   return {
     async stop(): Promise<void> {
       if (stopped) return;
       stopped = true;
       clearInterval(qrTimer);
+      stopPurge?.();
       await bus.close();
       await access?.pool.end();
       await access?.eventPool.end();
