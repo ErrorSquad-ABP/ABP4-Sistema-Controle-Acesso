@@ -1,5 +1,6 @@
 import { ValidateQrCredentialUseCase } from '../../application/terminal/qr-credential.use-cases.js';
 import { PurgeExpiredCommandsUseCase } from '../../application/terminal/purge-expired-commands.use-case.js';
+import { PurgeProcessedMessagesUseCase } from '../../application/terminal/purge-processed-messages.use-case.js';
 import type { AccessDecider } from '../../domain/ports/access-decider.js';
 import { PendingCommands } from '../../domain/terminal/pending-commands.js';
 import { isWithinRelayWindow, type RelayWindow } from '../../domain/terminal/relay-window.js';
@@ -16,11 +17,14 @@ import type { Env } from '../config/env.js';
 import { buildMqttConsumer } from '../mqtt-composition-root.js';
 import { scheduleCommandPurge } from './command-retention.js';
 import { connectBusOrExit } from './connect-bus.js';
+import { scheduleDedupPurge, type DedupPurgeReport } from './dedup-retention.js';
 import { systemScheduler } from './keep-alive.js';
 
 const QR_INTERVAL_MS = 10_000;
 
 export interface WorkerRuntime {
+  /** Ultimo expurgo da deduplicacao; `undefined` no modo demo ou antes da primeira execucao. */
+  dedupPurge(): DedupPurgeReport | undefined;
   stop(): Promise<void>;
 }
 
@@ -165,14 +169,30 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
       )
     : undefined;
 
+  // DT-15: marcas de deduplicacao com mais de 24 h saem em lotes, uma vez por dia.
+  let lastDedupPurge: DedupPurgeReport | undefined;
+  const stopDedupPurge = dedup
+    ? scheduleDedupPurge(
+        new PurgeProcessedMessagesUseCase(dedup.events),
+        systemScheduler,
+        clock,
+        logger,
+        (report) => {
+          lastDedupPurge = report;
+        },
+      )
+    : undefined;
+
   let stopped = false;
   return {
+    dedupPurge: () => lastDedupPurge,
     async stop(): Promise<void> {
       if (stopped) return;
       stopped = true;
       clearInterval(qrTimer);
       clearInterval(relayTimer);
       stopPurge?.();
+      stopDedupPurge?.();
       await bus.close();
       await access?.pool.end();
       await dedup?.pool.end();

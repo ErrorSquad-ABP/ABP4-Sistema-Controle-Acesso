@@ -667,6 +667,32 @@ describe('DT-05: deduplicacao persistente', () => {
   });
 });
 
+describe('DT-15: retencao da deduplicacao', () => {
+  it('worker do Render expurga no boot e mostra o resultado no /healthz', async () => {
+    const port = await freePort();
+    const run = launch('worker', { PORT: String(port) });
+    try {
+      await waitFor(
+        () => {
+          if (run.child.exitCode !== null) throw new Error(run.output());
+          return run.output();
+        },
+        (output) => output.includes('expurgo da deduplicacao concluido'),
+      );
+      const body = (await (await fetch(`http://127.0.0.1:${port}/healthz`)).json()) as {
+        status: string;
+        dedupPurge: { status: string; removed: number; rows: number; bytes: number } | null;
+      };
+      expect(body.status).toBe('ok');
+      expect(body.dedupPurge).toMatchObject({ status: 'ok', removed: expect.any(Number) });
+      expect(body.dedupPurge!.rows).toBeGreaterThan(0);
+      expect(body.dedupPurge!.bytes).toBeGreaterThan(0);
+    } finally {
+      await stopChild(run.child);
+    }
+  });
+});
+
 describe('DT-03: terminal, evento e payload de negativa', () => {
   it('o banco valida o identificador e exige local cadastrado', async () => {
     await expect(
