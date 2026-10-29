@@ -45,9 +45,9 @@ O CI (`ci-mobile.yml`) roda em todo PR: `ci-mobile-check` (`flutter pub get`, `f
 
 ## APK Android no CI (DT-10)
 
-`ci-mobile-build-android` gera `flutter build apk --release` e **falha se o Gradle ou o empacotamento quebrar**. Em seguida `tool/ci/verify_apk.sh` confere, com `apksigner` e `aapt`, a assinatura, o pacote `br.fatec.errorsquad.controle_acesso`, a activity de entrada, as permissões de câmera/localização/internet e a presença de binários `arm64-v8a`. O APK sai como artefato **`controle-acesso-apk`** (`controle-acesso-<sha7>.apk`, retido por 14 dias) na página da execução do workflow.
+`ci-mobile-build-android` gera `flutter build apk --release` e **falha se o Gradle ou o empacotamento quebrar**. Em seguida `tool/ci/verify_apk.sh` confere, com `apksigner` e `aapt`, a assinatura e a identidade do signatário (precisa ser a chave debug, `CN=Android Debug`), o pacote `br.fatec.errorsquad.controle_acesso`, a activity de entrada, as permissões de câmera/localização/internet e a presença de binários `arm64-v8a`. O APK sai como artefato **`controle-acesso-apk`** (`controle-acesso-<sha7>.apk`, retido por 14 dias) na página da execução do workflow.
 
-`ci-mobile-install-android` baixa esse artefato e roda `tool/ci/android_install_smoke.sh` no **aparelho de referência do CI**: emulador Pixel 6, Android 14 (API 34, x86_64). O script instala o APK, abre o app e falha se ele não instalar, não subir ou cair nos primeiros segundos. Não exige backend.
+`ci-mobile-install-android` baixa esse artefato e roda `tool/ci/android_install_smoke.sh` no **aparelho de referência do CI**: emulador Pixel 6, Android 14 (API 34, x86_64). O script instala o APK, abre o app e falha se ele não instalar, não subir, não ficar em primeiro plano (activity principal com foco) ou cair nos primeiros segundos. Não exige backend.
 
 Para repetir num aparelho físico (com depuração USB):
 
@@ -60,6 +60,7 @@ bash tool/ci/android_install_smoke.sh controle-acesso-<sha7>.apk
 Limites:
 
 - O release ainda é assinado com a chave **debug** (`app/build.gradle.kts`): instala em aparelho, mas não serve para loja. Não há AAB; ele depende de um keystore de release, que deve entrar como secret do repositório antes da publicação.
+- A chave debug muda entre execuções, então instalar por cima de uma build anterior falha com `INSTALL_FAILED_UPDATE_INCOMPATIBLE`: rode `adb uninstall br.fatec.errorsquad.controle_acesso` antes.
 - O emulador comprova instalação e abertura, não câmera nem GPS reais. A validação em aparelho físico segue na **DT-12**.
 
 ## Tema
