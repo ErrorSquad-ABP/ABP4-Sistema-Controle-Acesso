@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Teste host do android_install_smoke.sh: adb simulado. Cobre app travado no splash
-# (nao ganha foco), app aberto de fato e crash na abertura. Sem emulador.
+# (nao ganha foco), app aberto de fato (inclusive no formato do Android 14, com o
+# componente abreviado no mFocusedApp) e crash na abertura. Sem emulador.
 # Uso: bash mobile/tool/ci/test_android_install_smoke.sh
 set -euo pipefail
 
@@ -52,6 +53,19 @@ mCurrentFocus=Window{e42 u0 $pkg/$pkg.MainActivity}
 mFocusedApp=ActivityRecord{b7 u0 $pkg/.MainActivity t7}
 EOF
 
+# Android 14: o mCurrentFocus pode estar em outro componente (IME, dialogo) e o
+# app so aparece no mFocusedApp, com o componente abreviado ($pkg/.MainActivity).
+cat >"$state/app14" <<EOF
+mCurrentFocus=Window{71 u0 InputMethod}
+mFocusedApp=ActivityRecord{1e9dd9c u0 $pkg/.MainActivity t42}
+EOF
+
+# Componente parecido, mas nao a MainActivity: nao pode passar.
+cat >"$state/evil" <<EOF
+mCurrentFocus=Window{71 u0 InputMethod}
+mFocusedApp=ActivityRecord{1e9dd9c u0 $pkg/.MainActivityEvil t42}
+EOF
+
 failures=0
 run() {
   local desc="$1" want="$2" rc=0 out
@@ -79,8 +93,17 @@ run "app aberto em primeiro plano" 0
 # 3. Crash na abertura -> falha.
 FAKE_CRASH=1 run "crash na abertura" 1
 
+# 4. Formato do Android 14: foco em outro componente e componente abreviado no
+#    mFocusedApp -> sucesso.
+cp "$state/app14" "$state/focus"
+run "activity em primeiro plano no formato do Android 14" 0
+
+# 5. Componente parecido (.MainActivityEvil) nao e a activity principal -> falha.
+cp "$state/evil" "$state/focus"
+run "componente parecido com a MainActivity" 1
+
 if [ "$failures" -ne 0 ]; then
   echo "FALHA: $failures caso(s) do android_install_smoke.sh"
   exit 1
 fi
-echo "OK: android_install_smoke.sh (3 casos)"
+echo "OK: android_install_smoke.sh (5 casos)"

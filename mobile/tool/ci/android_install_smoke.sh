@@ -35,13 +35,21 @@ done
 [ -n "$pid" ] || { echo "FALHA: o app nao iniciou" >&2; adb logcat -d | tail -n 80; exit 1; }
 
 # PID vivo nao prova abertura: app travado no splash tambem mantem o processo.
-# O sinal de "abriu" e a activity principal em primeiro plano.
+# O sinal de "abriu" e a activity principal em primeiro plano. O campo componente
+# e comparado inteiro: mCurrentFocus traz "pkg/pkg.MainActivity", mas o mFocusedApp
+# do Android 14 abrevia para "pkg/.MainActivity" — as duas formas valem.
 focus_dump() {
   adb shell dumpsys window 2>/dev/null | tr -d '\r' || true
 }
 focused() {
-  awk -v want="$package/$activity" '
-    /mCurrentFocus=|mFocusedApp=/ && index($0, want) { found = 1 }
+  awk -v full="$package/$activity" -v abbrev="$package/.${activity##*.}" '
+    /^mCurrentFocus=|^mFocusedApp=/ {
+      for (i = 1; i <= NF; i++) {
+        c = $i
+        sub(/[},]+$/, "", c)
+        if (c == full || c == abbrev) found = 1
+      }
+    }
     END { exit found ? 0 : 1 }
   ' <<<"$1"
 }
