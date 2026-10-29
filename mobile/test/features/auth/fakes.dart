@@ -38,6 +38,9 @@ class InMemorySessionStore implements SessionStore {
   /// Quando definido, a leitura só responde ao completar este completer.
   Completer<void>? readGate;
 
+  /// Quando definido, o `clear` só responde ao completar este completer.
+  Completer<void>? clearGate;
+
   @override
   Future<AuthSession?> read() async {
     await readGate?.future;
@@ -52,6 +55,7 @@ class InMemorySessionStore implements SessionStore {
 
   @override
   Future<void> clear() async {
+    await clearGate?.future;
     if (failClear) throw Exception('keystore');
     session = null;
   }

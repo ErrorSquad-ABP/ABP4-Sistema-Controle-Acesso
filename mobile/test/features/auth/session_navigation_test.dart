@@ -83,10 +83,13 @@ void main() {
     expect(emailField(tester), isEmpty);
   });
 
-  testWidgets('Keystore que recusa apagar avisa com erro no login', (
+  testWidgets('Keystore que recusa apagar avisa no login já aberto', (
     tester,
   ) async {
-    final store = InMemorySessionStore(sessionFor())..failClear = true;
+    // O `clear` só falha quando o teste liberar: o login monta antes do erro.
+    final store = InMemorySessionStore(sessionFor())
+      ..failClear = true
+      ..clearGate = Completer<void>();
     await pumpApp(tester, store);
 
     await tester.ensureVisible(find.text('Sair da conta'));
@@ -96,6 +99,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Bem-vindo de volta'), findsOneWidget);
+    expect(find.byType(FeedbackBanner), findsNothing);
+
+    store.clearGate!.complete();
+    await tester.pumpAndSettle();
+
     expect(find.textContaining('não confirmou a exclusão'), findsOneWidget);
     final banner = tester.widget<FeedbackBanner>(find.byType(FeedbackBanner));
     expect(banner.tone, FeedbackTone.error);
