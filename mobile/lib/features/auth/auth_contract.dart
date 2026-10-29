@@ -57,12 +57,25 @@ class AuthUser {
     required this.role,
   });
 
-  factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    email: json['email'] as String,
-    role: UserRole.fromCode(json['role']),
-  );
+  factory AuthUser.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final name = json['name'];
+    final email = json['email'];
+    if (id is! String ||
+        id.trim().isEmpty ||
+        name is! String ||
+        name.trim().isEmpty ||
+        email is! String ||
+        email.trim().isEmpty) {
+      throw const FormatException('User fora do contrato');
+    }
+    return AuthUser(
+      id: id.trim(),
+      name: name.trim(),
+      email: email.trim(),
+      role: UserRole.fromCode(json['role']),
+    );
+  }
 
   final String id;
   final String name;
@@ -100,23 +113,39 @@ class AuthSession {
     final expiresIn = json['expiresIn'];
     if (json['tokenType'] != 'Bearer' ||
         token is! String ||
-        token.isEmpty ||
+        token.trim().isEmpty ||
         expiresIn is! int ||
         expiresIn < 1) {
       throw const FormatException('LoginResponse fora do contrato');
     }
     return AuthSession(
-      accessToken: token,
+      accessToken: token.trim(),
       expiresAt: now.toUtc().add(Duration(seconds: expiresIn)),
       user: AuthUser.fromJson(json['user'] as Map<String, dynamic>),
     );
   }
 
-  factory AuthSession.fromJson(Map<String, dynamic> json) => AuthSession(
-    accessToken: json['accessToken'] as String,
-    expiresAt: DateTime.parse(json['expiresAt'] as String).toUtc(),
-    user: AuthUser.fromJson(json['user'] as Map<String, dynamic>),
-  );
+  /// Recusa sessão estruturalmente inválida: um token vazio com vencimento
+  /// futuro abriria as rotas protegidas sem credencial.
+  factory AuthSession.fromJson(Map<String, dynamic> json) {
+    final token = json['accessToken'];
+    final expiresAt = json['expiresAt'];
+    final user = json['user'];
+    final parsedExpiry = expiresAt is String
+        ? DateTime.tryParse(expiresAt)
+        : null;
+    if (token is! String ||
+        token.trim().isEmpty ||
+        parsedExpiry == null ||
+        user is! Map<String, dynamic>) {
+      throw const FormatException('Sessao fora do contrato');
+    }
+    return AuthSession(
+      accessToken: token.trim(),
+      expiresAt: parsedExpiry.toUtc(),
+      user: AuthUser.fromJson(user),
+    );
+  }
 
   final String accessToken;
   final DateTime expiresAt;

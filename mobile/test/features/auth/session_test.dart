@@ -319,6 +319,56 @@ void main() {
     );
   });
 
+  group('AuthSession.fromJson', () {
+    const valid = {
+      'accessToken': 'jwt-maria',
+      'expiresAt': '2026-10-27T13:00:00.000Z',
+      'user': {
+        'id': '7f8c1f5e-6c1a-4a8e-9a43-2d4b9f1c0a11',
+        'name': 'Maria Souza',
+        'email': 'maria.souza@exemplo.com',
+        'role': 'RESIDENT',
+      },
+    };
+
+    test('aceita a sessão que ele mesmo gravou', () {
+      final session = AuthSession.fromJson(Map<String, dynamic>.from(valid));
+      expect(session.accessToken, 'jwt-maria');
+      expect(session.expiresAt, fixedNow.add(const Duration(hours: 1)));
+      expect(session.user, isA<AuthUser>());
+    });
+
+    test('recusa token vazio, vencimento inválido e usuário incompleto', () {
+      final baseUser = Map<String, dynamic>.from(valid['user']! as Map);
+      Map<String, dynamic> withUser(Map<String, Object?> patch) => {
+        ...valid,
+        'user': {...baseUser, ...patch},
+      };
+      final cases = <String, Map<String, dynamic>>{
+        'token vazio': {...valid, 'accessToken': ''},
+        'token só com espaços': {...valid, 'accessToken': '  '},
+        'token que não é texto': {...valid, 'accessToken': 1},
+        'vencimento ausente': {...valid}..remove('expiresAt'),
+        'vencimento inválido': {...valid, 'expiresAt': 'amanhã'},
+        'vencimento que não é texto': {...valid, 'expiresAt': 1},
+        'usuário ausente': {...valid}..remove('user'),
+        'usuário que não é objeto': {...valid, 'user': 'maria'},
+        'id vazio': withUser({'id': ' '}),
+        'nome vazio': withUser({'name': ''}),
+        'e-mail vazio': withUser({'email': '  '}),
+        'perfil desconhecido': withUser({'role': 'ROOT'}),
+        'perfil ausente': withUser({'role': null}),
+      };
+      for (final MapEntry(key: name, value: json) in cases.entries) {
+        expect(
+          () => AuthSession.fromJson(json),
+          throwsFormatException,
+          reason: name,
+        );
+      }
+    });
+  });
+
   group('SecureSessionStore', () {
     const store = SecureSessionStore(FlutterSecureStorage());
 
@@ -345,6 +395,40 @@ void main() {
         await const FlutterSecureStorage().read(key: SecureSessionStore.key),
         isNull,
       );
+    });
+
+    test('sessão estruturalmente inválida é descartada', () async {
+      final expiresAt = fixedNow
+          .add(const Duration(hours: 1))
+          .toUtc()
+          .toIso8601String();
+      final corrupted = [
+        // Token vazio com vencimento futuro abriria as rotas protegidas.
+        {'accessToken': '  ', 'expiresAt': expiresAt, 'user': maria.toJson()},
+        // Usuário sem nome quebraria a Home.
+        {
+          'accessToken': 'jwt-maria',
+          'expiresAt': expiresAt,
+          'user': {...maria.toJson(), 'name': ''},
+        },
+        {
+          'accessToken': 'jwt-maria',
+          'expiresAt': 'ontem',
+          'user': maria.toJson(),
+        },
+      ];
+      for (final json in corrupted) {
+        FlutterSecureStorage.setMockInitialValues({
+          SecureSessionStore.key: jsonEncode(json),
+        });
+
+        expect(await store.read(), isNull, reason: '$json');
+        expect(
+          await const FlutterSecureStorage().read(key: SecureSessionStore.key),
+          isNull,
+          reason: '$json',
+        );
+      }
     });
   });
 

@@ -133,6 +133,12 @@ void main() {
           'user': {..._userJson, 'role': 'ROOT'},
         }),
         jsonEncode({
+          'accessToken': '   ',
+          'tokenType': 'Bearer',
+          'expiresIn': 3600,
+          'user': _userJson,
+        }),
+        jsonEncode({
           'accessToken': 'x',
           'tokenType': 'MAC',
           'expiresIn': 3600,
