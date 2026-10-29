@@ -44,6 +44,13 @@ jobs:
       - name: Testes
         run: flutter test
 
+      # DT-10: os scripts que validam o APK tem teste host (apksigner/aapt/adb
+      # simulados); roda aqui para nao depender de emulador nem de SDK.
+      - name: Testes dos scripts de CI
+        run: |
+          bash tool/ci/test_verify_apk.sh
+          bash tool/ci/test_android_install_smoke.sh
+
   # DT-10: widgets verdes nao comprovam empacotamento Android. Gera o APK release,
   # confere o pacote e publica o artefato; qualquer falha de Gradle/empacotamento
   # derruba o job. Assinado com a chave debug (ainda nao ha keystore de release),
