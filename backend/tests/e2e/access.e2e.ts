@@ -21,6 +21,7 @@ import {
   AccessResult,
 } from '../../src/main/http/contract/schemas/access-events.schemas.js';
 import { SimulatedTerminal } from '../../src/main/sim/simulated-terminal.js';
+import { withPeakSampling } from '../support/peak-sampler.js';
 import { silentLogger } from '../support/terminal-fakes.js';
 
 const QR_SECRET = 'a'.repeat(64);
@@ -888,71 +889,62 @@ describe('DT-14: orcamento de conexoes da API', () => {
   it('rajada concorrente respeita o teto por fonte sem travar o NFC do worker', async () => {
     const qr = await freshQr();
     const peaks = new Map<string, number>();
-    let sampling = true;
     let samples = 0;
-    const sampler = (async () => {
-      while (sampling) {
-        try {
-          const rows = (
-            await pool.query<{ name: string; total: number }>(
-              `SELECT application_name AS name, count(*)::int AS total FROM pg_stat_activity
-                WHERE datname = current_database() AND application_name LIKE 'abp4-%' GROUP BY 1`,
-            )
-          ).rows;
-          for (const row of rows) peaks.set(row.name, Math.max(peaks.get(row.name) ?? 0, row.total));
-          samples += 1;
-        } catch {
-          // Amostra perdida (banco ocupado) nao zera o pico ja acumulado.
-        }
-        await delay(20);
-      }
-    })();
+    await withPeakSampling(
+      async () => {
+        const rows = (
+          await pool.query<{ name: string; total: number }>(
+            `SELECT application_name AS name, count(*)::int AS total FROM pg_stat_activity
+              WHERE datname = current_database() AND application_name LIKE 'abp4-%' GROUP BY 1`,
+          )
+        ).rows;
+        for (const row of rows) peaks.set(row.name, Math.max(peaks.get(row.name) ?? 0, row.total));
+        samples += 1;
+      },
+      async () => {
+        // Preparacao dentro do trabalho: se ela falhar, o sampler tambem para.
+        const { event } = await isolatedNfcAttempt();
+        // So mede depois de o sampler estar de fato coletando.
+        await waitFor(() => samples, Boolean, 5_000);
+        const nfcStarted = Date.now();
+        const nfc = (async () => {
+          await publishAttempt(event);
+          const acked = await waitCommandAck(event.messageId, 5_000);
+          // Do envio do evento ao ACK do terminal: o ramo HTTP nao entra nesta conta.
+          return { acked, latency: Date.now() - nfcStarted };
+        })();
+        const httpBurst = (async () => {
+          const responses = await Promise.all([
+            ...Array.from({ length: 20 }, () =>
+              api('/access-events/qr', memberToken, {
+                terminalId: TERMINAL,
+                qrToken: qr.token,
+                position: DEMO_LOCATION,
+                requestId: randomUUID(),
+              }),
+            ),
+            ...Array.from({ length: 10 }, () => api('/access-events?pageSize=50', adminToken)),
+          ]);
+          await delay(SLOW_HTTP_TAIL_MS);
+          return responses;
+        })();
+        const [{ acked, latency: nfcLatency }, responses] = await Promise.all([nfc, httpBurst]);
 
-    const { event } = await isolatedNfcAttempt();
-    try {
-      // So mede depois de o sampler estar de fato coletando.
-      await waitFor(() => samples, Boolean, 5_000);
-      const nfcStarted = Date.now();
-      const nfc = (async () => {
-        await publishAttempt(event);
-        const acked = await waitCommandAck(event.messageId, 5_000);
-        // Do envio do evento ao ACK do terminal: o ramo HTTP nao entra nesta conta.
-        return { acked, latency: Date.now() - nfcStarted };
-      })();
-      const httpBurst = (async () => {
-        const responses = await Promise.all([
-          ...Array.from({ length: 20 }, () =>
-            api('/access-events/qr', memberToken, {
-              terminalId: TERMINAL,
-              qrToken: qr.token,
-              position: DEMO_LOCATION,
-              requestId: randomUUID(),
-            }),
-          ),
-          ...Array.from({ length: 10 }, () => api('/access-events?pageSize=50', adminToken)),
-        ]);
-        await delay(SLOW_HTTP_TAIL_MS);
-        return responses;
-      })();
-      const [{ acked, latency: nfcLatency }, responses] = await Promise.all([nfc, httpBurst]);
-
-      expect(responses.map((response) => response.status)).toEqual(Array(30).fill(200));
-      expect(acked?.payload.action).toBe('open');
-      // Sem o limite, o Prisma abriria ate 10 conexoes com 10 listagens simultaneas.
-      expect(peaks.get('abp4-api-prisma') ?? 0).toBeGreaterThan(0);
-      expect(peaks.get('abp4-api-prisma') ?? 0).toBeLessThanOrEqual(3);
-      expect(peaks.get('abp4-api-access') ?? 0).toBeGreaterThan(0);
-      expect(peaks.get('abp4-api-access') ?? 0).toBeLessThanOrEqual(3);
-      expect(peaks.get('abp4-api-probe') ?? 0).toBeLessThanOrEqual(1);
-      const apiPeak = [...peaks].filter(([name]) => name.startsWith('abp4-api-')).reduce((sum, [, n]) => sum + n, 0);
-      expect(apiPeak).toBeLessThanOrEqual(7);
-      expect([...peaks.keys()].filter((name) => name.startsWith('abp4-api-') && name.includes('events'))).toEqual([]);
-      expect(peaks.get('abp4-worker-access') ?? 0).toBeLessThanOrEqual(5);
-      expect(peaks.get('abp4-worker-events') ?? 0).toBeLessThanOrEqual(2);
-      expect(nfcLatency).toBeLessThan(5_000);
-    } finally {
-      sampling = false;
-      await sampler;
-    }
+        expect(responses.map((response) => response.status)).toEqual(Array(30).fill(200));
+        expect(acked?.payload.action).toBe('open');
+        // Sem o limite, o Prisma abriria ate 10 conexoes com 10 listagens simultaneas.
+        expect(peaks.get('abp4-api-prisma') ?? 0).toBeGreaterThan(0);
+        expect(peaks.get('abp4-api-prisma') ?? 0).toBeLessThanOrEqual(3);
+        expect(peaks.get('abp4-api-access') ?? 0).toBeGreaterThan(0);
+        expect(peaks.get('abp4-api-access') ?? 0).toBeLessThanOrEqual(3);
+        expect(peaks.get('abp4-api-probe') ?? 0).toBeLessThanOrEqual(1);
+        const apiPeak = [...peaks].filter(([name]) => name.startsWith('abp4-api-')).reduce((sum, [, n]) => sum + n, 0);
+        expect(apiPeak).toBeLessThanOrEqual(7);
+        expect([...peaks.keys()].filter((name) => name.startsWith('abp4-api-') && name.includes('events'))).toEqual([]);
+        expect(peaks.get('abp4-worker-access') ?? 0).toBeLessThanOrEqual(5);
+        expect(peaks.get('abp4-worker-events') ?? 0).toBeLessThanOrEqual(2);
+        expect(nfcLatency).toBeLessThan(5_000);
+      },
+    );
   });
 });
