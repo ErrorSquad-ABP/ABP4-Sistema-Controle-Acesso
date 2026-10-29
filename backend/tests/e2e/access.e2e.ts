@@ -1104,4 +1104,52 @@ describe('DT-13: publicacao QR recuperada apos falha de transporte', () => {
       await replicaB.end();
     }
   });
+
+  it('reclama reserva orfa de 6 s e nao rouba a de 2 s, com o comando ainda valido', async () => {
+    await stopChild(worker);
+    const now = new Date();
+    const staleId = randomUUID();
+    const freshId = randomUUID();
+    const insertReserved = async (commandId: string, reservedAgoMs: number) => {
+      const payload: CommandMessage = {
+        v: 1,
+        messageId: randomUUID(),
+        commandId,
+        terminalId: TERMINAL,
+        timestamp: new Date(now.getTime() - 7_000).toISOString(),
+        expiresAt: new Date(now.getTime() + 3_000).toISOString(),
+        action: 'open',
+        reason: 'reserva-e2e',
+      };
+      await pool.query(
+        `INSERT INTO "TerminalCommand" ("commandId","requestId","terminalId",payload,"expiresAt","publishedAt")
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [
+          commandId,
+          randomUUID(),
+          TERMINAL,
+          JSON.stringify(payload),
+          payload.expiresAt,
+          new Date(now.getTime() - reservedAgoMs).toISOString(),
+        ],
+      );
+    };
+    try {
+      await insertReserved(staleId, 6_000);
+      await insertReserved(freshId, 2_000);
+
+      const claimed = await new PostgresCommandStore(pool).claimUndispatched(
+        now,
+        new Date(now.getTime() + 1_000),
+        1_000,
+        new Date(now.getTime() - 5_000),
+      );
+      const ids = claimed.map((command) => command.commandId);
+      expect(ids).toContain(staleId);
+      expect(ids).not.toContain(freshId);
+    } finally {
+      await pool.query('DELETE FROM "TerminalCommand" WHERE "commandId" = ANY($1)', [[staleId, freshId]]);
+      await startWorker();
+    }
+  });
 });

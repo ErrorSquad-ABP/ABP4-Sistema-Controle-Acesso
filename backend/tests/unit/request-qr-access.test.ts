@@ -17,6 +17,7 @@ import { FixedClock, NOW, RecordingBus, SequentialIds, silentLogger } from '../s
 const TERMINAL = 'terminal-01';
 const USER = '2b0f2c7e-8a41-4a47-9b0e-6a8f5d2f1c10';
 const REQUEST_ID = '3f0c2c7e-8a41-4a47-9b0e-6a8f5d2f1c10';
+const OTHER_REQUEST_ID = '4f0c2c7e-8a41-4a47-9b0e-6a8f5d2f1c11';
 const signer = new HmacQrTokenSigner('a'.repeat(64));
 
 class MapCommandStore implements CommandStore {
@@ -24,8 +25,8 @@ class MapCommandStore implements CommandStore {
     readonly byRequest = new Map<string, CommandMessage>(),
     readonly byId = new Map<string, CommandMessage>(),
     readonly acked = new Map<string, string>(),
-    readonly published = new Set<string>(),
-    readonly claimed = new Set<string>(),
+    /** Instante da reserva/ultima tentativa, como a coluna `publishedAt` no Postgres. */
+    readonly publishedAt = new Map<string, number>(),
   ) {}
 
   async findByRequestId(requestId: string) {
@@ -49,27 +50,26 @@ class MapCommandStore implements CommandStore {
     return { status: 'correlated', command };
   }
 
-  async markPublished(commandId: string) {
-    this.published.add(commandId);
+  async markPublished(commandId: string, at: Date) {
+    this.publishedAt.set(commandId, at.getTime());
   }
 
   /** Mesmo contrato do Postgres: reserva antes de publicar; outra replica nao ve. */
-  async claimUndispatched(now: Date, decidedBefore: Date, limit: number, _staleBefore: Date) {
+  async claimUndispatched(now: Date, decidedBefore: Date, limit: number, staleBefore: Date) {
     const claimed = [...this.byRequest.values()]
       .filter((command) =>
-        !this.published.has(command.commandId) &&
-        !this.claimed.has(command.commandId) &&
+        (this.publishedAt.get(command.commandId) ?? -Infinity) < staleBefore.getTime() &&
         !this.acked.has(command.commandId) &&
         Date.parse(command.expiresAt) > now.getTime() &&
         Date.parse(command.timestamp) <= decidedBefore.getTime())
       .sort((a, b) => Date.parse(a.expiresAt) - Date.parse(b.expiresAt))
       .slice(0, limit);
-    for (const command of claimed) this.claimed.add(command.commandId);
+    for (const command of claimed) this.publishedAt.set(command.commandId, now.getTime());
     return claimed;
   }
 
   async releaseClaim(commandId: string) {
-    this.claimed.delete(commandId);
+    this.publishedAt.delete(commandId);
   }
 
   async purgeExpired(): Promise<number> {
@@ -78,8 +78,7 @@ class MapCommandStore implements CommandStore {
 
   clone(): MapCommandStore {
     return new MapCommandStore(
-      new Map(this.byRequest), new Map(this.byId), new Map(this.acked),
-      new Set(this.published), new Set(this.claimed),
+      new Map(this.byRequest), new Map(this.byId), new Map(this.acked), new Map(this.publishedAt),
     );
   }
 
@@ -90,10 +89,8 @@ class MapCommandStore implements CommandStore {
     for (const [key, value] of other.byId) this.byId.set(key, value);
     this.acked.clear();
     for (const [key, value] of other.acked) this.acked.set(key, value);
-    this.published.clear();
-    for (const id of other.published) this.published.add(id);
-    this.claimed.clear();
-    for (const id of other.claimed) this.claimed.add(id);
+    this.publishedAt.clear();
+    for (const [key, value] of other.publishedAt) this.publishedAt.set(key, value);
   }
 }
 
@@ -371,5 +368,75 @@ describe('DT-13: relay recupera a publicacao QR apos falha de transporte', () =>
 
     expect(cycles.reduce((total, cycle) => total + cycle.published, 0)).toBe(1);
     expect(bus.published).toHaveLength(1);
+  });
+
+  it('devolve o lote inteiro quando o transporte falha no primeiro comando', async () => {
+    const { useCase, bus, request, clock, relay } = setup();
+    const restore = failTransport(bus);
+    await useCase.execute(request);
+    await useCase.execute({ ...request, requestId: OTHER_REQUEST_ID });
+    expect(bus.published).toHaveLength(0);
+
+    after(clock, 2_000);
+    expect(await relay().execute())
+      .toMatchObject({ claimed: 2, published: 0, failed: 2, interrupted: true });
+
+    restore();
+    after(clock, 3_000);
+    expect(await relay().execute()).toMatchObject({ claimed: 2, published: 2, failed: 0 });
+    const ids = bus.published.map((entry) => (entry.message as CommandMessage).commandId);
+    expect(new Set(ids).size).toBe(2);
+
+    expect(await relay().execute()).toMatchObject({ claimed: 0, published: 0 });
+    expect(bus.published).toHaveLength(2);
+  });
+
+  it('devolve o lote quando a checagem de terminal/local lanca', async () => {
+    const { useCase, repository, bus, request, clock, relay } = setup();
+    const restore = failTransport(bus);
+    await useCase.execute(request);
+    await useCase.execute({ ...request, requestId: OTHER_REQUEST_ID });
+    restore();
+
+    repository.canDispatch = () => Promise.reject(new Error('banco fora'));
+    after(clock, 2_000);
+    expect(await relay().execute())
+      .toMatchObject({ claimed: 2, published: 0, failed: 2, interrupted: true });
+
+    repository.canDispatch = async () => true;
+    after(clock, 3_000);
+    expect(await relay().execute()).toMatchObject({ claimed: 2, published: 2 });
+    expect(bus.published).toHaveLength(2);
+  });
+
+  it('reclama reserva orfa de 6 s, ainda dentro do prazo do comando', async () => {
+    const { useCase, repository, bus, request, clock, relay } = setup();
+    const restore = failTransport(bus);
+    await useCase.execute(request);
+    restore();
+    // Reserva de um processo que morreu entre marcar e publicar.
+    expect(await repository.store.claimUndispatched(
+      NOW, new Date(NOW.getTime() + 1_000), 10, new Date(NOW.getTime() - 60_000),
+    )).toHaveLength(1);
+
+    after(clock, 6_000);
+    expect(await relay().execute()).toMatchObject({ claimed: 1, published: 1 });
+    expect(bus.published).toHaveLength(1);
+  });
+
+  it('nao rouba a reserva de 2 s de um relay vivo', async () => {
+    const { useCase, repository, bus, request, clock, relay } = setup();
+    const restore = failTransport(bus);
+    await useCase.execute(request);
+    restore();
+    after(clock, 4_000);
+    expect(await repository.store.claimUndispatched(
+      clock.now(), new Date(clock.now().getTime() + 1_000), 10,
+      new Date(clock.now().getTime() - 60_000),
+    )).toHaveLength(1);
+
+    after(clock, 2_000);
+    expect(await relay().execute()).toMatchObject({ claimed: 0, published: 0 });
+    expect(bus.published).toHaveLength(0);
   });
 });

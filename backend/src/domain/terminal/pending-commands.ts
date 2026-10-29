@@ -6,8 +6,8 @@ export class PendingCommands implements CommandStore {
   private readonly byId = new Map<string, CommandMessage>();
   private readonly byRequest = new Map<string, CommandMessage>();
   private readonly acked = new Map<string, string>();
-  private readonly published = new Set<string>();
-  private readonly claimed = new Set<string>();
+  /** Instante da reserva/ultima tentativa de entrega, como `publishedAt` no Postgres. */
+  private readonly publishedAt = new Map<string, number>();
 
   constructor(private readonly graceMs = 60_000) {}
 
@@ -34,26 +34,25 @@ export class PendingCommands implements CommandStore {
     return { status: 'correlated', command };
   }
 
-  async markPublished(commandId: string): Promise<void> {
-    this.published.add(commandId);
+  async markPublished(commandId: string, at: Date): Promise<void> {
+    this.publishedAt.set(commandId, at.getTime());
   }
 
-  async claimUndispatched(now: Date, decidedBefore: Date, limit: number, _staleBefore: Date): Promise<CommandMessage[]> {
+  async claimUndispatched(now: Date, decidedBefore: Date, limit: number, staleBefore: Date): Promise<CommandMessage[]> {
     const claimed = [...this.byRequest.values()]
       .filter((command) =>
-        !this.published.has(command.commandId) &&
-        !this.claimed.has(command.commandId) &&
+        (this.publishedAt.get(command.commandId) ?? -Infinity) < staleBefore.getTime() &&
         !this.acked.has(command.commandId) &&
         Date.parse(command.expiresAt) > now.getTime() &&
         Date.parse(command.timestamp) <= decidedBefore.getTime())
       .sort((a, b) => Date.parse(a.expiresAt) - Date.parse(b.expiresAt))
       .slice(0, limit);
-    for (const command of claimed) this.claimed.add(command.commandId);
+    for (const command of claimed) this.publishedAt.set(command.commandId, now.getTime());
     return claimed;
   }
 
   async releaseClaim(commandId: string): Promise<void> {
-    this.claimed.delete(commandId);
+    this.publishedAt.delete(commandId);
   }
 
   /** Em memoria nao ha historico a expurgar: o `prune` ja descarta o que venceu. */
@@ -87,7 +86,10 @@ export class PendingCommands implements CommandStore {
   /** Descarta comandos vencidos ha mais que a folga: o ACK deles nao vem mais. */
   private prune(now: Date): void {
     for (const [id, command] of this.byId) {
-      if (Date.parse(command.expiresAt) + this.graceMs <= now.getTime()) this.byId.delete(id);
+      if (Date.parse(command.expiresAt) + this.graceMs <= now.getTime()) {
+        this.byId.delete(id);
+        this.publishedAt.delete(id);
+      }
     }
   }
 }
