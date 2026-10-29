@@ -74,6 +74,7 @@ Validadas em [`src/main/config/env.ts`](src/main/config/env.ts); modelo em [`.en
 | `QR_TOKEN_SECRET` | obrigatório | 32 bytes aleatórios em hexadecimal, iguais nos processos HTTP e MQTT; gere com `openssl rand -hex 32` |
 | `SIM_TERMINAL_ID` | `terminal-01` | id do terminal simulado |
 | `SIM_NFC_UID` | `04A1B2C3` | UID NFC que o simulador lê |
+| `COMMAND_RELAY_INTERVAL_MS` | `5000` | intervalo do relay da outbox de comandos (DT-13): ~12 consultas/min por réplica, duas tentativas dentro dos 10 s de prazo |
 
 ## Endpoints
 

@@ -18,6 +18,7 @@ describe('loadEnv', () => {
       JWT_SECRET: 'dev-only-secret-nao-use-em-producao-32',
       JWT_TTL_SECONDS: 3600,
       TRUST_PROXY: 0,
+      COMMAND_RELAY_INTERVAL_MS: 5000,
     });
   });
 

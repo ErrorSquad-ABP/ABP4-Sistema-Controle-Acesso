@@ -62,6 +62,12 @@ const envSchema = z.object({
    * confiar no X-Forwarded-For deixaria o cliente escolher a chave do rate limit.
    */
   TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
+  /**
+   * Intervalo do relay da outbox de comandos (DT-13). A consulta e leve e o comando
+   * vale 10 s: 5 s deixa duas tentativas dentro do prazo sem manter o Neon acordado
+   * a cada segundo (~12 SELECTs/min por replica do worker).
+   */
+  COMMAND_RELAY_INTERVAL_MS: z.coerce.number().int().min(500).max(60_000).default(5_000),
 }).superRefine((env, ctx) => {
   if (env.NODE_ENV === 'production' && env.ACCESS_MODE === 'demo') {
     ctx.addIssue({ code: 'custom', path: ['ACCESS_MODE'], message: 'demo e proibido em production' });

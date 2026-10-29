@@ -13,7 +13,10 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { CryptoIdGenerator } from '../../src/infrastructure/ids/crypto-id-generator.js';
 import { SystemClock } from '../../src/infrastructure/clock/system-clock.js';
+import { IssueQrCredentialUseCase } from '../../src/application/terminal/qr-credential.use-cases.js';
+import { PostgresCommandStore } from '../../src/infrastructure/database/postgres-command-store.js';
 import { PostgresEventDeduplicator } from '../../src/infrastructure/database/postgres-event-deduplicator.js';
+import { HmacQrTokenSigner } from '../../src/infrastructure/ids/hmac-qr-token-signer.js';
 import type { AccessEventMessage, AckMessage, CommandMessage } from '../../src/domain/terminal/messages.js';
 import { ACCESS_EVENT_MAX_AGE_MS } from '../../src/domain/terminal/event-freshness.js';
 import {
@@ -142,6 +145,15 @@ function expiredQrToken(): string {
   const expiresAt = issuedAt + 10;
   const payload = `v1.${TERMINAL}.${issuedAt}.${expiresAt}`;
   return `${payload}.${createHmac('sha256', QR_SECRET).update(payload).digest('base64url')}`;
+}
+
+/** QR assinado sem publicar `status`: prova que a entrega nao depende de presenca. */
+function issueQrToken(): string {
+  return new IssueQrCredentialUseCase(
+    new SystemClock(),
+    new CryptoIdGenerator(),
+    new HmacQrTokenSigner(QR_SECRET),
+  ).execute(TERMINAL).token;
 }
 
 async function startWorker() {
@@ -318,6 +330,8 @@ beforeAll(async () => {
     LOG_LEVEL: 'info',
     PORT: String(httpPort),
     TZ: 'America/Sao_Paulo',
+    // Relay mais frequente no teste: o default de 5 s ainda cabe nos 10 s do comando.
+    COMMAND_RELAY_INTERVAL_MS: '1000',
   };
   baseUrl = `http://127.0.0.1:${httpPort}`;
 
@@ -983,6 +997,111 @@ describe('DT-13: publicacao QR recuperada apos falha de transporte', () => {
       expect(receivedCommands.filter((sent) => sent.commandId === pending?.payload.commandId)).toHaveLength(0);
     } finally {
       await stopChild(api.child);
+    }
+  });
+
+  it('entrega sem heartbeat: o relay nao depende de status do terminal', async () => {
+    // O firmware da main nao publica `status`; apagar o retido e reiniciar o worker
+    // deixa a presenca vazia de proposito. Antes da correcao o relay parava aqui.
+    await observer.publishAsync(`terminals/${TERMINAL}/status`, '', { qos: 1, retain: true });
+    await stopChild(worker);
+    await startWorker();
+
+    const api = await launchApiWithoutBroker();
+    try {
+      const requestId = randomUUID();
+      const before = await usedCount();
+
+      const result = await api.requestQr({
+        terminalId: TERMINAL,
+        qrToken: issueQrToken(),
+        position: DEMO_LOCATION,
+        requestId,
+      });
+      expect(result.decision).toBe('GRANTED');
+      expect(api.output()).toContain('publicacao do comando adiada para o relay');
+
+      const command = await waitCommandAck(requestId);
+      expect(command?.ackStatus).toBe('executed');
+      expect(receivedCommands.filter((sent) => sent.commandId === command?.payload.commandId))
+        .toEqual([command?.payload]);
+      expect(await usedCount()).toBe(before + 1);
+      expect(workerOutput()).not.toContain('status do terminal');
+      expect(workerOutput()).toContain('relay de comandos');
+    } finally {
+      await stopChild(api.child);
+    }
+  });
+
+  it('duas replicas do worker entregam o comando pendente uma unica vez', async () => {
+    const replica = launch('mqtt-consumer', { TZ: 'UTC' });
+    await waitFor(
+      () => {
+        if (replica.child.exitCode !== null) throw new Error(replica.output());
+        return replica.output();
+      },
+      (output) => output.includes('mqtt assinando'),
+    );
+    const api = await launchApiWithoutBroker();
+    try {
+      const requestId = randomUUID();
+      const before = await usedCount();
+
+      const result = await api.requestQr({
+        terminalId: TERMINAL,
+        qrToken: issueQrToken(),
+        position: DEMO_LOCATION,
+        requestId,
+      });
+      expect(result.decision).toBe('GRANTED');
+
+      const command = await waitCommandAck(requestId);
+      expect(command?.ackStatus).toBe('executed');
+      expect(receivedCommands.filter((sent) => sent.commandId === command?.payload.commandId))
+        .toEqual([command?.payload]);
+      expect(await usedCount()).toBe(before + 1);
+    } finally {
+      await stopChild(replica.child);
+      await stopChild(api.child);
+    }
+  });
+
+  it('o claim atomico entrega cada intencao a uma replica so', async () => {
+    const commandId = randomUUID();
+    const requestId = randomUUID();
+    const now = new Date();
+    const payload: CommandMessage = {
+      v: 1,
+      messageId: randomUUID(),
+      commandId,
+      terminalId: TERMINAL,
+      timestamp: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 10_000).toISOString(),
+      action: 'open',
+      reason: 'claim-e2e',
+    };
+    await pool.query(
+      `INSERT INTO "TerminalCommand" ("commandId","requestId","terminalId",payload,"expiresAt")
+       VALUES ($1,$2,$3,$4,$5)`,
+      [commandId, requestId, TERMINAL, JSON.stringify(payload), payload.expiresAt],
+    );
+
+    // Duas replicas, conexoes proprias: exatamente como dois workers no Render.
+    const replicaA = new pg.Pool({ connectionString: databaseUrl, max: 1, options: '-c timezone=UTC' });
+    const replicaB = new pg.Pool({ connectionString: databaseUrl, max: 1, options: '-c timezone=UTC' });
+    try {
+      const claims = await Promise.all([
+        new PostgresCommandStore(replicaA).claimUndispatched(
+          now, new Date(now.getTime() + 1_000), 1_000, new Date(now.getTime() - 60_000),
+        ),
+        new PostgresCommandStore(replicaB).claimUndispatched(
+          now, new Date(now.getTime() + 1_000), 1_000, new Date(now.getTime() - 60_000),
+        ),
+      ]);
+      expect(claims.flat().filter((claimed) => claimed.commandId === commandId)).toHaveLength(1);
+    } finally {
+      await replicaA.end();
+      await replicaB.end();
     }
   });
 });
