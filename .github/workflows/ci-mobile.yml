@@ -55,7 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '17'
@@ -82,7 +82,7 @@ jobs:
           mkdir -p build/ci
           cp build/app/outputs/flutter-apk/app-release.apk "build/ci/controle-acesso-${GITHUB_SHA::7}.apk"
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: controle-acesso-apk
           path: mobile/build/ci/*.apk
@@ -99,7 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: controle-acesso-apk
           path: apk
@@ -111,7 +111,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Instalar e abrir no emulador
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 34
           arch: x86_64
