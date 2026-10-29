@@ -68,9 +68,38 @@ const envSchema = z.object({
    * a cada segundo (~12 SELECTs/min por replica do worker).
    */
   COMMAND_RELAY_INTERVAL_MS: z.coerce.number().int().min(500).max(60_000).default(5_000),
+  /**
+   * Janela de operacao do relay (DT-21). Fora dela o worker nao consulta o banco,
+   * para o Neon poder suspender: o polling 24/7 estoura o free tier.
+   */
+  RELAY_WINDOW_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  RELAY_WINDOW_START: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'use HH:mm (00:00 a 23:59)')
+    .default('18:45'),
+  RELAY_WINDOW_END: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'use HH:mm (00:00 a 23:59)')
+    .default('23:05'),
+  RELAY_WINDOW_TZ: z.string().default('America/Sao_Paulo'),
 }).superRefine((env, ctx) => {
   if (env.NODE_ENV === 'production' && env.ACCESS_MODE === 'demo') {
     ctx.addIssue({ code: 'custom', path: ['ACCESS_MODE'], message: 'demo e proibido em production' });
+  }
+  if (env.RELAY_WINDOW_START === env.RELAY_WINDOW_END) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['RELAY_WINDOW_END'],
+      message: 'inicio e fim iguais deixam o relay sempre parado',
+    });
+  }
+  try {
+    new Intl.DateTimeFormat('en-GB', { timeZone: env.RELAY_WINDOW_TZ });
+  } catch {
+    ctx.addIssue({ code: 'custom', path: ['RELAY_WINDOW_TZ'], message: 'fuso horario invalido' });
   }
 });
 

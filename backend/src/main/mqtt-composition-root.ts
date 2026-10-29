@@ -25,6 +25,8 @@ export interface MqttConsumerDependencies {
   events: EventDeduplicator;
   /** Modo real: habilita o relay das intencoes nao publicadas (DT-13). */
   access?: Pick<AccessRepository, 'canDispatch'> | undefined;
+  /** Janela de operacao do relay (DT-21); sem ela, o relay roda sempre. */
+  withinRelayWindow?: ((now: Date) => boolean) | undefined;
 }
 
 /**
@@ -61,6 +63,7 @@ export function buildMqttConsumer(
         new PublishCommandUseCase(dependencies.commands, bus, clock, ids),
         clock,
         logger,
+        dependencies.withinRelayWindow,
       )
     : undefined;
 

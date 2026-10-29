@@ -2,6 +2,7 @@ import { ValidateQrCredentialUseCase } from '../../application/terminal/qr-crede
 import { PurgeExpiredCommandsUseCase } from '../../application/terminal/purge-expired-commands.use-case.js';
 import type { AccessDecider } from '../../domain/ports/access-decider.js';
 import { PendingCommands } from '../../domain/terminal/pending-commands.js';
+import { isWithinRelayWindow, type RelayWindow } from '../../domain/terminal/relay-window.js';
 import { SeenMessages } from '../../domain/terminal/seen-messages.js';
 import { topicFilterFor } from '../../domain/terminal/topics.js';
 import { SystemClock } from '../../infrastructure/clock/system-clock.js';
@@ -76,6 +77,7 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
       commands: access?.commands ?? new PendingCommands(),
       events: dedup?.events ?? new SeenMessages(),
       access: access?.repository,
+      withinRelayWindow: (now) => isWithinRelayWindow(now, janela),
     },
   );
 
@@ -103,12 +105,35 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
   }, QR_INTERVAL_MS);
 
   // Outbox (DT-13): entrega intencoes que a API ou um processo anterior nao publicou.
-  // Roda no boot e no timer, sempre: o firmware da main nao publica heartbeat, entao
-  // presenca de terminal nao existe no fluxo QR e nao pode condicionar a recuperacao.
-  // A consulta e leve (~12/min por replica com 5 s) e o comando vale 10 s.
+  // Roda no boot e no timer: o firmware da main nao publica heartbeat, entao presenca
+  // de terminal nao existe no fluxo QR e nao pode condicionar a recuperacao.
+  // DT-21: fora da janela de operacao o worker nem consulta o banco, para o Neon
+  // suspender; e o polling continuo que estoura o free tier.
+  const janela: RelayWindow = {
+    enabled: env.RELAY_WINDOW_ENABLED,
+    start: env.RELAY_WINDOW_START,
+    end: env.RELAY_WINDOW_END,
+    timeZone: env.RELAY_WINDOW_TZ,
+  };
+  let janelaAberta = true;
   let relaying = false;
   const relay = () => {
     if (!dispatchPending || relaying) return;
+    if (!isWithinRelayWindow(clock.now(), janela)) {
+      if (janelaAberta) {
+        janelaAberta = false;
+        logger.info('relay fora da janela de operacao', {
+          start: janela.start,
+          end: janela.end,
+          timeZone: janela.timeZone,
+        });
+      }
+      return;
+    }
+    if (!janelaAberta) {
+      janelaAberta = true;
+      logger.info('relay dentro da janela de operacao');
+    }
     relaying = true;
     dispatchPending
       .execute()

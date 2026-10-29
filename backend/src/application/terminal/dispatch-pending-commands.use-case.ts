@@ -55,6 +55,8 @@ export class DispatchPendingCommandsUseCase {
     private readonly publish: PublishCommandUseCase,
     private readonly clock: Clock,
     private readonly logger: Logger,
+    /** Janela de operacao (DT-21): reavaliada a cada claim, nao so no inicio do ciclo. */
+    private readonly withinWindow: (now: Date) => boolean = () => true,
   ) {}
 
   async execute(): Promise<DispatchPendingCommandsOutput> {
@@ -76,6 +78,9 @@ export class DispatchPendingCommandsUseCase {
     // entao a fila pode ser longa sem que o fim dela pareca abandonado.
     while (output.claimed < BATCH_SIZE) {
       const now = this.clock.now();
+      // A janela pode fechar no meio do ciclo: sem esta checagem, um lote longo
+      // continuaria consultando o banco depois do horario.
+      if (!this.withinWindow(now)) break;
       const [command] = await this.store.claimUndispatched(
         now,
         new Date(now.getTime() - DISPATCH_GRACE_MS),
