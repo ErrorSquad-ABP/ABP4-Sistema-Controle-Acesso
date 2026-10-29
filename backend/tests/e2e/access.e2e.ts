@@ -879,3 +879,64 @@ describe('US-19 + DT-02: pedido QR assinado, comando persistido e ACK', () => {
     expect(AccessEventPage.parse(await mine.json()).items.length).toBeGreaterThan(0);
   });
 });
+
+describe('DT-14: orcamento de conexoes da API', () => {
+  it('rajada concorrente respeita o teto por fonte sem travar o NFC do worker', async () => {
+    const qr = await freshQr();
+    const peaks = new Map<string, number>();
+    let sampling = true;
+    const sampler = (async () => {
+      while (sampling) {
+        const rows = (
+          await pool.query<{ name: string; total: number }>(
+            `SELECT application_name AS name, count(*)::int AS total FROM pg_stat_activity
+              WHERE datname = current_database() AND application_name LIKE 'abp4-%' GROUP BY 1`,
+          )
+        ).rows;
+        for (const row of rows) peaks.set(row.name, Math.max(peaks.get(row.name) ?? 0, row.total));
+        await delay(20);
+      }
+    })();
+
+    const { event } = await isolatedNfcAttempt();
+    const started = Date.now();
+    const [responses] = await Promise.all([
+      Promise.all([
+        ...Array.from({ length: 20 }, () =>
+          api('/access-events/qr', memberToken, {
+            terminalId: TERMINAL,
+            qrToken: qr.token,
+            position: DEMO_LOCATION,
+            requestId: randomUUID(),
+          }),
+        ),
+        ...Array.from({ length: 10 }, () => api('/access-events?pageSize=50', adminToken)),
+      ]),
+      (async () => {
+        await publishAttempt(event);
+        await waitFor(
+          () => receivedCommands.find((command) => command.terminalId === event.terminalId),
+          (command) => command !== undefined,
+          5_000,
+        );
+      })(),
+    ]);
+    const nfcLatency = Date.now() - started;
+    sampling = false;
+    await sampler;
+
+    expect(responses.map((response) => response.status)).toEqual(Array(30).fill(200));
+    // Sem o limite, o Prisma abriria ate 10 conexoes com 10 listagens simultaneas.
+    expect(peaks.get('abp4-api-prisma') ?? 0).toBeGreaterThan(0);
+    expect(peaks.get('abp4-api-prisma') ?? 0).toBeLessThanOrEqual(3);
+    expect(peaks.get('abp4-api-access') ?? 0).toBeGreaterThan(0);
+    expect(peaks.get('abp4-api-access') ?? 0).toBeLessThanOrEqual(3);
+    expect(peaks.get('abp4-api-probe') ?? 0).toBeLessThanOrEqual(1);
+    const apiPeak = [...peaks].filter(([name]) => name.startsWith('abp4-api-')).reduce((sum, [, n]) => sum + n, 0);
+    expect(apiPeak).toBeLessThanOrEqual(7);
+    expect([...peaks.keys()].filter((name) => name.startsWith('abp4-api-') && name.includes('events'))).toEqual([]);
+    expect(peaks.get('abp4-worker-access') ?? 0).toBeLessThanOrEqual(5);
+    expect(peaks.get('abp4-worker-events') ?? 0).toBeLessThanOrEqual(2);
+    expect(nfcLatency).toBeLessThan(5_000);
+  });
+});
