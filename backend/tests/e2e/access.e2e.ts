@@ -125,7 +125,8 @@ async function freshQr(): Promise<{ token: string; expiresAt: string }> {
       timestamp: new Date().toISOString(),
       state: 'online',
     }),
-    { qos: 1 },
+    // Retain como no contrato: o worker reiniciado ainda sabe que o terminal esta online.
+    { qos: 1, retain: true },
   );
   const message = await waitFor(
     () => qrMessages.at(-1),

@@ -15,6 +15,7 @@ import { buildMqttConsumer } from '../mqtt-composition-root.js';
 import { scheduleCommandPurge } from './command-retention.js';
 import { connectBusOrExit } from './connect-bus.js';
 import { systemScheduler } from './keep-alive.js';
+import { TerminalPresence } from './terminal-presence.js';
 
 const QR_INTERVAL_MS = 10_000;
 /** O comando vale 10 s: 1 s entre ciclos deixa varias tentativas dentro do prazo. */
@@ -63,12 +64,14 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
 
   // Terminais vistos online recebem um QR assinado a cada 10 s.
   const onlineTerminals = new Set<string>();
+  const presence = new TerminalPresence(clock);
   const { router, publishQr, dispatchPending } = buildMqttConsumer(
     bus,
     logger,
     (terminalId, online) => {
       if (online) onlineTerminals.add(terminalId);
       else onlineTerminals.delete(terminalId);
+      presence.update(terminalId, online);
     },
     env,
     {
@@ -103,10 +106,11 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
   }, QR_INTERVAL_MS);
 
   // Outbox (DT-13): entrega intencoes que a API ou um processo anterior nao publicou.
-  // Roda ja no boot para recuperar o que ficou pendente no reinicio.
+  // Roda ja no boot para recuperar o que ficou pendente no reinicio; depois, so com
+  // terminal presente, para o banco nao receber uma consulta por segundo sem uso.
   let relaying = false;
-  const relay = () => {
-    if (!dispatchPending || relaying) return;
+  const relay = (force = false) => {
+    if (!dispatchPending || relaying || (!force && !presence.anyOnline())) return;
     relaying = true;
     dispatchPending
       .execute()
@@ -119,8 +123,8 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
         relaying = false;
       });
   };
-  relay();
-  const relayTimer = dispatchPending ? setInterval(relay, COMMAND_RELAY_INTERVAL_MS) : undefined;
+  relay(true);
+  const relayTimer = dispatchPending ? setInterval(() => relay(), COMMAND_RELAY_INTERVAL_MS) : undefined;
 
   // DT-18: comandos expirados ha mais de 7 dias saem em lotes, uma vez por dia.
   const stopPurge = access
