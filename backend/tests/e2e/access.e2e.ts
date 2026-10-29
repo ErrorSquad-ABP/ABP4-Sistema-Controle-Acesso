@@ -13,7 +13,10 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { CryptoIdGenerator } from '../../src/infrastructure/ids/crypto-id-generator.js';
 import { SystemClock } from '../../src/infrastructure/clock/system-clock.js';
+import { IssueQrCredentialUseCase } from '../../src/application/terminal/qr-credential.use-cases.js';
+import { PostgresCommandStore } from '../../src/infrastructure/database/postgres-command-store.js';
 import { PostgresEventDeduplicator } from '../../src/infrastructure/database/postgres-event-deduplicator.js';
+import { HmacQrTokenSigner } from '../../src/infrastructure/ids/hmac-qr-token-signer.js';
 import type { AccessEventMessage, AckMessage, CommandMessage } from '../../src/domain/terminal/messages.js';
 import { ACCESS_EVENT_MAX_AGE_MS } from '../../src/domain/terminal/event-freshness.js';
 import {
@@ -126,7 +129,8 @@ async function freshQr(): Promise<{ token: string; expiresAt: string }> {
       timestamp: new Date().toISOString(),
       state: 'online',
     }),
-    { qos: 1 },
+    // Retain como no contrato: o worker reiniciado ainda sabe que o terminal esta online.
+    { qos: 1, retain: true },
   );
   const message = await waitFor(
     () => qrMessages.at(-1),
@@ -142,6 +146,15 @@ function expiredQrToken(): string {
   const expiresAt = issuedAt + 10;
   const payload = `v1.${TERMINAL}.${issuedAt}.${expiresAt}`;
   return `${payload}.${createHmac('sha256', QR_SECRET).update(payload).digest('base64url')}`;
+}
+
+/** QR assinado sem publicar `status`: prova que a entrega nao depende de presenca. */
+function issueQrToken(): string {
+  return new IssueQrCredentialUseCase(
+    new SystemClock(),
+    new CryptoIdGenerator(),
+    new HmacQrTokenSigner(QR_SECRET),
+  ).execute(TERMINAL).token;
 }
 
 async function startWorker() {
@@ -318,6 +331,8 @@ beforeAll(async () => {
     LOG_LEVEL: 'info',
     PORT: String(httpPort),
     TZ: 'America/Sao_Paulo',
+    // Relay mais frequente no teste: o default de 5 s ainda cabe nos 10 s do comando.
+    COMMAND_RELAY_INTERVAL_MS: '1000',
   };
   baseUrl = `http://127.0.0.1:${httpPort}`;
 
@@ -881,6 +896,264 @@ describe('US-19 + DT-02: pedido QR assinado, comando persistido e ACK', () => {
   });
 });
 
+/** API em outra porta e sem broker: toda publicacao de comando falha no transporte. */
+async function launchApiWithoutBroker() {
+  const port = await freePort();
+  const deadBroker = `mqtt://127.0.0.1:${await freePort()}`;
+  const apiProcess = launch('server', { PORT: String(port), MQTT_URL: deadBroker });
+  const url = `http://127.0.0.1:${port}`;
+  await waitFor(
+    async () => {
+      if (apiProcess.child.exitCode !== null) throw new Error(apiProcess.output());
+      try {
+        return (await fetch(`${url}/health`)).ok;
+      } catch {
+        return false;
+      }
+    },
+    Boolean,
+  );
+  const requestQr = async (body: unknown) => {
+    const response = await fetch(`${url}/api/v1/access-events/qr`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${memberToken}`, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    expect(response.status, await response.clone().text()).toBe(200);
+    return AccessResult.parse(await response.json());
+  };
+  return { child: apiProcess.child, output: apiProcess.output, requestQr };
+}
+
+async function usedCount(): Promise<number> {
+  return (
+    await pool.query('SELECT "usedCount" FROM "Authorization" WHERE id=$1', [
+      'a1000000-0000-4000-8000-000000000004',
+    ])
+  ).rows[0].usedCount as number;
+}
+
+describe('DT-13: publicacao QR recuperada apos falha de transporte', () => {
+  it('API sem broker libera e o worker entrega o mesmo comando sem novo consumo', async () => {
+    const api = await launchApiWithoutBroker();
+    try {
+      const qr = await freshQr();
+      const requestId = randomUUID();
+      const before = await usedCount();
+
+      const result = await api.requestQr({ terminalId: TERMINAL, qrToken: qr.token, position: DEMO_LOCATION, requestId });
+      expect(result.decision).toBe('GRANTED');
+      expect(api.output()).toContain('publicacao do comando adiada para o relay');
+
+      const command = await waitCommandAck(requestId);
+      expect(command?.ackStatus).toBe('executed');
+      expect(receivedCommands.filter((sent) => sent.commandId === command?.payload.commandId))
+        .toEqual([command?.payload]);
+      expect(await usedCount()).toBe(before + 1);
+    } finally {
+      await stopChild(api.child);
+    }
+  });
+
+  it('intencao pendente sobrevive ao reinicio do worker dentro do prazo', async () => {
+    const api = await launchApiWithoutBroker();
+    try {
+      const qr = await freshQr();
+      await stopChild(worker);
+      const requestId = randomUUID();
+      const before = await usedCount();
+
+      const result = await api.requestQr({ terminalId: TERMINAL, qrToken: qr.token, position: DEMO_LOCATION, requestId });
+      expect(result.decision).toBe('GRANTED');
+      const pending = await commandRow(requestId);
+      expect(Date.parse(pending!.payload.expiresAt)).toBeGreaterThan(Date.now());
+
+      await startWorker();
+      const command = await waitCommandAck(requestId);
+      expect(command?.payload).toEqual(pending?.payload);
+      expect(command?.ackStatus).toBe('executed');
+      expect(await usedCount()).toBe(before + 1);
+    } finally {
+      await stopChild(api.child);
+      if (worker.exitCode !== null || worker.signalCode !== null) await startWorker();
+    }
+  });
+
+  it('nao entrega abertura pendente para terminal desativado nem depois do prazo', async () => {
+    const api = await launchApiWithoutBroker();
+    try {
+      const qr = await freshQr();
+      const requestId = randomUUID();
+      const result = await api.requestQr({ terminalId: TERMINAL, qrToken: qr.token, position: DEMO_LOCATION, requestId });
+      expect(result.decision).toBe('GRANTED');
+      await pool.query('UPDATE "Terminal" SET active=false WHERE id=$1', [TERMINAL]);
+      const pending = await commandRow(requestId);
+      try {
+        await waitFor(() => Date.now(), (now) => now > Date.parse(pending!.payload.expiresAt), 15_000);
+      } finally {
+        await pool.query('UPDATE "Terminal" SET active=true WHERE id=$1', [TERMINAL]);
+      }
+      // Reativado depois do prazo: o relay continua sem publicar.
+      await delay(2_500);
+      expect(receivedCommands.filter((sent) => sent.commandId === pending?.payload.commandId)).toHaveLength(0);
+    } finally {
+      await stopChild(api.child);
+    }
+  });
+
+  it('entrega sem heartbeat: o relay nao depende de status do terminal', async () => {
+    // O firmware da main nao publica `status`; apagar o retido e reiniciar o worker
+    // deixa a presenca vazia de proposito. Antes da correcao o relay parava aqui.
+    await observer.publishAsync(`terminals/${TERMINAL}/status`, '', { qos: 1, retain: true });
+    await stopChild(worker);
+    await startWorker();
+
+    const api = await launchApiWithoutBroker();
+    try {
+      const requestId = randomUUID();
+      const before = await usedCount();
+
+      const result = await api.requestQr({
+        terminalId: TERMINAL,
+        qrToken: issueQrToken(),
+        position: DEMO_LOCATION,
+        requestId,
+      });
+      expect(result.decision).toBe('GRANTED');
+      expect(api.output()).toContain('publicacao do comando adiada para o relay');
+
+      const command = await waitCommandAck(requestId);
+      expect(command?.ackStatus).toBe('executed');
+      expect(receivedCommands.filter((sent) => sent.commandId === command?.payload.commandId))
+        .toEqual([command?.payload]);
+      expect(await usedCount()).toBe(before + 1);
+      expect(workerOutput()).not.toContain('status do terminal');
+      expect(workerOutput()).toContain('relay de comandos');
+    } finally {
+      await stopChild(api.child);
+    }
+  });
+
+  it('duas replicas do worker entregam o comando pendente uma unica vez', async () => {
+    const replica = launch('mqtt-consumer', { TZ: 'UTC' });
+    await waitFor(
+      () => {
+        if (replica.child.exitCode !== null) throw new Error(replica.output());
+        return replica.output();
+      },
+      (output) => output.includes('mqtt assinando'),
+    );
+    const api = await launchApiWithoutBroker();
+    try {
+      const requestId = randomUUID();
+      const before = await usedCount();
+
+      const result = await api.requestQr({
+        terminalId: TERMINAL,
+        qrToken: issueQrToken(),
+        position: DEMO_LOCATION,
+        requestId,
+      });
+      expect(result.decision).toBe('GRANTED');
+
+      const command = await waitCommandAck(requestId);
+      expect(command?.ackStatus).toBe('executed');
+      expect(receivedCommands.filter((sent) => sent.commandId === command?.payload.commandId))
+        .toEqual([command?.payload]);
+      expect(await usedCount()).toBe(before + 1);
+    } finally {
+      await stopChild(replica.child);
+      await stopChild(api.child);
+    }
+  });
+
+  it('o claim atomico entrega cada intencao a uma replica so', async () => {
+    const commandId = randomUUID();
+    const requestId = randomUUID();
+    const now = new Date();
+    const payload: CommandMessage = {
+      v: 1,
+      messageId: randomUUID(),
+      commandId,
+      terminalId: TERMINAL,
+      timestamp: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 10_000).toISOString(),
+      action: 'open',
+      reason: 'claim-e2e',
+    };
+    await pool.query(
+      `INSERT INTO "TerminalCommand" ("commandId","requestId","terminalId",payload,"expiresAt")
+       VALUES ($1,$2,$3,$4,$5)`,
+      [commandId, requestId, TERMINAL, JSON.stringify(payload), payload.expiresAt],
+    );
+
+    // Duas replicas, conexoes proprias: exatamente como dois workers no Render.
+    const replicaA = new pg.Pool({ connectionString: databaseUrl, max: 1, options: '-c timezone=UTC' });
+    const replicaB = new pg.Pool({ connectionString: databaseUrl, max: 1, options: '-c timezone=UTC' });
+    try {
+      const claims = await Promise.all([
+        new PostgresCommandStore(replicaA).claimUndispatched(
+          now, new Date(now.getTime() + 1_000), 1_000, new Date(now.getTime() - 60_000),
+        ),
+        new PostgresCommandStore(replicaB).claimUndispatched(
+          now, new Date(now.getTime() + 1_000), 1_000, new Date(now.getTime() - 60_000),
+        ),
+      ]);
+      expect(claims.flat().filter((claimed) => claimed.commandId === commandId)).toHaveLength(1);
+    } finally {
+      await replicaA.end();
+      await replicaB.end();
+    }
+  });
+
+  it('reclama reserva orfa de 6 s e nao rouba a de 2 s, com o comando ainda valido', async () => {
+    await stopChild(worker);
+    const now = new Date();
+    const staleId = randomUUID();
+    const freshId = randomUUID();
+    const insertReserved = async (commandId: string, reservedAgoMs: number) => {
+      const payload: CommandMessage = {
+        v: 1,
+        messageId: randomUUID(),
+        commandId,
+        terminalId: TERMINAL,
+        timestamp: new Date(now.getTime() - 7_000).toISOString(),
+        expiresAt: new Date(now.getTime() + 3_000).toISOString(),
+        action: 'open',
+        reason: 'reserva-e2e',
+      };
+      await pool.query(
+        `INSERT INTO "TerminalCommand" ("commandId","requestId","terminalId",payload,"expiresAt","publishedAt")
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [
+          commandId,
+          randomUUID(),
+          TERMINAL,
+          JSON.stringify(payload),
+          payload.expiresAt,
+          new Date(now.getTime() - reservedAgoMs).toISOString(),
+        ],
+      );
+    };
+    try {
+      await insertReserved(staleId, 6_000);
+      await insertReserved(freshId, 2_000);
+
+      const claimed = await new PostgresCommandStore(pool).claimUndispatched(
+        now,
+        new Date(now.getTime() + 1_000),
+        1_000,
+        new Date(now.getTime() - 5_000),
+      );
+      const ids = claimed.map((command) => command.commandId);
+      expect(ids).toContain(staleId);
+      expect(ids).not.toContain(freshId);
+    } finally {
+      await pool.query('DELETE FROM "TerminalCommand" WHERE "commandId" = ANY($1)', [[staleId, freshId]]);
+      await startWorker();
+    }
+  });
+});
 describe('DT-14: orcamento de conexoes da API', () => {
   // Cauda artificial no ramo HTTP: com NFC rapido e HTTP lento o cronometro do
   // NFC nao pode herdar a espera do outro ramo.

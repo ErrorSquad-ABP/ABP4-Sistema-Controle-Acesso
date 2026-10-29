@@ -1,8 +1,11 @@
 import { HandleAccessEventUseCase } from '../application/terminal/handle-access-event.use-case.js';
+import { DispatchPendingCommandsUseCase } from '../application/terminal/dispatch-pending-commands.use-case.js';
 import { HandleAckUseCase } from '../application/terminal/handle-ack.use-case.js';
+import { PublishCommandUseCase } from '../application/terminal/publish-command.use-case.js';
 import { PublishQrCodeUseCase } from '../application/terminal/publish-qr-code.use-case.js';
 import { IssueQrCredentialUseCase } from '../application/terminal/qr-credential.use-cases.js';
 import type { AccessDecider } from '../domain/ports/access-decider.js';
+import type { AccessRepository } from '../domain/ports/access-repository.js';
 import type { CommandStore } from '../domain/ports/command-store.js';
 import type { EventDeduplicator } from '../domain/ports/event-deduplicator.js';
 import type { MessageBus } from '../domain/ports/message-bus.js';
@@ -20,6 +23,8 @@ export interface MqttConsumerDependencies {
   /** Store compartilhado com a API: o ACK de um comando publicado por ela correlaciona aqui. */
   commands: CommandStore;
   events: EventDeduplicator;
+  /** Modo real: habilita o relay das intencoes nao publicadas (DT-13). */
+  access?: Pick<AccessRepository, 'canDispatch'> | undefined;
 }
 
 /**
@@ -49,8 +54,19 @@ export function buildMqttConsumer(
   );
   const handleAck = new HandleAckUseCase(dependencies.commands, seen, logger);
 
+  const dispatchPending = dependencies.access
+    ? new DispatchPendingCommandsUseCase(
+        dependencies.commands,
+        dependencies.access,
+        new PublishCommandUseCase(dependencies.commands, bus, clock, ids),
+        clock,
+        logger,
+      )
+    : undefined;
+
   return {
     router: new TerminalMessageRouter(handleAccessEvent, handleAck, logger, onPresence, clock),
     publishQr: new PublishQrCodeUseCase(bus, ids, new IssueQrCredentialUseCase(clock, ids, signer)),
+    dispatchPending,
   };
 }

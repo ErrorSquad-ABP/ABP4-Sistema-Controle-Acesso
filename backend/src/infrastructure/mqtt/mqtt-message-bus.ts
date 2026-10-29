@@ -11,7 +11,12 @@ export interface MqttBusOptions {
   password?: string | undefined;
   /** Last will: o broker publica se a conexao cair sem desconexao limpa. */
   will?: { [C in Channel]: { channel: C; message: MessagesByChannel[C] } }[Channel] | undefined;
+  /** Espera maxima pelo PUBACK; padrao PUBLISH_TIMEOUT_MS. */
+  publishTimeoutMs?: number | undefined;
 }
+
+/** Bem abaixo dos 10 s do comando: sobra prazo para o relay tentar de novo. */
+export const PUBLISH_TIMEOUT_MS = 3_000;
 
 export type RawMessageHandler = (topic: string, payload: Buffer) => void;
 
@@ -20,6 +25,7 @@ export class MqttMessageBus implements MessageBus {
   private constructor(
     private readonly client: MqttClient,
     private readonly logger: Logger,
+    private readonly publishTimeoutMs: number,
   ) {}
 
   static async connect(options: MqttBusOptions, logger: Logger): Promise<MqttMessageBus> {
@@ -43,12 +49,32 @@ export class MqttMessageBus implements MessageBus {
     client.on('close', () => logger.warn('mqtt conexao fechada'));
     client.on('error', (err) => logger.error('mqtt erro', { error: err.message }));
     logger.info('mqtt conectado', { url: options.url, clientId: options.clientId });
-    return new MqttMessageBus(client, logger);
+    return new MqttMessageBus(client, logger, options.publishTimeoutMs ?? PUBLISH_TIMEOUT_MS);
   }
 
+  /**
+   * Falha em vez de esperar a reconexao: offline, o mqtt.js guarda o QoS 1 e so
+   * resolve ao reconectar, o que penduraria o pedido HTTP e o relay (DT-13).
+   * Apos o timeout o pacote pode sair atrasado, com o mesmo id; o terminal
+   * deduplica e rejeita o que ja venceu.
+   */
   async publish<C extends Channel>(channel: C, message: MessagesByChannel[C]): Promise<void> {
+    if (!this.client.connected) throw new Error('mqtt desconectado: publicacao recusada');
     const topic = topicFor(channel, message.terminalId);
-    await this.client.publishAsync(topic, JSON.stringify(message), CHANNEL_DELIVERY[channel]);
+    const sending = this.client.publishAsync(topic, JSON.stringify(message), CHANNEL_DELIVERY[channel]);
+    // Evita rejeicao nao tratada quando o envio termina depois do timeout.
+    sending.catch(() => {});
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      await Promise.race([
+        sending,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error('mqtt sem confirmacao no prazo')), this.publishTimeoutMs);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
     this.logger.debug('mqtt publicado', { topic, messageId: message.messageId });
   }
 

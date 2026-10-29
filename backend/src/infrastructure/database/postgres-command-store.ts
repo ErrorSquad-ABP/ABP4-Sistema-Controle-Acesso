@@ -16,6 +16,37 @@ export class PostgresCommandStore implements CommandStore {
     if (!saved) throw new Error('Comando nao persistido');
     return saved;
   }
+  /**
+   * Ultima entrega ao broker. Nao filtra `publishedAt IS NULL`: a reserva ja gravou
+   * o campo, e a marca precisa atualiza-lo para a hora do publish (DT-13).
+   */
+  async markPublished(commandId: string, at: Date): Promise<void> {
+    await this.pool.query('UPDATE "TerminalCommand" SET "publishedAt"=$2 WHERE "commandId"=$1',
+      [commandId, at.toISOString()]);
+  }
+  /**
+   * Claim atomico entre replicas (DT-13): a reserva e a selecao na mesma instrucao, com
+   * SKIP LOCKED, para dois workers nao publicarem o mesmo comando. `$5` devolve a
+   * reserva orfa de um processo que morreu depois de marcar.
+   */
+  async claimUndispatched(now: Date, decidedBefore: Date, limit: number, staleBefore: Date): Promise<CommandMessage[]> {
+    // ISO em texto: as colunas sao TIMESTAMP sem fuso gravadas em UTC (ver save).
+    const result = await this.pool.query<{ payload: CommandMessage }>(`UPDATE "TerminalCommand"
+      SET "publishedAt" = $4
+      WHERE "commandId" IN (
+        SELECT "commandId" FROM "TerminalCommand"
+        WHERE ("publishedAt" IS NULL OR "publishedAt" < $5)
+        AND "ackStatus" IS NULL AND "expiresAt" > $1
+        AND (payload->>'timestamp')::timestamptz <= $2::timestamptz
+        ORDER BY "expiresAt" LIMIT $3
+        FOR UPDATE SKIP LOCKED)
+      RETURNING payload`,
+    [now.toISOString(), decidedBefore.toISOString(), limit, now.toISOString(), staleBefore.toISOString()]);
+    return result.rows.map((row) => row.payload);
+  }
+  async releaseClaim(commandId: string): Promise<void> {
+    await this.pool.query('UPDATE "TerminalCommand" SET "publishedAt"=NULL WHERE "commandId"=$1', [commandId]);
+  }
   async acknowledge(ack: AckMessage): Promise<AckResult> {
     const result = await this.pool.query<{ payload: CommandMessage }>(`UPDATE "TerminalCommand"
       SET "ackStatus"=$3,"ackMessageId"=$4,"ackReason"=$5,"acknowledgedAt"=now()

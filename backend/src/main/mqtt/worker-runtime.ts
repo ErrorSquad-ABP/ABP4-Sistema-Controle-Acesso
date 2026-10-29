@@ -63,7 +63,7 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
 
   // Terminais vistos online recebem um QR assinado a cada 10 s.
   const onlineTerminals = new Set<string>();
-  const { router, publishQr } = buildMqttConsumer(
+  const { router, publishQr, dispatchPending } = buildMqttConsumer(
     bus,
     logger,
     (terminalId, online) => {
@@ -71,7 +71,12 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
       else onlineTerminals.delete(terminalId);
     },
     env,
-    { decider, commands: access?.commands ?? new PendingCommands(), events: dedup?.events ?? new SeenMessages() },
+    {
+      decider,
+      commands: access?.commands ?? new PendingCommands(),
+      events: dedup?.events ?? new SeenMessages(),
+      access: access?.repository,
+    },
   );
 
   await bus.subscribe(
@@ -97,6 +102,35 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
     }
   }, QR_INTERVAL_MS);
 
+  // Outbox (DT-13): entrega intencoes que a API ou um processo anterior nao publicou.
+  // Roda no boot e no timer, sempre: o firmware da main nao publica heartbeat, entao
+  // presenca de terminal nao existe no fluxo QR e nao pode condicionar a recuperacao.
+  // A consulta e leve (~12/min por replica com 5 s) e o comando vale 10 s.
+  let relaying = false;
+  const relay = () => {
+    if (!dispatchPending || relaying) return;
+    relaying = true;
+    dispatchPending
+      .execute()
+      .then((summary) => {
+        // Sem payload e sem token: so volume, para medir backlog e interrupcoes.
+        if (summary.published > 0 || summary.failed > 0) logger.info('relay de comandos', { ...summary });
+        else logger.debug('relay de comandos', { ...summary });
+      })
+      .catch((err: unknown) => {
+        logger.error('falha no relay de comandos', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      })
+      .finally(() => {
+        relaying = false;
+      });
+  };
+  relay();
+  const relayTimer = dispatchPending
+    ? setInterval(relay, env.COMMAND_RELAY_INTERVAL_MS)
+    : undefined;
+
   // DT-18: comandos expirados ha mais de 7 dias saem em lotes, uma vez por dia.
   const stopPurge = access
     ? scheduleCommandPurge(
@@ -112,6 +146,7 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
       if (stopped) return;
       stopped = true;
       clearInterval(qrTimer);
+      clearInterval(relayTimer);
       stopPurge?.();
       await bus.close();
       await access?.pool.end();
