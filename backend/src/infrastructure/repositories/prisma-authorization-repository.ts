@@ -80,11 +80,16 @@ export class PrismaAuthorizationRepository implements AuthorizationRepository {
   }
 
   async list(filters: AuthorizationAdminFilters): Promise<{ items: AuthorizationView[]; total: number }> {
+    // `AND` evita que o status (que tambem usa `startsAt`) sobrescreva o periodo.
     const where: Prisma.AuthorizationWhereInput = {
-      ...(filters.userId ? { userId: filters.userId } : {}),
-      ...(filters.locationId ? { locationId: filters.locationId } : {}),
-      ...(filters.from || filters.to ? { startsAt: { ...(filters.from ? { gte: filters.from } : {}), ...(filters.to ? { lte: filters.to } : {}) } } : {}),
-      ...(filters.status ? this.statusWhere(filters.status, filters.now) : {}),
+      AND: [
+        ...(filters.userId ? [{ userId: filters.userId }] : []),
+        ...(filters.locationId ? [{ locationId: filters.locationId }] : []),
+        ...(filters.from || filters.to
+          ? [{ startsAt: { ...(filters.from ? { gte: filters.from } : {}), ...(filters.to ? { lte: filters.to } : {}) } }]
+          : []),
+        ...(filters.status ? [this.statusWhere(filters.status, filters.now)] : []),
+      ],
     };
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.authorization.findMany({ where, orderBy: [{ startsAt: 'desc' }, { id: 'desc' }], skip: (filters.page - 1) * filters.pageSize, take: filters.pageSize, select: SELECT }),
