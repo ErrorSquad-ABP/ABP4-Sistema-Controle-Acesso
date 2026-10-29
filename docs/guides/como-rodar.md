@@ -81,10 +81,12 @@ O teste baixa os binários do PostgreSQL via dependência de desenvolvimento, cr
 ```bash
 cd mobile
 flutter pub get
-flutter run -d chrome    # sem Android SDK; com emulador/aparelho: flutter run
+flutter run        # emulador/aparelho Android, contra o backend de produção
 ```
 
-Conferindo: abre a tela inicial "Controle de acesso" em Figtree, no tema claro ou escuro conforme o sistema. Antes de abrir PR rode `flutter analyze && flutter test`. Detalhes (estrutura, tema e rotas) em [`mobile/README.md`](../../mobile/README.md).
+Conferindo: abre a tela de abertura ("Verificando sua sessão…") e segue para o login ou para a Home em Figtree, no tema claro ou escuro conforme o sistema. Antes de abrir PR rode `flutter analyze && flutter test`. Detalhes (estrutura, tema, rotas e sessão) em [`mobile/README.md`](../../mobile/README.md).
+
+Sem Android SDK, `flutter run -d chrome` abre as telas, mas **o login real não funciona no navegador**: o backend ainda não responde CORS (DT-08). O alvo é Android; para testar o login use emulador ou aparelho. O CORS no backend é pré-requisito da US-38.
 
 ## 4) Firmware
 
