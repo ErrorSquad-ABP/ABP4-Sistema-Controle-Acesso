@@ -151,6 +151,8 @@ model Terminal {
 model ProcessedAccessMessage {
   messageId   String   @id @db.Uuid
   processedAt DateTime @default(now())
+
+  @@index([processedAt])
 }
 
 model TerminalCommand {

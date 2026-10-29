@@ -40,3 +40,26 @@ describe('PostgresEventDeduplicator', () => {
     expect(query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock(hashtextextended($1, 5))', [UUID_A.toLowerCase()]);
   });
 });
+
+describe('PostgresEventDeduplicator: retencao (DT-15)', () => {
+  function poolReturning(result: { rowCount?: number; rows?: unknown[] }) {
+    const query = vi.fn(async () => result);
+    return { dedup: new PostgresEventDeduplicator({ query } as unknown as pg.Pool), query };
+  }
+
+  it('expurga em lote unico com corte no relogio do banco', async () => {
+    const { dedup, query } = poolReturning({ rowCount: 7 });
+
+    expect(await dedup.purgeProcessed(24 * 60 * 60_000, 500)).toBe(7);
+    const [sql, params] = query.mock.calls[0] as unknown as [string, unknown[]];
+    expect(sql).toContain('LOCALTIMESTAMP - make_interval(secs => $1)');
+    expect(sql).toContain('ORDER BY "processedAt" LIMIT $2');
+    expect(params).toEqual([86_400, 500]);
+  });
+
+  it('converte o tamanho bigint da tabela para numero', async () => {
+    const { dedup } = poolReturning({ rows: [{ rows: 3, bytes: '24576' }] });
+
+    expect(await dedup.stats()).toEqual({ rows: 3, bytes: 24_576 });
+  });
+});
