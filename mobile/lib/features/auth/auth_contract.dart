@@ -131,18 +131,16 @@ class AuthSession {
     final token = json['accessToken'];
     final expiresAt = json['expiresAt'];
     final user = json['user'];
-    final parsedExpiry = expiresAt is String
-        ? DateTime.tryParse(expiresAt)
-        : null;
     if (token is! String ||
         token.trim().isEmpty ||
-        parsedExpiry == null ||
+        expiresAt is! String ||
         user is! Map<String, dynamic>) {
       throw const FormatException('Sessao fora do contrato');
     }
     return AuthSession(
       accessToken: token.trim(),
-      expiresAt: parsedExpiry.toUtc(),
+      // Data ilegível também sai como FormatException.
+      expiresAt: DateTime.parse(expiresAt).toUtc(),
       user: AuthUser.fromJson(user),
     );
   }

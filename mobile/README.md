@@ -74,7 +74,7 @@ O app abre em `/loading` (estado "carregando" do Figma) enquanto restaura a sess
 - **Saída**: o botão "Sair da conta" fica provisoriamente na Home, com confirmação; no Figma ele mora no Perfil, que entra com o shell da US-28. O JWT é stateless, então não há chamada de logout no backend.
 - **Rotas protegidas das próximas telas** (US-28, US-29, admin): use `authenticatedClientProvider` no lugar do `httpClientProvider`. Ele põe o `Authorization: Bearer` da sessão **só quando a URL é da origem do `API_BASE_URL`** (mesmo esquema, host e porta) e, numa resposta 401, encerra a sessão com o aviso de sessão encerrada; sem sessão, lança `AuthFailure(unauthorized)` sem fazer a requisição.
 - **Android**: `allowBackup="false"` e `data_extraction_rules.xml` tiram a sessão do backup e da transferência entre aparelhos (a chave do Keystore não vai junto).
-- **Testes**: `test/features/auth/fakes.dart` traz `FakeAuthGateway`, `InMemorySessionStore` (com falhas simuladas do Keystore), `FakeClock` e `authOverrides()`. Todo teste que monta o `App` precisa desses overrides, porque o `flutter_secure_storage` real não responde no `flutter test`.
+- **Testes**: `test/features/auth/fakes.dart` traz `FakeAuthGateway`, `InMemorySessionStore` (com falhas simuladas do Keystore), `FakeClock` e `authOverrides()`; a porta `SessionVault` (`session_store.dart`) deixa o teste do `SecureSessionStore` simular o cofre que falha ao gravar ou apagar. Todo teste que monta o `App` precisa desses overrides, porque o `flutter_secure_storage` real não responde no `flutter test`.
 
 ## Rotas
 

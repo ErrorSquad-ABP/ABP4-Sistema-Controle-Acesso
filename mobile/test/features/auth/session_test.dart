@@ -361,7 +361,7 @@ void main() {
     });
 
     test('recusa token vazio, vencimento inválido e usuário incompleto', () {
-      final baseUser = Map<String, dynamic>.from(valid['user']! as Map);
+      final baseUser = Map<String, dynamic>.from(valid['user'] as Map);
       Map<String, dynamic> withUser(Map<String, Object?> patch) => {
         ...valid,
         'user': {...baseUser, ...patch},
