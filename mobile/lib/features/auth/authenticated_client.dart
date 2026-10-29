@@ -12,24 +12,32 @@ import 'session_controller.dart';
 final authenticatedClientProvider = Provider<http.Client>(
   (ref) => AuthenticatedClient(
     inner: ref.watch(httpClientProvider),
+    baseUrl: ref.watch(apiBaseUrlProvider),
     accessToken: () => ref.read(currentSessionProvider)?.accessToken,
     onUnauthorized: (token) =>
         ref.read(sessionControllerProvider.notifier).revoke(token),
   ),
 );
 
-/// Põe o Bearer da sessão em cada requisição e encerra a sessão quando o
-/// backend recusa o token (401), levando o usuário de volta ao login.
+/// Põe o Bearer da sessão nas requisições ao backend e encerra a sessão
+/// quando ele recusa o token (401), levando o usuário de volta ao login.
 class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient({
     required http.Client inner,
+    required String baseUrl,
     required String? Function() accessToken,
     required Future<void> Function(String accessToken) onUnauthorized,
-  }) : this._(inner, accessToken, onUnauthorized);
+  }) : this._(inner, Uri.tryParse(baseUrl), accessToken, onUnauthorized);
 
-  AuthenticatedClient._(this._inner, this._accessToken, this._onUnauthorized);
+  AuthenticatedClient._(
+    this._inner,
+    this._origin,
+    this._accessToken,
+    this._onUnauthorized,
+  );
 
   final http.Client _inner;
+  final Uri? _origin;
   final String? Function() _accessToken;
   final Future<void> Function(String accessToken) _onUnauthorized;
 
@@ -37,10 +45,22 @@ class AuthenticatedClient extends http.BaseClient {
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final token = _accessToken();
     if (token == null) throw const AuthFailure(AuthFailureReason.unauthorized);
-    request.headers['Authorization'] = 'Bearer $token';
+    // Só a origem do backend recebe o Bearer: o mesmo cliente pode atender
+    // links e imagens de terceiros.
+    if (_isBackend(request.url)) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
     final response = await _inner.send(request);
     if (response.statusCode == 401) unawaited(_onUnauthorized(token));
     return response;
+  }
+
+  bool _isBackend(Uri url) {
+    final origin = _origin;
+    return origin != null &&
+        url.scheme == origin.scheme &&
+        url.host == origin.host &&
+        url.port == origin.port;
   }
 
   /// O cliente interno é compartilhado e fechado pelo `httpClientProvider`.

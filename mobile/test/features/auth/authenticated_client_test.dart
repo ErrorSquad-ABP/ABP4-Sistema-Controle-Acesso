@@ -13,6 +13,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   final uri = Uri.parse('https://api.exemplo.com/api/v1/me/authorizations');
+  const baseUrl = 'https://api.exemplo.com';
 
   Future<(ProviderContainer, List<http.Request>)> setUp({
     required int status,
@@ -21,6 +22,7 @@ void main() {
     final sent = <http.Request>[];
     final container = ProviderContainer.test(
       overrides: [
+        apiBaseUrlProvider.overrideWithValue(baseUrl),
         ...authOverrides(store: store ?? InMemorySessionStore(sessionFor())),
         httpClientProvider.overrideWithValue(
           MockClient((request) async {
@@ -40,10 +42,42 @@ void main() {
   test('envia o Bearer da sessão atual', () async {
     final (container, sent) = await setUp(status: 200);
 
-    final response = await container.read(authenticatedClientProvider).get(uri);
+    final client = container.read(authenticatedClientProvider);
+    await client.get(uri);
+    // `:443` é a porta padrão do https: continua sendo o mesmo destino.
+    final response = await client.get(uri.replace(port: 443));
 
     expect(response.statusCode, 200);
-    expect(sent.single.headers['Authorization'], 'Bearer jwt-maria');
+    expect(sent.map((request) => request.headers['Authorization']), [
+      'Bearer jwt-maria',
+      'Bearer jwt-maria',
+    ]);
+    expect(current(container).session, isNotNull);
+  });
+
+  test('não envia o Bearer para outra origem', () async {
+    final (container, sent) = await setUp(status: 200);
+    final client = container.read(authenticatedClientProvider);
+
+    for (final url in [
+      // Outro host.
+      'https://outro-exemplo.com/api/v1/me/authorizations',
+      // Mesmo host, outro esquema.
+      'http://api.exemplo.com/api/v1/me/authorizations',
+      // Mesmo host, outra porta.
+      'https://api.exemplo.com:8443/api/v1/me/authorizations',
+    ]) {
+      await client.get(Uri.parse(url));
+    }
+
+    expect(sent, hasLength(3));
+    for (final request in sent) {
+      expect(
+        request.headers['Authorization'],
+        isNull,
+        reason: request.url.toString(),
+      );
+    }
     expect(current(container).session, isNotNull);
   });
 
