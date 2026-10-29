@@ -21,7 +21,7 @@ void main() {
 
   ProviderContainer containerWith({
     FakeAuthGateway? gateway,
-    InMemorySessionStore? store,
+    SessionStore? store,
     FakeClock? clock,
   }) => ProviderContainer.test(
     overrides: authOverrides(gateway: gateway, store: store, clock: clock),
@@ -236,7 +236,7 @@ void main() {
       expect(store.session, isNull);
     });
 
-    test('Keystore sem apagar não prende o usuário logado', () async {
+    test('Keystore sem apagar encerra a sessão e avisa com erro', () async {
       final store = InMemorySessionStore(sessionFor())..failClear = true;
       final container = containerWith(store: store);
       await restored(container);
@@ -244,6 +244,8 @@ void main() {
       await container.read(sessionControllerProvider.notifier).logout();
 
       expect(current(container).session, isNull);
+      expect(current(container).ended?.reason, SessionEndReason.notErased);
+      expect(current(container).ended?.email, maria.email);
     });
   });
 
@@ -370,7 +372,7 @@ void main() {
   });
 
   group('SecureSessionStore', () {
-    const store = SecureSessionStore(FlutterSecureStorage());
+    const store = SecureSessionStore(FlutterSessionVault());
 
     test('grava e lê a sessão sem guardar a senha', () async {
       FlutterSecureStorage.setMockInitialValues({});
@@ -430,6 +432,45 @@ void main() {
         );
       }
     });
+
+    test('falha ao apagar não devolve a sessão ao reabrir', () async {
+      final vault = _MemoryVault()..failDelete = true;
+      final store = SecureSessionStore(vault);
+      await store.write(sessionFor());
+
+      await store.clear();
+
+      // Nem a leitura, nem uma abertura nova, restauram a sessão.
+      expect(await store.read(), isNull);
+      final container = containerWith(store: store);
+      final state = await restored(container);
+      expect(state.session, isNull);
+      expect(state.ended, isNull);
+    });
+
+    test('sem conseguir gravar, apaga com deleteAll', () async {
+      final vault = _MemoryVault();
+      final store = SecureSessionStore(vault);
+      await store.write(sessionFor());
+      vault.failWrite = true;
+      vault.failDelete = true;
+
+      await store.clear();
+
+      expect(vault.values, isEmpty);
+      expect(await store.read(), isNull);
+    });
+
+    test('cofre que não grava nem apaga avisa quem chamou', () async {
+      final vault = _MemoryVault();
+      final store = SecureSessionStore(vault);
+      await store.write(sessionFor());
+      vault.failWrite = true;
+      vault.failDelete = true;
+      vault.failDeleteAll = true;
+
+      await expectLater(store.clear(), throwsA(isA<Exception>()));
+    });
   });
 
   group('sessionRedirect', () {
@@ -462,4 +503,34 @@ class _SyncUnauthorizedGateway extends FakeAuthGateway {
   @override
   Future<AuthUser> currentUser(String accessToken) =>
       throw const AuthFailure(AuthFailureReason.unauthorized);
+}
+
+/// Keystore em memória com falhas simuladas por operação.
+class _MemoryVault implements SessionVault {
+  final Map<String, String> values = {};
+
+  bool failWrite = false;
+  bool failDelete = false;
+  bool failDeleteAll = false;
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async {
+    if (failWrite) throw Exception('keystore');
+    values[key] = value;
+  }
+
+  @override
+  Future<void> delete(String key) async {
+    if (failDelete) throw Exception('keystore');
+    values.remove(key);
+  }
+
+  @override
+  Future<void> deleteAll() async {
+    if (failDeleteAll) throw Exception('keystore');
+    values.clear();
+  }
 }

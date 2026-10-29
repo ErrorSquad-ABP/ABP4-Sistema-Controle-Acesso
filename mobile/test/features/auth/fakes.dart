@@ -98,7 +98,7 @@ class FakeAuthGateway implements AuthGateway {
 
 List<Override> authOverrides({
   FakeAuthGateway? gateway,
-  InMemorySessionStore? store,
+  SessionStore? store,
   FakeClock? clock,
 }) => [
   authGatewayProvider.overrideWithValue(gateway ?? FakeAuthGateway()),

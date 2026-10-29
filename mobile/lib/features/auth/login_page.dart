@@ -27,18 +27,32 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     // Sessão encerrada sem o usuário pedir: explica o motivo e já traz o
     // e-mail preenchido.
     final ended = ref.read(sessionControllerProvider).value?.ended;
-    if (ended != null) {
-      _email.text = ended.email;
-      _message = (
-        FeedbackTone.warning,
-        switch (ended.reason) {
-          SessionEndReason.expired => 'Sua sessão expirou. Entre novamente.',
-          SessionEndReason.revoked =>
-            'Sua sessão foi encerrada. Entre novamente.',
-        },
-      );
-    }
+    if (ended != null) _applyEnded(ended);
+    // O cofre pode recusar a exclusão depois de a tela já estar aberta.
+    ref.listenManual(sessionControllerProvider, (_, next) {
+      final late = next.value?.ended;
+      if (late == null || !mounted) return;
+      setState(() => _applyEnded(late));
+    });
   }
+
+  void _applyEnded(SessionEnd ended) {
+    _email.text = ended.email;
+    _message = _endedMessage(ended);
+  }
+
+  static (FeedbackTone, String) _endedMessage(SessionEnd ended) => (
+    ended.reason == SessionEndReason.notErased
+        ? FeedbackTone.error
+        : FeedbackTone.warning,
+    switch (ended.reason) {
+      SessionEndReason.expired => 'Sua sessão expirou. Entre novamente.',
+      SessionEndReason.revoked => 'Sua sessão foi encerrada. Entre novamente.',
+      SessionEndReason.notErased =>
+        'Sua sessão foi encerrada, mas o aparelho não confirmou a exclusão. '
+            'Se o app abrir conectado, saia novamente.',
+    },
+  );
 
   @override
   void dispose() {

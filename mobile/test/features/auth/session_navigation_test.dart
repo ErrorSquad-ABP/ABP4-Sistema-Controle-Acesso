@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:controle_acesso/app.dart';
+import 'package:controle_acesso/core/widgets/feedback_banner.dart';
 import 'package:controle_acesso/features/auth/auth_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -80,6 +81,25 @@ void main() {
     expect(find.text('Bem-vindo de volta'), findsOneWidget);
     expect(find.textContaining('Sua sessão'), findsNothing);
     expect(emailField(tester), isEmpty);
+  });
+
+  testWidgets('Keystore que recusa apagar avisa com erro no login', (
+    tester,
+  ) async {
+    final store = InMemorySessionStore(sessionFor())..failClear = true;
+    await pumpApp(tester, store);
+
+    await tester.ensureVisible(find.text('Sair da conta'));
+    await tester.tap(find.text('Sair da conta'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Sair'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bem-vindo de volta'), findsOneWidget);
+    expect(find.textContaining('não confirmou a exclusão'), findsOneWidget);
+    final banner = tester.widget<FeedbackBanner>(find.byType(FeedbackBanner));
+    expect(banner.tone, FeedbackTone.error);
+    expect(emailField(tester), 'maria.souza@exemplo.com');
   });
 
   testWidgets('token vencido com o app aberto volta ao login com aviso', (

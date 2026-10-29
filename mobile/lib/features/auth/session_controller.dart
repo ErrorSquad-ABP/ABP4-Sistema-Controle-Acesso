@@ -14,6 +14,10 @@ enum SessionEndReason {
 
   /// O backend recusou o token (401): usuário desativado ou token inválido.
   revoked,
+
+  /// A sessão saiu do app, mas o cofre não confirmou a exclusão: o token
+  /// pode voltar se o app for reaberto.
+  notErased,
 }
 
 /// Por que a sessão anterior acabou sem o usuário pedir; vira aviso no login.
@@ -157,14 +161,25 @@ class SessionController extends AsyncNotifier<SessionState> {
             : SessionEnd(reason, session.user.email),
       ),
     );
-    await _clearStore();
+    final erased = await _clearStore();
+    if (erased || !ref.mounted || session == null) return;
+    final current = state.value;
+    // Já voltou a logar (ou já há um motivo de saída mais urgente).
+    if (current?.session != null || current?.ended != null) return;
+    state = AsyncData(
+      SessionState.signedOut(
+        SessionEnd(SessionEndReason.notErased, session.user.email),
+      ),
+    );
   }
 
-  Future<void> _clearStore() async {
+  Future<bool> _clearStore() async {
     try {
       await _store.clear();
+      return true;
     } catch (error) {
       debugPrint('Sessao local nao apagada: ${error.runtimeType}');
+      return false;
     }
   }
 
