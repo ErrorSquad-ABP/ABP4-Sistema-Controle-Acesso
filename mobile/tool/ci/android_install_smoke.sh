@@ -1,17 +1,26 @@
 #!/usr/bin/env bash
 # Instala o APK no aparelho/emulador conectado (adb), abre o app e falha se ele
-# nao instalar, nao subir ou cair na abertura. Nao exige backend.
+# nao instalar, nao subir, nao ficar em primeiro plano ou cair na abertura.
+# Nao exige backend.
 # Uso: android_install_smoke.sh <apk>
+# Ajustes do teste host: SMOKE_FOCUS_TIMEOUT e SMOKE_OBSERVE_SECONDS (segundos).
 set -euo pipefail
 
 apk="${1:?uso: android_install_smoke.sh <apk>}"
 package="br.fatec.errorsquad.controle_acesso"
+activity="$package.MainActivity"
+focus_timeout="${SMOKE_FOCUS_TIMEOUT:-20}"
+observe_seconds="${SMOKE_OBSERVE_SECONDS:-15}"
 
 adb wait-for-device
 adb shell 'while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 1; done'
 
+# A chave debug pode mudar entre execucoes; sobre uma build de assinatura diferente
+# o install falha com INSTALL_FAILED_UPDATE_INCOMPATIBLE. Desinstale antes:
+# adb uninstall "$package"
 adb install -r "$apk"
-adb shell pm list packages | grep -q "^package:$package\$"
+grep -qxF "package:$package" <<<"$(adb shell pm list packages | tr -d '\r')" \
+  || { echo "FALHA: $package nao aparece em pm list packages" >&2; exit 1; }
 
 adb logcat -c
 adb shell monkey -p "$package" -c android.intent.category.LAUNCHER 1
@@ -20,18 +29,46 @@ adb shell monkey -p "$package" -c android.intent.category.LAUNCHER 1
 pid=""
 for _ in $(seq 1 30); do
   pid="$(adb shell pidof "$package" | tr -d '\r' || true)"
-  [ -n "$pid" ] && break
+  if [ -n "$pid" ]; then break; fi
   sleep 1
 done
 [ -n "$pid" ] || { echo "FALHA: o app nao iniciou" >&2; adb logcat -d | tail -n 80; exit 1; }
 
-# Janela de observacao: o app precisa continuar vivo depois da abertura.
-sleep 15
-pid="$(adb shell pidof "$package" | tr -d '\r' || true)"
-if [ -z "$pid" ] || adb logcat -d -b crash | grep -q "$package"; then
-  echo "FALHA: o app caiu depois de abrir" >&2
-  adb logcat -d -b crash
+# PID vivo nao prova abertura: app travado no splash tambem mantem o processo.
+# O sinal de "abriu" e a activity principal em primeiro plano.
+focus_dump() {
+  adb shell dumpsys window 2>/dev/null | tr -d '\r' || true
+}
+focused() {
+  awk -v want="$package/$activity" '
+    /mCurrentFocus=|mFocusedApp=/ && index($0, want) { found = 1 }
+    END { exit found ? 0 : 1 }
+  ' <<<"$1"
+}
+
+opened=0
+for _ in $(seq 1 "$focus_timeout"); do
+  if focused "$(focus_dump)"; then opened=1; break; fi
+  sleep 1
+done
+if [ "$opened" -ne 1 ]; then
+  echo "FALHA: o app nao ficou em primeiro plano ($package/$activity)" >&2
+  adb shell dumpsys activity activities 2>/dev/null | tail -n 40 >&2 || true
   exit 1
 fi
 
-echo "OK: $package instalado e em execucao (pid $pid)"
+# Janela de observacao: o app precisa continuar vivo e em primeiro plano.
+sleep "$observe_seconds"
+pid="$(adb shell pidof "$package" | tr -d '\r' || true)"
+crash_log="$(adb logcat -d -b crash || true)"
+if [ -z "$pid" ] || grep -qF "$package" <<<"$crash_log"; then
+  echo "FALHA: o app caiu depois de abrir" >&2
+  printf '%s\n' "$crash_log" >&2
+  exit 1
+fi
+if ! focused "$(focus_dump)"; then
+  echo "FALHA: o app saiu de primeiro plano depois de abrir" >&2
+  exit 1
+fi
+
+echo "OK: $package instalado, em primeiro plano e em execucao (pid $pid)"
