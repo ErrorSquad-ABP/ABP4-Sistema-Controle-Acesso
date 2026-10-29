@@ -271,7 +271,7 @@ Descobertas por sprint. Títulos, épico e sprint alvo conforme previsto; o refi
 
 ## Estado em 29/10/2026
 
-`main` em `6b6aa26`. Fechado na Sprint 2: US-14, US-21 (fatia de consulta), US-22 e US-37 no PR #26 · US-19 no #27 · US-15 e US-18 no #33 · US-16 e US-17 no #36 · US-27 no #43 · US-26 herdada da US-08 (evidência em [`../entrega/evidencias/us-26-mqtt-servo.md`](../entrega/evidencias/us-26-mqtt-servo.md)). A US-20 foi antecipada da S3 e fechou no #42. A dívida técnica andou junto: DT-13 no #37, DT-14 no #44, DT-17 no #41, DT-18 no #40, DT-19 no #39, DT-20 no #38, DT-21 no #45 e DT-15 no #48.
+Código em `6b6aa26` (a versão no ar). Fechado na Sprint 2: US-14, US-21 (fatia de consulta), US-22 e US-37 no PR #26 · US-19 no #27 · US-15 e US-18 no #33 · US-16 e US-17 no #36 · US-27 no #43 · US-26 herdada da US-08 (evidência em [`../entrega/evidencias/us-26-mqtt-servo.md`](../entrega/evidencias/us-26-mqtt-servo.md)). A US-20 foi antecipada da S3 e fechou no #42. A dívida técnica andou junto: DT-13 no #37, DT-14 no #44, DT-17 no #41, DT-18 no #40, DT-19 no #39, DT-20 no #38, DT-21 no #45 e DT-15 no #48.
 
 Aberto: **US-28** (minhas autorizações no app) e **US-29** (scanner QR + resultado no app), ainda com alvo S2 nesta tabela — escorregam para a S3. A US-21 entregou só leitura (`GET /me/access-events`, `GET /access-events`); a gravação de tentativas NFC segue na S3 com a US-23.
 
