@@ -176,11 +176,23 @@ describe.skipIf(!repository)('PostgresAccessRepository (DT-17)', () => {
     await insertAvailable(userId, locationId);
     await pool!.query('ANALYZE "Authorization"');
 
-    const explained = await pool!.query<{ 'QUERY PLAN': unknown }>(
-      `EXPLAIN (FORMAT JSON) ${AUTHORIZATION_CANDIDATES_SQL}`,
-      [userId, locationId, now.toISOString()],
-    );
-    const serialized = JSON.stringify(explained.rows[0]!['QUERY PLAN']);
+    // Tabela de teste tem poucas linhas e o planner escolhe Seq Scan por custo:
+    // para provar que o indice cobre o predicado, desliga o seq scan so nesta
+    // transacao (SET LOCAL) e devolve a conexao limpa.
+    const client = await pool!.connect();
+    let serialized: string;
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL enable_seqscan = off');
+      const explained = await client.query<{ 'QUERY PLAN': unknown }>(
+        `EXPLAIN (FORMAT JSON) ${AUTHORIZATION_CANDIDATES_SQL}`,
+        [userId, locationId, now.toISOString()],
+      );
+      serialized = JSON.stringify(explained.rows[0]!['QUERY PLAN']);
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+    }
 
     expect(serialized).toContain('Authorization_userId_locationId_endsAt_id_idx');
     expect(serialized).not.toContain('"Node Type":"Seq Scan"');
