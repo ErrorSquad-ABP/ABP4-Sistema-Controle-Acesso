@@ -26,10 +26,13 @@ export const POOL_CONNECTION_TIMEOUT_MS = 5_000;
 
 /**
  * Teto de espera pela resposta de uma consulta ja enviada. O `pg` aplica no
- * cliente (`query_timeout`) e o Prisma herda pelo driver adapter: o pedido
- * falha mesmo com a consulta parada na fila do pooler. O servidor nao cancela a
- * consulta; `statement_timeout` como parametro de startup quebraria a conexao
- * com o pooler do Neon (parametro de startup nao suportado).
+ * cliente (`query_timeout`) e o Prisma herda pelo driver adapter: cada consulta
+ * enviada falha no cliente depois de 4 s, mesmo parada na fila do pooler. O
+ * teto e por consulta, nao por pedido: um pedido soma a espera por conexao
+ * (`POOL_CONNECTION_TIMEOUT_MS`) e cada consulta, entao pode passar de 4 s. O
+ * servidor nao cancela a consulta; `statement_timeout` como parametro de
+ * startup quebraria a conexao com o pooler do Neon (parametro de startup nao
+ * suportado).
  */
 export const POOL_QUERY_TIMEOUT_MS = 4_000;
 

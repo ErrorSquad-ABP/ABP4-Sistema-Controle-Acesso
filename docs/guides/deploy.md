@@ -91,7 +91,7 @@ A deduplicação MQTT existe só no worker: a API não recebe mensagens do broke
 
 **Clientes abertos:** `7 × instâncias da API + 7 × réplicas do worker + 1 (migration do CD, conexão direta sem pooler)`. Hoje o worker roda em uma réplica, então o total é `7N + 8`.
 
-Esse número é um orçamento **por instância/réplica**, não um teto global: cada instância fria da API que a Vercel sobe abre outros 7, e não há limite configurado no código para o total. O único teto global é o do pooler, na tabela abaixo.
+Esse número é um orçamento **por instância/réplica**, não um teto global: cada instância fria da API que a Vercel sobe abre outros 7, e não há limite configurado no código para o total. O teto global de conexões ao Postgres é o `max_connections` do compute; o `default_pool_size` do pooler limita cada par usuário/banco, na tabela abaixo.
 
 ### Onde os 7 + 7 param (o teto real)
 
@@ -99,19 +99,21 @@ Esse número é um orçamento **por instância/réplica**, não um teto global: 
 |---|---|---|---|
 | Cliente → pooler | este orçamento | `7N + 8` conexões abertas | cada instância nova soma 7; não há teto global |
 | Cliente → pooler | `max_client_conn` do PgBouncer | 10.000 (fixo) | "no more connections allowed" |
-| Pooler → Postgres | `default_pool_size` do PgBouncer | 0,9 × `max_connections` do compute | consulta espera na fila |
+| Pooler → Postgres | `default_pool_size` do PgBouncer | 0,9 × `max_connections` do compute, **por par usuário/banco** | só aquele par espera na fila; não é um teto global de backends |
 | Fila do pooler | `query_wait_timeout` | 120 s | erro `query_wait_timeout` depois de 2 min |
 | Direto ao compute | `max_connections` | 104 (0,25 CU) a 4000 (9+ CU) | "remaining connection slots are reserved" |
 
 Valores do pooler e de `max_connections` em [Connection pooling](https://neon.com/docs/connect/connection-pooling) e [Parameter settings by compute size](https://neon.com/docs/reference/compatibility); conferidos em 29/10/2026.
 
+`default_pool_size` é o máximo de conexões de servidor **por par usuário/banco** no PgBouncer — não um orçamento global somado entre pares. O teto global de backends é o `max_connections` do compute; cada par adicional ganha o próprio `default_pool_size`. Como esta aplicação usa um único par (usuário e banco), o teto do par coincide, na prática, com o teto do nosso tráfego — é essa a premissa do cenário abaixo, não uma soma de 0,9 × `max_connections` por cliente.
+
 `max_connections` segue a fórmula `max(100, min(4000, floor(CU × 419,66)))`; sete conexões ficam reservadas para o superusuário do Neon. Com o autoscaling padrão do plano free (0,25 a 2 CU), o valor efetivo é o do topo da faixa: `min(2, 8 × 0,25) = 2 CU` → 839.
 
 ### Cenário de envelope (estimativa)
 
-Premissas, todas estimadas: compute fixo no tamanho indicado; pooler com `default_pool_size = 0,9 × max_connections`; pico de consultas simultâneas ≈ `7N + 2` (7 por instância da API e 2 decisões NFC no worker); 1 conexão da migration; folga desejada de pelo menos 20% dos backends.
+Premissas, todas estimadas: compute fixo no tamanho indicado; um único par usuário/banco (o de hoje), então o `default_pool_size = 0,9 × max_connections` vale como teto do nosso tráfego — outro par teria o próprio teto; pico de consultas simultâneas ≈ `7N + 2` (7 por instância da API e 2 decisões NFC no worker); 1 conexão da migration; folga desejada de pelo menos 20% do teto do par.
 
-| Cenário | `max_connections` | Backends no pooler (0,9×) | Clientes abertos (`7N + 8`) | Pico de consultas (`7N + 2`) | Folga vs. backends | Leitura |
+| Cenário | `max_connections` | Teto do par (0,9×) | Clientes abertos (`7N + 8`) | Pico de consultas (`7N + 2`) | Folga vs. teto do par | Leitura |
 |---|---|---|---|---|---|---|
 | 0,25 CU, N = 1 | 104 | 93 | 15 | 9 | 84 | folgado |
 | 0,25 CU, N = 5 | 104 | 93 | 43 | 37 | 56 | ok |
@@ -119,15 +121,15 @@ Premissas, todas estimadas: compute fixo no tamanho indicado; pooler com `defaul
 | 0,5 CU, N = 10 | 209 | 188 | 78 | 72 | 116 | folgado |
 | 1 CU, N = 25 | 419 | 377 | 183 | 177 | 200 | folgado |
 
-Envelope admissível, em uma frase: o `max_client_conn` do pooler (10.000) não é o gargalo; o gargalo é o número de backends. O pico de consultas simultâneas precisa ficar abaixo de `0,9 × max_connections` com margem — na prática, com 0,25 CU, até ~10 instâncias da API; acima disso, aumente o compute ou reduza o `max` das pools.
+Envelope admissível, em uma frase: o `max_client_conn` do pooler (10.000) não é o gargalo; com um único par usuário/banco, o gargalo é o `default_pool_size` desse par (limitado também pelo `max_connections`). O pico de consultas simultâneas precisa ficar abaixo de `0,9 × max_connections` com margem — na prática, com 0,25 CU, até ~10 instâncias da API; acima disso, aumente o compute ou reduza o `max` das pools. Com mais de um par, cada par tem o próprio teto e a conta deixa de ser a desta tabela.
 
-O que é estimativa nesta seção: `default_pool_size`, o pico de consultas simultâneas e a folga de 20%. O que é documentado pelo Neon: `max_client_conn = 10.000`, `query_wait_timeout = 120 s`, `default_pool_size = 0,9 × max_connections` e a tabela de `max_connections`.
+O que é estimativa nesta seção: o `default_pool_size` como teto do nosso par, o pico de consultas simultâneas e a folga de 20%. O que é documentado pelo Neon: `max_client_conn = 10.000`, `query_wait_timeout = 120 s`, `default_pool_size = 0,9 × max_connections` por par usuário/banco e a tabela de `max_connections`.
 
 ### Concorrência e tempo de espera por instância da API
 
 - até 3 decisões QR e 3 consultas Prisma ao mesmo tempo;
 - o excedente espera uma conexão livre por até 5 s (`POOL_CONNECTION_TIMEOUT_MS`) e depois falha;
-- uma consulta já enviada tem teto de 4 s no cliente (`POOL_QUERY_TIMEOUT_MS`, `query_timeout` do `pg`), inclusive nas consultas do Prisma via driver adapter. Esse teto libera quem espera, mas **não cancela a consulta no servidor**: ela pode continuar na fila do pooler até o `query_wait_timeout` de 120 s. Não usamos `statement_timeout` no startup porque o pooler do Neon recusa parâmetros de startup fora da lista permitida (`client_encoding`, `datestyle`, `timezone`, `standard_conforming_strings`, `application_name`) — ver [Connection errors](https://neon.com/docs/connect/connection-errors). Para um teto no servidor seria preciso `ALTER ROLE ... SET statement_timeout`, que vale para todos os clientes (inclusive migrations) e não foi aplicado;
+- uma consulta já enviada tem teto de 4 s no cliente (`POOL_QUERY_TIMEOUT_MS`, `query_timeout` do `pg`), inclusive nas consultas do Prisma via driver adapter. O teto é **por consulta**, não por pedido: um pedido que espera até 5 s por uma conexão livre e encadeia várias consultas soma esses tempos e pode passar de 4 s. Esse teto libera quem espera, mas **não cancela a consulta no servidor**: ela pode continuar na fila do pooler até o `query_wait_timeout` de 120 s. Não usamos `statement_timeout` no startup porque o pooler do Neon recusa parâmetros de startup fora da lista permitida (`client_encoding`, `datestyle`, `timezone`, `standard_conforming_strings`, `application_name`) — ver [Connection errors](https://neon.com/docs/connect/connection-errors). Para um teto no servidor seria preciso `ALTER ROLE ... SET statement_timeout`, que vale para todos os clientes (inclusive migrations) e não foi aplicado;
 - mais tráfego simultâneo escala em instâncias novas da Vercel, cada uma somando mais 7 conexões clientes.
 
 O worker decide até 2 NFC em paralelo, limitado pela pool da deduplicação, e não disputa conexões com a API.
