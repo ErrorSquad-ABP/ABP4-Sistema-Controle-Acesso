@@ -16,8 +16,12 @@ export class PostgresCommandStore implements CommandStore {
     if (!saved) throw new Error('Comando nao persistido');
     return saved;
   }
+  /**
+   * Ultima entrega ao broker. Nao filtra `publishedAt IS NULL`: a reserva ja gravou
+   * o campo, e a marca precisa atualiza-lo para a hora do publish (DT-13).
+   */
   async markPublished(commandId: string, at: Date): Promise<void> {
-    await this.pool.query('UPDATE "TerminalCommand" SET "publishedAt"=$2 WHERE "commandId"=$1 AND "publishedAt" IS NULL',
+    await this.pool.query('UPDATE "TerminalCommand" SET "publishedAt"=$2 WHERE "commandId"=$1',
       [commandId, at.toISOString()]);
   }
   /**

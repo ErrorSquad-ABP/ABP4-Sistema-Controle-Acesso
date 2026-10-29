@@ -164,7 +164,7 @@ model TerminalCommand {
   ackStatus      String?
   ackReason      String?
   acknowledgedAt DateTime?
-  /// NULL enquanto a intencao nao foi entregue ao broker (outbox, DT-13).
+  /// Instante da ultima entrega ao broker; a reserva do relay grava o mesmo campo antes do publish (DT-13).
   publishedAt    DateTime?
 
   @@index([terminalId, createdAt])

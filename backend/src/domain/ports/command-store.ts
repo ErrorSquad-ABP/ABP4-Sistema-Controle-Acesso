@@ -9,14 +9,17 @@ export interface CommandStore {
   save(command: CommandMessage, requestId: string): Promise<CommandMessage>;
   findByRequestId(requestId: string): Promise<CommandMessage | undefined>;
   acknowledge(ack: AckMessage): Promise<AckResult>;
-  /** Marca a entrega ao broker; sem a marca o relay ainda tenta publicar (DT-13). */
+  /**
+   * Grava a ultima entrega/tentativa ao broker (DT-13). O claim usa o mesmo campo
+   * como reserva, entao a marca atualiza (nao so preenche) o instante.
+   */
   markPublished(commandId: string, at: Date): Promise<void>;
   /**
    * Reserva ate `limit` intencoes ainda nao entregues e nao vencidas em `now`, decididas
    * ate `decidedBefore` (folga para nao disputar com a publicacao em curso), das que
    * vencem primeiro. A reserva e atomica: duas replicas do worker nao publicam o mesmo
    * comando (DT-13). `staleBefore` libera reserva orfa de um processo que morreu depois
-   * de marcar.
+   * de marcar; precisa ser menor que o TTL do comando para haver o que reclamar.
    */
   claimUndispatched(
     now: Date,
