@@ -75,6 +75,10 @@ Validadas em [`src/main/config/env.ts`](src/main/config/env.ts); modelo em [`.en
 | `SIM_TERMINAL_ID` | `terminal-01` | id do terminal simulado |
 | `SIM_NFC_UID` | `04A1B2C3` | UID NFC que o simulador lê |
 | `COMMAND_RELAY_INTERVAL_MS` | `5000` | intervalo do relay da outbox de comandos (DT-13): ~12 consultas/min por réplica, duas tentativas dentro dos 10 s de prazo |
+| `RELAY_WINDOW_ENABLED` | `true` | liga a janela de operacao do relay (DT-21); `false` = relay continuo |
+| `RELAY_WINDOW_START` | `18:45` | inicio da janela (`HH:mm`) |
+| `RELAY_WINDOW_END` | `23:05` | fim da janela (`HH:mm`, exclusivo) |
+| `RELAY_WINDOW_TZ` | `America/Sao_Paulo` | fuso em que a janela e avaliada |
 
 ## Endpoints
 

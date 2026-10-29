@@ -333,6 +333,8 @@ beforeAll(async () => {
     TZ: 'America/Sao_Paulo',
     // Relay mais frequente no teste: o default de 5 s ainda cabe nos 10 s do comando.
     COMMAND_RELAY_INTERVAL_MS: '1000',
+    // O CI roda em qualquer horario: a janela de operacao (DT-21) fica desligada aqui.
+    RELAY_WINDOW_ENABLED: 'false',
   };
   baseUrl = `http://127.0.0.1:${httpPort}`;
 

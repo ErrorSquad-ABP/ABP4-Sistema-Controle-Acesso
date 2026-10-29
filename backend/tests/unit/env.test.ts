@@ -19,7 +19,34 @@ describe('loadEnv', () => {
       JWT_TTL_SECONDS: 3600,
       TRUST_PROXY: 0,
       COMMAND_RELAY_INTERVAL_MS: 5000,
+      RELAY_WINDOW_ENABLED: true,
+      RELAY_WINDOW_START: '18:45',
+      RELAY_WINDOW_END: '23:05',
+      RELAY_WINDOW_TZ: 'America/Sao_Paulo',
     });
+  });
+
+  it('aceita janela do relay desligada e horario customizado', () => {
+    const env = configured({
+      RELAY_WINDOW_ENABLED: 'false',
+      RELAY_WINDOW_START: '08:00',
+      RELAY_WINDOW_END: '12:30',
+      RELAY_WINDOW_TZ: 'UTC',
+    });
+
+    expect(env.RELAY_WINDOW_ENABLED).toBe(false);
+    expect(env.RELAY_WINDOW_START).toBe('08:00');
+    expect(env.RELAY_WINDOW_END).toBe('12:30');
+    expect(env.RELAY_WINDOW_TZ).toBe('UTC');
+  });
+
+  it('recusa horario fora de HH:mm', () => {
+    expect(() => configured({ RELAY_WINDOW_START: '25:00' })).toThrow(InvalidEnvError);
+    expect(() => configured({ RELAY_WINDOW_END: '23h05' })).toThrow(InvalidEnvError);
+  });
+
+  it('recusa fuso desconhecido', () => {
+    expect(() => configured({ RELAY_WINDOW_TZ: 'Marte/Olympus' })).toThrow(InvalidEnvError);
   });
 
   it('le as variaveis MQTT e trata credenciais vazias como ausentes', () => {
