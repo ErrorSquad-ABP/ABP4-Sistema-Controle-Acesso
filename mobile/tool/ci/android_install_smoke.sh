@@ -43,7 +43,7 @@ focus_dump() {
 }
 focused() {
   awk -v full="$package/$activity" -v abbrev="$package/.${activity##*.}" '
-    /^mCurrentFocus=|^mFocusedApp=/ {
+    /mCurrentFocus=|mFocusedApp=/ {
       for (i = 1; i <= NF; i++) {
         c = $i
         sub(/[},]+$/, "", c)

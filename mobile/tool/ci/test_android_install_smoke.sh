@@ -48,7 +48,13 @@ mCurrentFocus=Window{9f3 u0 com.android.launcher3/com.android.launcher3.Launcher
 mFocusedApp=ActivityRecord{a1 u0 com.android.launcher3/.Launcher t1}
 EOF
 
+# O dumpsys real indentas os campos; ancorar no inicio da linha reprovava o app aberto.
 cat >"$state/app" <<EOF
+  mCurrentFocus=Window{e42 u0 $pkg/$pkg.MainActivity}
+  mFocusedApp=ActivityRecord{b7 u0 $pkg/.MainActivity t7}
+EOF
+
+cat >"$state/app_sem_indentacao" <<EOF
 mCurrentFocus=Window{e42 u0 $pkg/$pkg.MainActivity}
 mFocusedApp=ActivityRecord{b7 u0 $pkg/.MainActivity t7}
 EOF
@@ -93,12 +99,16 @@ run "app aberto em primeiro plano" 0
 # 3. Crash na abertura -> falha.
 FAKE_CRASH=1 run "crash na abertura" 1
 
-# 4. Formato do Android 14: foco em outro componente e componente abreviado no
+# 4. Saida sem indentacao tambem vale.
+cp "$state/app_sem_indentacao" "$state/focus"
+run "activity em primeiro plano sem indentacao" 0
+
+# 5. Formato do Android 14: foco em outro componente e componente abreviado no
 #    mFocusedApp -> sucesso.
 cp "$state/app14" "$state/focus"
 run "activity em primeiro plano no formato do Android 14" 0
 
-# 5. Componente parecido (.MainActivityEvil) nao e a activity principal -> falha.
+# 6. Componente parecido (.MainActivityEvil) nao e a activity principal -> falha.
 cp "$state/evil" "$state/focus"
 run "componente parecido com a MainActivity" 1
 
@@ -106,4 +116,4 @@ if [ "$failures" -ne 0 ]; then
   echo "FALHA: $failures caso(s) do android_install_smoke.sh"
   exit 1
 fi
-echo "OK: android_install_smoke.sh (5 casos)"
+echo "OK: android_install_smoke.sh (6 casos)"
