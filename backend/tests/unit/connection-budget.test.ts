@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { ValidateQrCredentialUseCase } from '../../src/application/terminal/qr-credential.use-cases.js';
+import { prismaPoolOptions } from '../../src/infrastructure/database/prisma-client.js';
 import { HmacQrTokenSigner } from '../../src/infrastructure/ids/hmac-qr-token-signer.js';
 import { buildAccessRuntime, buildEventDeduplication } from '../../src/main/access-composition-root.js';
 import {
   API_CONNECTIONS,
+  POOL_CONNECTION_TIMEOUT_MS,
+  POOL_QUERY_TIMEOUT_MS,
   WORKER_CONNECTIONS,
   apiConnectionTotal,
   workerConnectionTotal,
@@ -55,5 +58,36 @@ describe('DT-14: orcamento de conexoes', () => {
     } finally {
       await dedup?.pool.end();
     }
+  });
+
+  it('todo pool limita a espera pela resposta da consulta, alem da conexao livre', async () => {
+    const access = buildAccessRuntime(env, deps, API_CONNECTIONS.access);
+    const dedup = buildEventDeduplication(env, WORKER_CONNECTIONS.events);
+    try {
+      for (const pool of [access?.pool, dedup?.pool]) {
+        expect(pool?.options.connectionTimeoutMillis).toBe(POOL_CONNECTION_TIMEOUT_MS);
+        expect(pool?.options.query_timeout).toBe(POOL_QUERY_TIMEOUT_MS);
+      }
+    } finally {
+      await access?.pool.end();
+      await dedup?.pool.end();
+    }
+  });
+
+  it('o pool do Prisma (driver adapter) recebe o mesmo teto de consulta', () => {
+    const options = prismaPoolOptions('postgresql://abp4:abp4@127.0.0.1:1/abp4', {
+      ...API_CONNECTIONS.prisma,
+      connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
+      queryTimeoutMillis: POOL_QUERY_TIMEOUT_MS,
+    });
+    expect(options).toMatchObject({
+      max: API_CONNECTIONS.prisma.max,
+      application_name: API_CONNECTIONS.prisma.applicationName,
+      connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
+      query_timeout: POOL_QUERY_TIMEOUT_MS,
+    });
+    // Startup GUC: o pooler do Neon recusa `statement_timeout` como parametro de
+    // startup ("unsupported startup parameter"), entao ele nao entra na conexao.
+    expect(options).not.toHaveProperty('statement_timeout');
   });
 });

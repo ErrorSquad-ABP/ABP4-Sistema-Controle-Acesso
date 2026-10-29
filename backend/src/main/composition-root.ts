@@ -31,7 +31,7 @@ import { PrismaUserAdminRepository } from '../infrastructure/repositories/prisma
 import { PrismaUserRepository } from '../infrastructure/repositories/prisma-user-repository.js';
 import { createLogger, type Logger } from '../shared/logger.js';
 import { buildAccessRuntime } from './access-composition-root.js';
-import { API_CONNECTIONS, POOL_CONNECTION_TIMEOUT_MS } from './config/connection-budget.js';
+import { API_CONNECTIONS, POOL_CONNECTION_TIMEOUT_MS, POOL_QUERY_TIMEOUT_MS } from './config/connection-budget.js';
 import { InvalidEnvError, type Env } from './config/env.js';
 
 /**
@@ -104,6 +104,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
       ? createPrismaClient(env.DATABASE_URL, {
           ...API_CONNECTIONS.prisma,
           connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
+          queryTimeoutMillis: POOL_QUERY_TIMEOUT_MS,
         })
       : undefined;
   const tokens = overrides.tokenService ?? new JwtTokenService(env.JWT_SECRET, env.JWT_TTL_SECONDS);

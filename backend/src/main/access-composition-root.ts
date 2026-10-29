@@ -10,7 +10,7 @@ import { PostgresAccessRepository } from '../infrastructure/database/postgres-ac
 import { PostgresCommandStore } from '../infrastructure/database/postgres-command-store.js';
 import { PostgresEventDeduplicator } from '../infrastructure/database/postgres-event-deduplicator.js';
 import { DatabaseAccessDecider } from '../infrastructure/terminal/database-access-decider.js';
-import { POOL_CONNECTION_TIMEOUT_MS, type PoolBudget } from './config/connection-budget.js';
+import { POOL_CONNECTION_TIMEOUT_MS, POOL_QUERY_TIMEOUT_MS, type PoolBudget } from './config/connection-budget.js';
 import type { Env } from './config/env.js';
 
 export interface AccessRuntime {
@@ -42,7 +42,7 @@ export function buildAccessRuntime(
     max: budget.max,
     application_name: budget.applicationName,
     connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
-    query_timeout: 10_000,
+    query_timeout: POOL_QUERY_TIMEOUT_MS,
     idleTimeoutMillis: 10_000,
     allowExitOnIdle: true,
     options: '-c timezone=UTC',
@@ -61,6 +61,7 @@ export function buildEventDeduplication(env: Env, budget: PoolBudget): EventDedu
     max: budget.max,
     application_name: budget.applicationName,
     connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
+    query_timeout: POOL_QUERY_TIMEOUT_MS,
     idleTimeoutMillis: 10_000,
     allowExitOnIdle: true,
   });

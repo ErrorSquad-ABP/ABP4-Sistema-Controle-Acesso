@@ -24,6 +24,15 @@ export const WORKER_CONNECTIONS = {
 /** Espera maxima por uma conexao livre antes de falhar o pedido. */
 export const POOL_CONNECTION_TIMEOUT_MS = 5_000;
 
+/**
+ * Teto de espera pela resposta de uma consulta ja enviada. O `pg` aplica no
+ * cliente (`query_timeout`) e o Prisma herda pelo driver adapter: o pedido
+ * falha mesmo com a consulta parada na fila do pooler. O servidor nao cancela a
+ * consulta; `statement_timeout` como parametro de startup quebraria a conexao
+ * com o pooler do Neon (parametro de startup nao suportado).
+ */
+export const POOL_QUERY_TIMEOUT_MS = 4_000;
+
 const total = (budget: Record<string, PoolBudget>) =>
   Object.values(budget).reduce((sum, pool) => sum + pool.max, 0);
 
