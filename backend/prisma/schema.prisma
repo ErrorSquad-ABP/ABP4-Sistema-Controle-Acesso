@@ -84,6 +84,7 @@ model Authorization {
   accessEvents AccessEvent[]
 
   @@index([userId, startsAt, endsAt])
+  @@index([userId, locationId, endsAt, id])
   @@index([locationId])
   @@index([createdById])
 }

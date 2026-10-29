@@ -90,26 +90,28 @@ int main() {
   assert(strcmp(terminal_mqtt::qr().token, "b1c2d3e4f5a6") == 0);
   assert(broker.publishCalls == 0);
 
-  // Token no limite do contrato (128) cabe; acima disso e recusado sem apagar o anterior.
-  char token128[129];
-  memset(token128, 'a', 128);
-  token128[128] = '\0';
-  char qr128[400];
-  snprintf(qr128, sizeof qr128,
+  // DT-19: token no limite do contrato (133) e cacheado inteiro; acima disso e
+  // recusado sem apagar o anterior.
+  const char* longest =
+      "v1.t-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.1793153400.1793153410."
+      "NKjxidR9EvCwa6LoOTT8ftfKSM5J4oGppKQe9QLKZP0";
+  char qrLongest[500];
+  snprintf(qrLongest, sizeof qrLongest,
            R"({"v":1,"messageId":"3f0c2c7e-8a41-4a47-9b0e-6a8f5d2f1c13","terminalId":"terminal-dev-01","timestamp":"2026-10-19T19:30:02.000Z","token":"%s","expiresAt":"2026-10-19T19:30:15.000Z"})",
-           token128);
-  deliver(qr128, "terminals/terminal-dev-01/qr");
-  assert(strlen(terminal_mqtt::qr().token) == 128);
+           longest);
+  deliver(qrLongest, "terminals/terminal-dev-01/qr");
+  assert(strlen(terminal_mqtt::qr().token) == 133);
+  assert(strcmp(terminal_mqtt::qr().token, longest) == 0);
 
-  char token129[130];
-  memset(token129, 'b', 129);
-  token129[129] = '\0';
-  char qr129[400];
-  snprintf(qr129, sizeof qr129,
+  char token134[135];
+  memset(token134, 'b', 134);
+  token134[134] = '\0';
+  char qr134[500];
+  snprintf(qr134, sizeof qr134,
            R"({"v":1,"messageId":"3f0c2c7e-8a41-4a47-9b0e-6a8f5d2f1c14","terminalId":"terminal-dev-01","timestamp":"2026-10-19T19:30:03.000Z","token":"%s","expiresAt":"2026-10-19T19:30:15.000Z"})",
-           token129);
-  deliver(qr129, "terminals/terminal-dev-01/qr");
-  assert(strlen(terminal_mqtt::qr().token) == 128);
+           token134);
+  deliver(qr134, "terminals/terminal-dev-01/qr");
+  assert(strcmp(terminal_mqtt::qr().token, longest) == 0);
 
   // Comando dentro do prazo: aciona uma vez e responde `executed`.
   deliver(kOpenCommand);

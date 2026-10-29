@@ -16,4 +16,6 @@ export interface CommandStore {
    * (folga para nao disputar com a publicacao em curso), das que vencem primeiro.
    */
   listUndispatched(now: Date, decidedBefore: Date, limit: number): Promise<CommandMessage[]>;
+  /** Remove ate `limit` comandos com `expiresAt` antes de `before` (DT-18). */
+  purgeExpired(before: Date, limit: number): Promise<number>;
 }

@@ -79,7 +79,7 @@ export const operations: readonly Operation[] = [
     access: 'authenticated',
     body: ValidateQrCredentialRequest,
     success: { status: 200, description: 'Resultado da validacao da credencial, sem decisao de acesso', schema: ValidateQrCredentialResponse },
-    extraErrors: [429],
+    extraErrors: [429, 503],
     example: { body: { qrToken: 'eyJ0ZXJtaW5hbElkIjoiYXVyb3JhLXJlY2VwY2FvIn0.assinatura', terminalId: 'aurora-recepcao' } },
   },
   // ---------------------------------------------------------------- auth
@@ -279,6 +279,7 @@ export const operations: readonly Operation[] = [
     access: 'authenticated',
     body: QrAccessRequest,
     success: { status: 200, description: 'Decisao do acesso (liberado ou negado)', schema: AccessResult },
+    extraErrors: [429, 503],
     example: {
       body: {
         qrToken: 'eyJ0ZXJtaW5hbCI6ImF1cm9yYS1yZWNlcGNhbyJ9.exemplo',

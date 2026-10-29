@@ -62,6 +62,13 @@ jobs:
           "$RUNNER_TEMP/abp4-test-layout"
           g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_qr_token.cpp -o "$RUNNER_TEMP/abp4-test-qr"
           "$RUNNER_TEMP/abp4-test-qr"
+          # DT-19: o token do QR precisa caber inteiro na versao 8 do encoder real.
+          # A lib de terceiros nao compila com -Werror; so o teste nosso exige.
+          gcc -std=c99 -O2 -I .pio/libdeps/esp32dev/QRCode/src \
+            -c .pio/libdeps/esp32dev/QRCode/src/qrcode.c -o "$RUNNER_TEMP/qrcode.o"
+          g++ -std=c++11 -Wall -Wextra -Werror -I include -I .pio/libdeps/esp32dev/QRCode/src \
+            tests/test_display_qr.cpp "$RUNNER_TEMP/qrcode.o" -o "$RUNNER_TEMP/abp4-test-display-qr"
+          "$RUNNER_TEMP/abp4-test-display-qr"
           g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_clock_policy.cpp -o "$RUNNER_TEMP/abp4-test-clock"
           "$RUNNER_TEMP/abp4-test-clock"
 
