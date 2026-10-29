@@ -6,6 +6,7 @@ import { NotFoundError, ValidationError } from '../../src/domain/errors/domain-e
 import { buildContainer } from '../../src/main/composition-root.js';
 import { loadEnv } from '../../src/main/config/env.js';
 import { createApp } from '../../src/main/http/app.js';
+import { buildOpenApiDocument } from '../../src/main/http/contract/openapi.js';
 
 // Rotas que so existem no teste, para exercitar o error handler.
 const probe = Router();
@@ -63,8 +64,7 @@ describe('GET /health', () => {
   });
 });
 
-describe('error handler padrao', () => {
-  it('rota inexistente -> 404 ROUTE_NOT_FOUND', async () => {
+describe('error handler padrao', () => {  it('rota inexistente -> 404 ROUTE_NOT_FOUND', async () => {
     const res = await request(app).get('/nao-existe');
 
     expect(res.status).toBe(404);
@@ -115,5 +115,51 @@ describe('error handler padrao', () => {
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: { code: 'INTERNAL_ERROR', message: 'Erro interno do servidor' } });
     expect(JSON.stringify(res.body)).not.toContain('segredo');
+  });
+});
+
+describe('DT-20: 429/503 documentados nas operacoes QR', () => {
+  const semBanco = createApp(buildContainer(env));
+
+  function documented(operationId: string): Record<string, unknown> {
+    const document = buildOpenApiDocument() as {
+      paths: Record<string, Record<string, { operationId?: string; responses: Record<string, unknown> }>>;
+    };
+    for (const operations of Object.values(document.paths)) {
+      for (const operation of Object.values(operations)) {
+        if (operation.operationId === operationId) return operation.responses;
+      }
+    }
+    throw new Error(`operacao ${operationId} nao documentada`);
+  }
+
+  it('sem banco as duas operacoes QR respondem 503 e o documento declara 503', async () => {
+    const validate = await request(semBanco)
+      .post('/api/v1/credentials/qr/validate')
+      .send({ qrToken: 'v1.terminal-01.1.11.x', terminalId: 'terminal-01' });
+    const request2 = await request(semBanco)
+      .post('/api/v1/access-events/qr')
+      .send({ qrToken: 'v1.terminal-01.1.11.x', terminalId: 'terminal-01', position: { latitude: -23, longitude: -45 } });
+
+    expect(validate.status).toBe(503);
+    expect(request2.status).toBe(503);
+    expect(documented('validateQrCredential')).toHaveProperty('503');
+    expect(documented('requestQrAccess')).toHaveProperty('503');
+  });
+
+  it('o pedido QR responde 429 na requisicao seguinte ao limite de 120 e o documento declara 429', async () => {
+    const app120 = createApp(buildContainer(env));
+    const statuses: number[] = [];
+    for (let attempt = 0; attempt < 121; attempt += 1) {
+      const res = await request(app120)
+        .post('/api/v1/access-events/qr')
+        .send({ qrToken: 'v1.terminal-01.1.11.x', terminalId: 'terminal-01', position: { latitude: -23, longitude: -45 } });
+      statuses.push(res.status);
+    }
+
+    expect(statuses.slice(0, 120).every((status) => status === 503)).toBe(true);
+    expect(statuses[120]).toBe(429);
+    expect(documented('requestQrAccess')).toHaveProperty('429');
+    expect(documented('validateQrCredential')).toHaveProperty('429');
   });
 });

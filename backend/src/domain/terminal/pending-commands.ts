@@ -32,6 +32,12 @@ export class PendingCommands implements CommandStore {
     return { status: 'correlated', command };
   }
 
+  /** Em memoria nao ha historico a expurgar: o `prune` ja descarta o que venceu. */
+  async purgeExpired(before: Date, _limit: number): Promise<number> {
+    this.prune(before);
+    return 0;
+  }
+
   register(command: CommandMessage, now: Date): void {
     this.prune(now);
     this.byId.set(command.commandId, command);

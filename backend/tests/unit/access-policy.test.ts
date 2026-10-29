@@ -48,6 +48,23 @@ describe('DT-03: decisao pelo local resolvido do terminal', () => {
     expect(decideAccess({ ...context, method: 'QR' }).reason).toBe('OUT_OF_RANGE');
   });
 
+  it('geofence de 100 m: registra a distancia e nega alem do raio (US-20)', () => {
+    const dentro = decideAccess({ ...context, method: 'QR', position: { latitude: -22.999551, longitude: -45 } });
+    expect(dentro.action).toBe('open');
+    expect(dentro.distanceMeters).toBeGreaterThan(45);
+    expect(dentro.distanceMeters).toBeLessThan(55);
+
+    const fora = decideAccess({ ...context, method: 'QR', position: { latitude: -22.998652, longitude: -45 } });
+    expect(fora).toMatchObject({ action: 'deny', reason: 'OUT_OF_RANGE' });
+    expect(fora.distanceMeters).toBeGreaterThan(140);
+    expect(fora.distanceMeters).toBeLessThan(160);
+
+    // Raio vem do local mapeado, nao de uma constante da politica.
+    const raioMenor = { ...terminal, location: { ...terminal.location, radiusMeters: 40 } };
+    expect(decideAccess({ ...context, terminal: raioMenor, method: 'QR', position: { latitude: -22.999551, longitude: -45 } }))
+      .toMatchObject({ action: 'deny', reason: 'OUT_OF_RANGE' });
+  });
+
   it('prefere autorizacao utilizavel quando outra esta cancelada', () => {
     expect(decideAccess({ ...context, authorizations: [{ ...authorization, id: 'cancelada', canceledAt: now }, authorization] }).action)
       .toBe('open');
