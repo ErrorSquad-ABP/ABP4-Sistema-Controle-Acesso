@@ -29,7 +29,7 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 | access-events | `GET /me/access-events` | logado | US-21 |
 | access-events | `GET /access-events` | ADMIN | US-21 |
 
-**Já implementadas**: `POST /auth/login`, `GET /auth/me`, o CRUD de usuários (`GET`/`POST /users`, `GET`/`PATCH`/`DELETE /users/{id}`), `GET /me/authorizations`, `POST /credentials/qr/validate` e as três rotas de `access-events` (`POST /access-events/qr` exige `DATABASE_URL`). Exigem identidade real; as rotas de `users`, a listagem global de eventos e as demais de autorizações exigem ADMIN. As demais seguem como stubs: validam a entrada com Zod (inválida → `400 INVALID_REQUEST`) e respondem `501 NOT_IMPLEMENTED` citando o card.
+**Todas as rotas do contrato v1 têm implementação**: `POST /auth/login`, `GET /auth/me`, o CRUD de usuários (`GET`/`POST /users`, `GET`/`PATCH`/`DELETE /users/{id}`), `GET /me/authorizations`, as quatro rotas administrativas de autorizações (`GET`/`POST /authorizations`, `GET /authorizations/{id}`, `POST /authorizations/{id}/cancel`), `POST /credentials/qr/validate` e as três rotas de `access-events` (`POST /access-events/qr` exige `DATABASE_URL`). Só o login é público; as demais exigem identidade real, e `users`, a listagem global de eventos e as rotas administrativas de autorizações exigem ADMIN. O roteador stub ([`api-v1.routes.ts`](../../backend/src/main/http/routes/api-v1.routes.ts)) segue montado como rede de segurança para operação nova do contrato sem caso de uso, mas hoje nenhuma operação cai nele: não há rota respondendo `501`.
 
 ## Convenções
 
