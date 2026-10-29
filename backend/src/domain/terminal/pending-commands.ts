@@ -7,6 +7,7 @@ export class PendingCommands implements CommandStore {
   private readonly byRequest = new Map<string, CommandMessage>();
   private readonly acked = new Map<string, string>();
   private readonly published = new Set<string>();
+  private readonly claimed = new Set<string>();
 
   constructor(private readonly graceMs = 60_000) {}
 
@@ -37,15 +38,22 @@ export class PendingCommands implements CommandStore {
     this.published.add(commandId);
   }
 
-  async listUndispatched(now: Date, decidedBefore: Date, limit: number): Promise<CommandMessage[]> {
-    return [...this.byRequest.values()]
+  async claimUndispatched(now: Date, decidedBefore: Date, limit: number, _staleBefore: Date): Promise<CommandMessage[]> {
+    const claimed = [...this.byRequest.values()]
       .filter((command) =>
         !this.published.has(command.commandId) &&
+        !this.claimed.has(command.commandId) &&
         !this.acked.has(command.commandId) &&
         Date.parse(command.expiresAt) > now.getTime() &&
         Date.parse(command.timestamp) <= decidedBefore.getTime())
       .sort((a, b) => Date.parse(a.expiresAt) - Date.parse(b.expiresAt))
       .slice(0, limit);
+    for (const command of claimed) this.claimed.add(command.commandId);
+    return claimed;
+  }
+
+  async releaseClaim(commandId: string): Promise<void> {
+    this.claimed.delete(commandId);
   }
 
   /** Em memoria nao ha historico a expurgar: o `prune` ja descarta o que venceu. */

@@ -15,7 +15,8 @@ function setup(removedPerBatch: number[]) {
     findByRequestId: vi.fn(),
     acknowledge: vi.fn<() => Promise<AckResult>>(),
     markPublished: vi.fn(),
-    listUndispatched: vi.fn(),
+    claimUndispatched: vi.fn(),
+    releaseClaim: vi.fn(),
     purgeExpired: vi.fn(async (before: Date, limit: number) => {
       calls.push({ before, limit });
       return removedPerBatch[calls.length - 1] ?? 0;

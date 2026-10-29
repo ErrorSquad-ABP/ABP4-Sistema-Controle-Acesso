@@ -25,6 +25,7 @@ class MapCommandStore implements CommandStore {
     readonly byId = new Map<string, CommandMessage>(),
     readonly acked = new Map<string, string>(),
     readonly published = new Set<string>(),
+    readonly claimed = new Set<string>(),
   ) {}
 
   async findByRequestId(requestId: string) {
@@ -52,14 +53,23 @@ class MapCommandStore implements CommandStore {
     this.published.add(commandId);
   }
 
-  async listUndispatched(now: Date, decidedBefore: Date, limit: number) {
-    return [...this.byRequest.values()]
+  /** Mesmo contrato do Postgres: reserva antes de publicar; outra replica nao ve. */
+  async claimUndispatched(now: Date, decidedBefore: Date, limit: number, _staleBefore: Date) {
+    const claimed = [...this.byRequest.values()]
       .filter((command) =>
         !this.published.has(command.commandId) &&
+        !this.claimed.has(command.commandId) &&
         !this.acked.has(command.commandId) &&
         Date.parse(command.expiresAt) > now.getTime() &&
         Date.parse(command.timestamp) <= decidedBefore.getTime())
+      .sort((a, b) => Date.parse(a.expiresAt) - Date.parse(b.expiresAt))
       .slice(0, limit);
+    for (const command of claimed) this.claimed.add(command.commandId);
+    return claimed;
+  }
+
+  async releaseClaim(commandId: string) {
+    this.claimed.delete(commandId);
   }
 
   async purgeExpired(): Promise<number> {
@@ -68,7 +78,8 @@ class MapCommandStore implements CommandStore {
 
   clone(): MapCommandStore {
     return new MapCommandStore(
-      new Map(this.byRequest), new Map(this.byId), new Map(this.acked), new Set(this.published),
+      new Map(this.byRequest), new Map(this.byId), new Map(this.acked),
+      new Set(this.published), new Set(this.claimed),
     );
   }
 
@@ -81,6 +92,8 @@ class MapCommandStore implements CommandStore {
     for (const [key, value] of other.acked) this.acked.set(key, value);
     this.published.clear();
     for (const id of other.published) this.published.add(id);
+    this.claimed.clear();
+    for (const id of other.claimed) this.claimed.add(id);
   }
 }
 
@@ -330,5 +343,33 @@ describe('DT-13: relay recupera a publicacao QR apos falha de transporte', () =>
     after(clock, 2_000);
     expect(await relay().execute()).toMatchObject({ published: 0, skipped: 1 });
     expect(bus.published).toHaveLength(0);
+  });
+
+  it('devolve a reserva quando o transporte falha e nao deixa a intencao presa', async () => {
+    const { useCase, repository, bus, request, clock, relay } = setup();
+    const restore = failTransport(bus);
+    await useCase.execute(request);
+
+    after(clock, 2_000);
+    expect(await relay().execute()).toMatchObject({ claimed: 1, published: 0, failed: 1, interrupted: true });
+    restore();
+
+    after(clock, 3_000);
+    expect(await relay().execute()).toMatchObject({ claimed: 1, published: 1, failed: 0 });
+    expect(bus.published).toHaveLength(1);
+    expect(repository.consumeCount()).toBe(1);
+  });
+
+  it('duas replicas do relay publicam o comando uma unica vez', async () => {
+    const { useCase, bus, request, clock, relay } = setup();
+    const restore = failTransport(bus);
+    await useCase.execute(request);
+    restore();
+
+    after(clock, 2_000);
+    const cycles = await Promise.all([relay().execute(), relay().execute()]);
+
+    expect(cycles.reduce((total, cycle) => total + cycle.published, 0)).toBe(1);
+    expect(bus.published).toHaveLength(1);
   });
 });

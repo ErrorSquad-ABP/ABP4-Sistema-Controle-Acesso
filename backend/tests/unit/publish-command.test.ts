@@ -58,7 +58,12 @@ describe('DT-02: envio e ACK pelo mesmo contrato de armazenamento', () => {
     const publish = bus.publish.bind(bus);
     bus.publish = () => Promise.reject(new Error('conexao perdida'));
     const useCase = new PublishCommandUseCase(store, bus, new FixedClock(NOW), new SequentialIds());
-    const pending = () => store.listUndispatched(NOW, NOW, 10);
+    // Claim + devolucao: so consulta, sem alterar o estado da outbox.
+    const pending = async () => {
+      const claimed = await store.claimUndispatched(NOW, NOW, 10, NOW);
+      for (const command of claimed) await store.releaseClaim(command.commandId);
+      return claimed;
+    };
 
     await expect(useCase.execute(input)).rejects.toThrow('conexao perdida');
     expect(await pending()).toHaveLength(1);

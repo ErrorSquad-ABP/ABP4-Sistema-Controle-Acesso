@@ -12,10 +12,20 @@ export interface CommandStore {
   /** Marca a entrega ao broker; sem a marca o relay ainda tenta publicar (DT-13). */
   markPublished(commandId: string, at: Date): Promise<void>;
   /**
-   * Intencoes ainda nao entregues e nao vencidas em `now`, decididas ate `decidedBefore`
-   * (folga para nao disputar com a publicacao em curso), das que vencem primeiro.
+   * Reserva ate `limit` intencoes ainda nao entregues e nao vencidas em `now`, decididas
+   * ate `decidedBefore` (folga para nao disputar com a publicacao em curso), das que
+   * vencem primeiro. A reserva e atomica: duas replicas do worker nao publicam o mesmo
+   * comando (DT-13). `staleBefore` libera reserva orfa de um processo que morreu depois
+   * de marcar.
    */
-  listUndispatched(now: Date, decidedBefore: Date, limit: number): Promise<CommandMessage[]>;
+  claimUndispatched(
+    now: Date,
+    decidedBefore: Date,
+    limit: number,
+    staleBefore: Date,
+  ): Promise<CommandMessage[]>;
+  /** Devolve a reserva sem entrega: o proximo ciclo tenta de novo (DT-13). */
+  releaseClaim(commandId: string): Promise<void>;
   /** Remove ate `limit` comandos com `expiresAt` antes de `before` (DT-18). */
   purgeExpired(before: Date, limit: number): Promise<number>;
 }
