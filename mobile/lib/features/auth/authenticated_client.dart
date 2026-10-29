@@ -20,7 +20,8 @@ final authenticatedClientProvider = Provider<http.Client>(
 );
 
 /// Põe o Bearer da sessão nas requisições ao backend e encerra a sessão
-/// quando ele recusa o token (401), levando o usuário de volta ao login.
+/// quando o backend recusa o token (401), levando o usuário de volta ao login.
+/// Recusas de outras origens não afetam a sessão.
 class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient({
     required http.Client inner,
@@ -47,11 +48,15 @@ class AuthenticatedClient extends http.BaseClient {
     if (token == null) throw const AuthFailure(AuthFailureReason.unauthorized);
     // Só a origem do backend recebe o Bearer: o mesmo cliente pode atender
     // links e imagens de terceiros.
-    if (_isBackend(request.url)) {
+    final isBackend = _isBackend(request.url);
+    if (isBackend) {
       request.headers['Authorization'] = 'Bearer $token';
     }
     final response = await _inner.send(request);
-    if (response.statusCode == 401) unawaited(_onUnauthorized(token));
+    // 401 de terceiros não diz nada sobre o nosso token.
+    if (isBackend && response.statusCode == 401) {
+      unawaited(_onUnauthorized(token));
+    }
     return response;
   }
 

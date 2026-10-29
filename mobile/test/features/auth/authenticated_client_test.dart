@@ -81,6 +81,19 @@ void main() {
     expect(current(container).session, isNotNull);
   });
 
+  test('401 de outra origem não encerra a sessão', () async {
+    final (container, _) = await setUp(status: 401);
+
+    final response = await container
+        .read(authenticatedClientProvider)
+        .get(Uri.parse('https://outro-exemplo.com/imagem-protegida.png'));
+    await pumpEventQueue();
+
+    expect(response.statusCode, 401);
+    expect(current(container).session, isNotNull);
+    expect(current(container).ended, isNull);
+  });
+
   test('401 encerra a sessão com aviso de sessão encerrada', () async {
     final (container, _) = await setUp(status: 401);
 
