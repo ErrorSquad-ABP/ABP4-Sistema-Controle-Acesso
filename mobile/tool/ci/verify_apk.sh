@@ -31,12 +31,13 @@ name_of() {
 # release esperado. Sem apksigner, avisa e segue (o job nao quebra por ferramenta).
 if [ -x "$tools/apksigner" ]; then
   "$tools/apksigner" verify --verbose "$apk"
-  certs="$("$tools/apksigner" verify --print-certs "$apk")"
-  dn="$(sed -n 's/^Signer #1 certificate DN: //p' <<<"$certs" | tr -d '\r')"
-  case ",$dn," in
-    *",CN=Android Debug,"*) ;;
-    *) fail_msg "assinatura nao e a chave debug (DN: ${dn:-desconhecido})" ;;
-  esac
+  # Sem ancorar no prefixo: o build-tools escolhido pelo runner pode mudar o rotulo,
+  # e a saida do apksigner ja variou entre stdout e stderr. O DN e o sinal que importa.
+  certs="$("$tools/apksigner" verify --print-certs "$apk" 2>&1 || true)"
+  if ! grep -qF 'CN=Android Debug' <<<"$certs"; then
+    printf '%s\n' "--- apksigner --print-certs ---" "$certs" >&2
+    fail_msg "assinatura nao e a chave debug"
+  fi
 else
   echo "AVISO: apksigner ausente em $tools; assinatura e identidade NAO verificadas" >&2
 fi

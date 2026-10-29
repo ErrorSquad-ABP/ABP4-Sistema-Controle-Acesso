@@ -27,7 +27,10 @@ FAKE
 cat >"$tools/apksigner" <<'FAKE'
 #!/usr/bin/env bash
 case " $* " in
-  *" --print-certs "*) printf 'Signer #1 certificate DN: %s\n' "${FAKE_CERT_DN:-CN=Android Debug, O=Android, C=US}" ;;
+  *" --print-certs "*)
+    line="${FAKE_CERT_LABEL:-Signer #1 certificate DN}: ${FAKE_CERT_DN:-CN=Android Debug, O=Android, C=US}"
+    if [ "${FAKE_CERT_STREAM:-stdout}" = "stderr" ]; then printf '%s\n' "$line" >&2; else printf '%s\n' "$line"; fi
+    ;;
 esac
 FAKE
 
@@ -52,11 +55,11 @@ expect() {
   local desc="$1" want="$2" rc=0 out
   out="$(ANDROID_HOME="$tmp/sdk" bash "$verify" "$apk" 2>&1)" || rc=$?
   if [ "$want" = "0" ] && [ "$rc" -ne 0 ]; then
-    echo "FALHA: $desc — esperava sucesso, saiu $rc"
+    echo "FALHA: $desc â€” esperava sucesso, saiu $rc"
     printf '%s\n' "$out"
     failures=$((failures + 1))
   elif [ "$want" != "0" ] && [ "$rc" -eq 0 ]; then
-    echo "FALHA: $desc — esperava falha, saiu 0"
+    echo "FALHA: $desc â€” esperava falha, saiu 0"
     failures=$((failures + 1))
   fi
 }
@@ -88,12 +91,18 @@ export FAKE_CERT_DN='CN=Controle Acesso, O=FATEC, C=BR'
 expect "assinatura que nao e a chave debug" 1
 export FAKE_CERT_DN='CN=Android Debug, O=Android, C=US'
 
-# 7. apksigner ausente: degrada com aviso, sem derrubar o job.
+# 7. Certificado em stderr: a checagem ancorada no prefixo lia vazio e reprovava o
+#    APK debug no ci-mobile. O DN tem de ser encontrado onde estiver.
+export FAKE_CERT_STREAM=stderr
+expect "certificado em stderr" 0
+export FAKE_CERT_STREAM=stdout
+
+# 8. apksigner ausente: degrada com aviso, sem derrubar o job.
 mv "$tools/apksigner" "$tools/apksigner.off"
 expect "apksigner ausente" 0
 out="$(ANDROID_HOME="$tmp/sdk" bash "$verify" "$apk" 2>&1 || true)"
 grep -q "AVISO" <<<"$out" || {
-  echo "FALHA: apksigner ausente — faltou aviso explicito"
+  echo "FALHA: apksigner ausente â€” faltou aviso explicito"
   failures=$((failures + 1))
 }
 mv "$tools/apksigner.off" "$tools/apksigner"
@@ -102,4 +111,4 @@ if [ "$failures" -ne 0 ]; then
   echo "FALHA: $failures caso(s) do verify_apk.sh"
   exit 1
 fi
-echo "OK: verify_apk.sh (7 casos)"
+echo "OK: verify_apk.sh (8 casos)"
