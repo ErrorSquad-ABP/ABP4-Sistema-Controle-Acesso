@@ -77,6 +77,7 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
       commands: access?.commands ?? new PendingCommands(),
       events: dedup?.events ?? new SeenMessages(),
       access: access?.repository,
+      withinRelayWindow: (now) => isWithinRelayWindow(now, janela),
     },
   );
 

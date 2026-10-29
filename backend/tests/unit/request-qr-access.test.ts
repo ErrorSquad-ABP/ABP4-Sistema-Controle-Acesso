@@ -194,13 +194,14 @@ function setup(clock = new FixedClock(NOW), bus = new RecordingBus()) {
     silentLogger,
   );
   // Um relay novo por chamada simula o worker reiniciado sobre o mesmo banco.
-  const relay = () =>
+  const relay = (withinWindow?: (now: Date) => boolean) =>
     new DispatchPendingCommandsUseCase(
       repository.store,
       repository,
       new PublishCommandUseCase(repository.store, bus, clock, ids),
       clock,
       silentLogger,
+      withinWindow,
     );
   const token = new IssueQrCredentialUseCase(clock, ids, signer).execute(TERMINAL).token;
   const request = {
@@ -461,6 +462,22 @@ describe('DT-13: relay recupera a publicacao QR apos falha de transporte', () =>
     const ids = bus.published.map((entry) => (entry.message as CommandMessage).commandId);
     expect(ids).toHaveLength(2);
     expect(new Set(ids).size).toBe(2);
+  });
+
+  it('para de consultar quando a janela fecha no meio do ciclo', async () => {
+    const { useCase, bus, request, relay, clock } = setup();
+    const restore = failTransport(bus);
+    await useCase.execute(request);
+    await useCase.execute({ ...request, requestId: OTHER_REQUEST_ID });
+    restore();
+    after(clock, 2_000);
+
+    // Duas intencoes pendentes, mas a janela so permite o primeiro claim.
+    const janela = [true, false];
+    const out = await relay(() => janela.shift() ?? false).execute();
+
+    expect(out.claimed).toBe(1);
+    expect(out.published).toBe(1);
   });
 
   it('reclama reserva orfa de 6 s, ainda dentro do prazo do comando', async () => {

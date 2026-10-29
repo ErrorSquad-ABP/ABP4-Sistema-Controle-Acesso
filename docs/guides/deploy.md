@@ -136,9 +136,9 @@ O worker decide até 2 NFC em paralelo, limitado pela pool da deduplicação, e 
 
 ### Janela de operação do relay (DT-21)
 
-O relay da outbox consulta o banco a cada `COMMAND_RELAY_INTERVAL_MS` (padrão 5 s). Se isso rodasse 24/7, o Neon nunca suspenderia: 12 consultas/min × 1.440 min × 0,25 CU ficaria acima das 100 CU-h do plano gratuito.
+O relay da outbox consulta o banco a cada `COMMAND_RELAY_INTERVAL_MS` (padrão 5 s). Rodando 24/7, o compute ficaria ativo ~730 h/mês × 0,25 CU ≈ **180 CU-h/mês**, acima das 100 CU-h do plano gratuito.
 
-Por isso o relay só roda entre `RELAY_WINDOW_START` e `RELAY_WINDOW_END` (padrão **18:45–23:05** em `America/Sao_Paulo`). Fora da janela o worker não faz consulta nenhuma; com ~4h20 de janela por dia, o compute fica em torno de **32 CU-h/mês** a 0,25 CU — dentro do gratuito. `RELAY_WINDOW_ENABLED=false` desliga a janela (o e2e usa isso).
+Por isso o relay só roda entre `RELAY_WINDOW_START` e `RELAY_WINDOW_END` (padrão **18:45–23:05** em `America/Sao_Paulo`). Fora da janela o **polling do relay** não faz consulta nenhuma (a inicialização e o expurgo diário ainda consultam uma vez cada); com ~4h20 de janela por dia, o compute fica em torno de **32 CU-h/mês** a 0,25 CU — dentro do gratuito. `RELAY_WINDOW_ENABLED=false` desliga a janela (o e2e usa isso).
 
 A janela não afeta a publicação imediata de um comando (a API publica na hora); ela só adia a **recuperação** de intenções que falharam no transporte. O comando vale 10 s, então uma falha fora da janela expira antes de poder ser recuperada — consequência aceita.
 
