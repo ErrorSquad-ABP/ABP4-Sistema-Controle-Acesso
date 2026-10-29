@@ -27,19 +27,43 @@ name_of() {
   sed -n "s/^$1: name='\([^']*\)'.*/\1/p" <<<"$badging"
 }
 
+# O DN vem como "Signer #1 certificate DN: CN=Android Debug, O=Android, C=US".
+# Comparar substring aprovaria "CN=Android Debug Evil"; o CN tem de ser o campo
+# inteiro, terminando em "," ou no fim do DN. Caixa e espacos ao redor do "="
+# variam entre versoes do build-tools.
+debug_cn() {
+  awk '
+    {
+      i = index($0, "certificate DN:")
+      if (!i) next
+      dn = substr($0, i + length("certificate DN:"))
+      n = split(dn, field, ",")
+      for (j = 1; j <= n; j++) {
+        f = field[j]
+        gsub(/^[ \t]+|[ \t]+$/, "", f)
+        gsub(/[ \t]+/, " ", f)
+        gsub(/[ \t]*=[ \t]*/, "=", f)
+        if (tolower(f) == "cn=android debug") found = 1
+      }
+    }
+    END { exit found ? 0 : 1 }
+  '
+}
+
 # A chave debug e a unica disponivel: se o certificado nao for ela, o APK nao e o
-# release esperado. Sem apksigner, avisa e segue (o job nao quebra por ferramenta).
-if [ -x "$tools/apksigner" ]; then
+# release esperado. Sem apksigner nao ha como provar a identidade — que e o aceite —
+# entao falha em vez de seguir: um check que nao verifica nada nao serve.
+if [ ! -x "$tools/apksigner" ]; then
+  fail_msg "apksigner ausente em $tools; instale/atualize o build-tools do ANDROID_HOME e rode de novo (sem ele a assinatura nao e verificada)"
+else
   "$tools/apksigner" verify --verbose "$apk"
   # Sem ancorar no prefixo: o build-tools escolhido pelo runner pode mudar o rotulo,
   # e a saida do apksigner ja variou entre stdout e stderr. O DN e o sinal que importa.
   certs="$("$tools/apksigner" verify --print-certs "$apk" 2>&1 || true)"
-  if ! grep -qF 'CN=Android Debug' <<<"$certs"; then
+  if ! debug_cn <<<"$certs"; then
     printf '%s\n' "--- apksigner --print-certs ---" "$certs" >&2
     fail_msg "assinatura nao e a chave debug"
   fi
-else
-  echo "AVISO: apksigner ausente em $tools; assinatura e identidade NAO verificadas" >&2
 fi
 
 badging="$("$tools/aapt" dump badging "$apk")"

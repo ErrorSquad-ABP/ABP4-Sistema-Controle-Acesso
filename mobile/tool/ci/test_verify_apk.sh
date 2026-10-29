@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Teste host do verify_apk.sh: apksigner e aapt simulados num SDK temporario, sem
-# Android SDK nem APK real. Cobre identidade do signatario e comparacao literal
-# dos campos (evita falso positivo de regex com "." solto).
+# Android SDK nem APK real. Cobre identidade do signatario (campo CN comparado
+# inteiro), comparacao literal dos campos (evita falso positivo de regex com "."
+# solto) e a exigencia de apksigner presente.
 # Uso: bash mobile/tool/ci/test_verify_apk.sh
 set -euo pipefail
 
@@ -97,12 +98,22 @@ export FAKE_CERT_STREAM=stderr
 expect "certificado em stderr" 0
 export FAKE_CERT_STREAM=stdout
 
-# 8. apksigner ausente: degrada com aviso, sem derrubar o job.
+# 8. DN com o CN certo seguido de texto: substring aprovava "Android Debug Evil".
+export FAKE_CERT_DN='CN=Android Debug Evil, O=Android, C=US'
+expect "CN com sufixo (Android Debug Evil)" 1
+
+# 9. Caixa e espacos variam entre build-tools: continua sendo a chave debug.
+export FAKE_CERT_DN='cn = android debug, o=Android, c=US'
+expect "CN em caixa baixa e com espacos" 0
+export FAKE_CERT_DN='CN=Android Debug, O=Android, C=US'
+
+# 10. apksigner ausente: sem ele a identidade nao e verificada, entao falha com
+#     mensagem acionavel — um check que nao prova nada nao pode passar.
 mv "$tools/apksigner" "$tools/apksigner.off"
-expect "apksigner ausente" 0
+expect "apksigner ausente" 1
 out="$(ANDROID_HOME="$tmp/sdk" bash "$verify" "$apk" 2>&1 || true)"
-grep -q "AVISO" <<<"$out" || {
-  echo "FALHA: apksigner ausente â€” faltou aviso explicito"
+grep -q "apksigner ausente" <<<"$out" || {
+  echo "FALHA: apksigner ausente â€” faltou mensagem acionavel"
   failures=$((failures + 1))
 }
 mv "$tools/apksigner.off" "$tools/apksigner"
@@ -111,4 +122,4 @@ if [ "$failures" -ne 0 ]; then
   echo "FALHA: $failures caso(s) do verify_apk.sh"
   exit 1
 fi
-echo "OK: verify_apk.sh (8 casos)"
+echo "OK: verify_apk.sh (10 casos)"
