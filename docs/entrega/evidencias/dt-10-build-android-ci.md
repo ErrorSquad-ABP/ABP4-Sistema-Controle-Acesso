@@ -24,14 +24,16 @@ Origem: parecer Sol de 21/10 (épico E1). Branch `fix/dt-10-build-android-ci`. N
 
 ## Execução real (GitHub Actions)
 
-Run [`40812261304`](https://github.com/ErrorsQuad/abp4-sistema-controle-acesso/actions/runs/40812261304), no head `cae6cdb` desta branch:
+Run [`40815331729`](https://github.com/ErrorSquad/abp4-sistema-controle-acesso/actions/runs/40815331729), no head `62f4eb8` desta branch:
 
-- `ci-mobile-build-android`: verde em 4m2s; APK release de ~67 MB; artefato `controle-acesso-apk` publicado e `verify_apk.sh` aprovou assinatura, identidade, permissões e ABI.
-- `ci-mobile-install-android`: verde em 1m51s; APK instalado no emulador Pixel 6 / Android 14, aberto e ainda em primeiro plano ao fim da janela de observação.
+- `ci-mobile-build-android`: verde em 4m24s; APK release de ~67 MB; artefato `controle-acesso-apk` publicado e `verify_apk.sh` aprovou assinatura, identidade, permissões e ABI.
+- `ci-mobile-install-android`: verde em 1m37s; APK instalado no emulador Pixel 6 / Android 14, aberto e ainda em primeiro plano ao fim da janela de observação.
 
 Os dois checks **já são obrigatórios na `main`**: a proteção da branch exige 6 checks, entre eles `ci-mobile-build-android` e `ci-mobile-install-android`. Rodam em todo PR e bloqueiam o merge.
 
-A exigência de foco só passou a ser verificada com o smoke deste PR: a execução anterior ([`40616157431`](https://github.com/ErrorsQuad/abp4-sistema-controle-acesso/actions/runs/40616157431), head `ee7ebe9`) é de antes do check, então não comprova foco — o que ela provava era instalar e abrir. A prova de "activity em primeiro plano" é a execução `40812261304`, no head `cae6cdb`.
+A exigência de foco só passou a ser verificada com o smoke deste PR: a execução anterior ([`40616157431`](https://github.com/ErrorSquad/abp4-sistema-controle-acesso/actions/runs/40616157431), head `ee7ebe9`) é de antes do check, então não comprova foco — o que ela provava era instalar e abrir. A prova de "activity em primeiro plano" é a execução `40815331729`, no head `62f4eb8`.
+
+A primeira execucao com o check de foco (40814416639, head 2e29c2) reprovou o app aberto: o dumpsys window indenta mCurrentFocus/mFocusedApp e o script ancorava no inicio da linha. Corrigido em 62f4eb8, com fixture indentada no teste host; a execucao 40815331729 e a que comprova instalar, abrir e continuar em primeiro plano.
 
 ## Verificação
 
