@@ -8,31 +8,35 @@ Origem: parecer Sol de 21/10 (épico E1). Branch `fix/dt-10-build-android-ci`. N
 |---|---|
 | Job de build Android no CI | `ci-mobile-build-android` em `.github/workflows/ci-mobile.yml`: JDK 17 + Flutter 3.47.7 + `flutter build apk --release` |
 | Artifact publicado | `actions/upload-artifact`, nome `controle-acesso-apk`, arquivo `controle-acesso-<sha7>.apk`, retenção de 14 dias; `if-no-files-found: error` |
-| APK instalável em aparelho de referência | `ci-mobile-install-android`: emulador Pixel 6, Android 14 (API 34, x86_64) instala o artefato e abre o app (`mobile/tool/ci/android_install_smoke.sh`) |
-| Falha se o empacotamento quebrar | Erro do Gradle derruba o build; `mobile/tool/ci/verify_apk.sh` falha sem assinatura válida, com certificado que não é a chave debug, com pacote/activity/permissões diferentes ou sem `arm64-v8a`; o job de instalação falha se o app não instalar, não iniciar, não ficar em primeiro plano ou cair |
+| APK instalável em aparelho de referência | `ci-mobile-install-android`: emulador Pixel 6, Android 14 (API 34, x86_64) instala o artefato, abre o app e exige a activity principal em primeiro plano (`mobile/tool/ci/android_install_smoke.sh`) |
+| Falha se o empacotamento quebrar | Erro do Gradle derruba o build; `mobile/tool/ci/verify_apk.sh` falha sem `apksigner`, sem assinatura válida, com certificado que não é a chave debug, com pacote/activity/permissões diferentes ou sem `arm64-v8a`; o job de instalação falha se o app não instalar, não iniciar, não ficar em primeiro plano ou cair |
 
 ## Decisões
 
 - **Release, não debug**: exercita o mesmo caminho de empacotamento que será publicado (R8, ABIs, plugins nativos como `mobile_scanner` e `geolocator`).
-- **Assinatura debug**: ainda não há keystore de release. O APK instala, mas não é distribuível; assinar de verdade e gerar AAB ficam para a publicação. O `verify_apk.sh` confere com `apksigner verify --print-certs` que o certificado é o de debug (`CN=Android Debug`); sem `apksigner` no `build-tools`, avisa e segue sem verificar identidade.
+- **Assinatura debug**: ainda não há keystore de release. O APK instala, mas não é distribuível; assinar de verdade e gerar AAB ficam para a publicação. O `verify_apk.sh` confere com `apksigner verify --print-certs` que o CN do certificado é exatamente `Android Debug`, comparado como campo do DN (um DN como `CN=Android Debug Evil` não passa) e sem `apksigner` o script falha, porque a identidade do signatário é o aceite: check que não verifica nada não pode passar.
 - **`--build-number=${{ github.run_number }}`**: `versionCode` crescente por execução.
 - **Reinstalação**: a chave debug é criada a cada runner, então o certificado muda entre execuções. Instalar uma build sobre outra de assinatura diferente falha com `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; nesse caso, `adb uninstall br.fatec.errorsquad.controle_acesso` antes do `install -r`.
 - **Campos do APK comparados por igualdade**: o badging é lido campo a campo (pacote, activity, permissões, ABI), não por regex com `.` solto, que aprovaria um pacote como `brXfatecYerrorsquadZcontrole_acesso`.
-- **"Abriu" exige foco**: o smoke não aceita só PID vivo — app travado no splash mantém o processo. O script exige a activity principal em `mCurrentFocus`/`mFocusedApp` (`dumpsys window`), além de processo vivo e crash buffer vazio.
+- **"Abriu" exige foco**: o smoke não aceita só PID vivo — app travado no splash mantém o processo. O script exige a activity principal em `mCurrentFocus`/`mFocusedApp` (`dumpsys window`), comparando o componente inteiro e aceitando a forma abreviada que o Android 14 usa no `mFocusedApp` (`br.fatec.errorsquad.controle_acesso/.MainActivity`), além de processo vivo e crash buffer vazio.
 - **Jobs em paralelo ao `ci-mobile-check`**: erro de lint não esconde erro de empacotamento, e vice-versa.
 - **Emulador como aparelho de referência**: é reprodutível no CI. Câmera e GPS reais não são cobertos e continuam na **DT-12**.
 
 ## Execução real (GitHub Actions)
 
-Run [`40616157431`](https://github.com/ErrorsQuad/abp4-sistema-controle-acesso/actions/runs/40616157431):
+Run [`40812261304`](https://github.com/ErrorsQuad/abp4-sistema-controle-acesso/actions/runs/40812261304), no head `cae6cdb` desta branch:
 
-- `ci-mobile-build-android`: verde em 4m52s; APK release de ~67,4 MB; artefato `controle-acesso-apk` publicado.
-- `ci-mobile-install-android`: verde em 1m29s; APK instalado, aberto e ainda em primeiro plano ao fim da janela de observação.
+- `ci-mobile-build-android`: verde em 4m2s; APK release de ~67 MB; artefato `controle-acesso-apk` publicado e `verify_apk.sh` aprovou assinatura, identidade, permissões e ABI.
+- `ci-mobile-install-android`: verde em 1m51s; APK instalado no emulador Pixel 6 / Android 14, aberto e ainda em primeiro plano ao fim da janela de observação.
+
+Os dois checks **já são obrigatórios na `main`**: a proteção da branch exige 6 checks, entre eles `ci-mobile-build-android` e `ci-mobile-install-android`. Rodam em todo PR e bloqueiam o merge.
+
+A exigência de foco só passou a ser verificada com o smoke deste PR: a execução anterior ([`40616157431`](https://github.com/ErrorsQuad/abp4-sistema-controle-acesso/actions/runs/40616157431), head `ee7ebe9`) é de antes do check, então não comprova foco — o que ela provava era instalar e abrir. A prova de "activity em primeiro plano" é a execução `40812261304`, no head `cae6cdb`.
 
 ## Verificação
 
 - `bash -n` nos scripts alterados e nos testes.
-- Teste host dos scripts (`mobile/tool/ci/test_verify_apk.sh` e `test_android_install_smoke.sh`), com `apksigner`/`aapt`/`adb` simulados num diretório temporário: aprovam o pacote completo e reprovam pacote com separadores trocados, activity de outro app, permissão ausente, ABI ausente, certificado que não é debug, app travado no splash e crash na abertura; sem `apksigner`, o `verify_apk.sh` avisa e não quebra. Rodam no `ci-mobile-check`.
+- Teste host dos scripts (`mobile/tool/ci/test_verify_apk.sh` e `test_android_install_smoke.sh`), com `apksigner`/`aapt`/`adb` simulados num diretório temporário: aprovam o pacote completo, o CN em caixa baixa/com espaços e o foco no formato abreviado do Android 14; reprovam pacote com separadores trocados, activity de outro app, permissão ausente, ABI ausente, certificado que não é debug, CN com sufixo (`CN=Android Debug Evil`), componente parecido (`.MainActivityEvil`), app travado no splash, crash na abertura e `apksigner` ausente. Rodam no `ci-mobile-check`.
 - O YAML do workflow é válido.
 
 ## Limites do que foi comprovado
@@ -45,5 +49,4 @@ Run [`40616157431`](https://github.com/ErrorsQuad/abp4-sistema-controle-acesso/a
 
 ## Pendências fora do código
 
-- Incluir `ci-mobile-build-android` e `ci-mobile-install-android` nos checks obrigatórios da `main` (configuração do repositório); sem isso, os jobs rodam mas não bloqueiam o merge.
 - Keystore de release como secret e geração de AAB, antes da publicação.
