@@ -268,3 +268,11 @@ Descobertas por sprint. Títulos, épico e sprint alvo conforme previsto; o refi
 - [`README.md`](README.md) — como o time aplica o Scrum.
 - [`definition-of-done.md`](definition-of-done.md) — o que significa "pronto" para um card.
 - `sprints/` e `templates/` completam a pasta (US-11).
+
+## Estado em 29/10/2026
+
+`main` em `7eab133`. Fechado na Sprint 2: US-14, US-21 (fatia de consulta), US-22 e US-37 no PR #26 · US-19 no #27 · US-15 e US-18 no #33 · US-16 e US-17 no #36 · US-27 no #43 · US-26 herdada da US-08 (evidência em [`../entrega/evidencias/us-26-mqtt-servo.md`](../entrega/evidencias/us-26-mqtt-servo.md)). A US-20 foi antecipada da S3 e fechou no #42.
+
+Aberto: **US-28** (minhas autorizações no app) e **US-29** (scanner QR + resultado no app), ainda com alvo S2 nesta tabela — escorregam para a S3. A US-21 entregou só leitura (`GET /me/access-events`, `GET /access-events`); a gravação de tentativas NFC segue na S3 com a US-23.
+
+O worker MQTT tem código e `render.yaml` na `main` (US-37), mas o deploy efetivo no Render não foi observado. A API está no ar na Vercel: `/health` respondeu `version: 7eab133`, `database: ok`. Detalhe da sprint em [`sprints/sprint-2.md`](sprints/sprint-2.md).
