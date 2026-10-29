@@ -7,8 +7,9 @@ import { SystemClock } from '../../infrastructure/clock/system-clock.js';
 import { CryptoIdGenerator } from '../../infrastructure/ids/crypto-id-generator.js';
 import { HmacQrTokenSigner } from '../../infrastructure/ids/hmac-qr-token-signer.js';
 import type { Logger } from '../../shared/logger.js';
-import { buildAccessRuntime } from '../access-composition-root.js';
+import { buildAccessRuntime, buildEventDeduplication } from '../access-composition-root.js';
 import { resolveAccessDecider } from '../config/access-decider.js';
+import { WORKER_CONNECTIONS } from '../config/connection-budget.js';
 import type { Env } from '../config/env.js';
 import { buildMqttConsumer } from '../mqtt-composition-root.js';
 import { connectBusOrExit } from './connect-bus.js';
@@ -27,22 +28,23 @@ export interface WorkerRuntime {
 export async function startWorkerRuntime(env: Env, logger: Logger): Promise<WorkerRuntime> {
   const clock = new SystemClock();
   const qr = new ValidateQrCredentialUseCase(clock, new HmacQrTokenSigner(env.QR_TOKEN_SECRET));
-  const access =
-    env.ACCESS_MODE === 'real'
-      ? buildAccessRuntime(env, { clock, qr, ids: new CryptoIdGenerator() })
-      : undefined;
+  const real = env.ACCESS_MODE === 'real';
+  const access = real
+    ? buildAccessRuntime(env, { clock, qr, ids: new CryptoIdGenerator() }, WORKER_CONNECTIONS.access)
+    : undefined;
+  const dedup = real ? buildEventDeduplication(env, WORKER_CONNECTIONS.events) : undefined;
 
   let decider: AccessDecider;
   try {
     decider = resolveAccessDecider(env, access?.decider, logger);
     await access?.repository.ready();
-    await access?.events.ready();
+    await dedup?.events.ready();
   } catch (error) {
     logger.error('falha ao inicializar decisor real', {
       error: error instanceof Error ? error.message : String(error),
     });
     await access?.pool.end();
-    await access?.eventPool.end();
+    await dedup?.pool.end();
     process.exit(1);
   }
 
@@ -66,7 +68,7 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
       else onlineTerminals.delete(terminalId);
     },
     env,
-    { decider, commands: access?.commands ?? new PendingCommands(), events: access?.events ?? new SeenMessages() },
+    { decider, commands: access?.commands ?? new PendingCommands(), events: dedup?.events ?? new SeenMessages() },
   );
 
   await bus.subscribe(
@@ -100,7 +102,7 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
       clearInterval(qrTimer);
       await bus.close();
       await access?.pool.end();
-      await access?.eventPool.end();
+      await dedup?.pool.end();
     },
   };
 }

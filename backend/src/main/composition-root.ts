@@ -31,6 +31,7 @@ import { PrismaUserAdminRepository } from '../infrastructure/repositories/prisma
 import { PrismaUserRepository } from '../infrastructure/repositories/prisma-user-repository.js';
 import { createLogger, type Logger } from '../shared/logger.js';
 import { buildAccessRuntime } from './access-composition-root.js';
+import { API_CONNECTIONS, POOL_CONNECTION_TIMEOUT_MS } from './config/connection-budget.js';
 import { InvalidEnvError, type Env } from './config/env.js';
 
 /**
@@ -89,13 +90,22 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
   const validateQrCredential = new ValidateQrCredentialUseCase(clock, signer);
   const databaseProbe =
     overrides.databaseProbe ??
-    (env.DATABASE_URL ? new PostgresDatabaseProbe(env.DATABASE_URL) : undefined);
+    (env.DATABASE_URL
+      ? new PostgresDatabaseProbe(env.DATABASE_URL, API_CONNECTIONS.probe.applicationName)
+      : undefined);
   const needsPrisma =
     !overrides.userRepository ||
     !overrides.accessEventRepository ||
     !overrides.userAdminRepository ||
     !overrides.authorizationRepository;
-  const prisma = needsPrisma && env.DATABASE_URL ? createPrismaClient(env.DATABASE_URL) : undefined;
+  // Limites do orcamento por instancia serverless (DT-14); o padrao do pg seria 10.
+  const prisma =
+    needsPrisma && env.DATABASE_URL
+      ? createPrismaClient(env.DATABASE_URL, {
+          ...API_CONNECTIONS.prisma,
+          connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
+        })
+      : undefined;
   const tokens = overrides.tokenService ?? new JwtTokenService(env.JWT_SECRET, env.JWT_TTL_SECONDS);
   const users =
     overrides.userRepository ?? (prisma ? new PrismaUserRepository(prisma) : undefined);
@@ -108,7 +118,8 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
     overrides.accessEventRepository ??
     (prisma ? new PrismaAccessEventRepository(prisma) : undefined);
   const ids = new CryptoIdGenerator();
-  const access = buildAccessRuntime(env, { clock, qr: validateQrCredential, ids });
+  // Sem a deduplicacao MQTT: a API nao recebe mensagens do broker (DT-14).
+  const access = buildAccessRuntime(env, { clock, qr: validateQrCredential, ids }, API_CONNECTIONS.access);
   // A API so conecta no broker quando precisa publicar: boot sem MQTT continua possivel.
   const accessBus = access
     ? new LazyMqttMessageBus(
@@ -130,7 +141,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
     close: async () => {
       await accessBus?.close();
       await access?.pool.end();
-      await access?.eventPool.end();
+      await prisma?.$disconnect();
     },
     useCases: {
       checkHealth: new CheckHealthUseCase(
