@@ -45,8 +45,8 @@ Cards puxados na Planning 2. Pontos ficam "—" enquanto a estimativa colaborati
 |---|---|---|---|---|
 | US-14 | Auth JWT + perfis | João (card era do Felipe; alinhar) | — | Em review |
 | US-15 | CRUD de usuários admin | — | — | Pendente |
-| US-16 | Criar autorização admin | Caio | — | Pendente |
-| US-17 | Consultar/cancelar autorização admin | Caio | — | Pendente |
+| US-16 | Criar autorização admin | Caio | — | Em review |
+| US-17 | Consultar/cancelar autorização admin | Caio | — | Em review |
 | US-18 | Minhas autorizações usuário | — | — | Pendente |
 | US-19 | Credencial QR rotativa + validação 10s | Caio | — | Pendente |
 | US-21 | Eventos de acesso + histórico com filtros | João | — | Em review (fatia de consulta) |

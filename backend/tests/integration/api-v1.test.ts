@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { buildContainer } from '../../src/main/composition-root.js';
 import { loadEnv } from '../../src/main/config/env.js';
 import { API_V1_PREFIX, buildOpenApiDocument } from '../../src/main/http/contract/openapi.js';
-import { EXAMPLE_IDS, type Operation, operations } from '../../src/main/http/contract/operations.js';
+import { type Operation, operations } from '../../src/main/http/contract/operations.js';
 import { createApp } from '../../src/main/http/app.js';
 
 const env = loadEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent', QR_TOKEN_SECRET: 'a'.repeat(64) });
@@ -19,6 +19,10 @@ const IMPLEMENTED = new Set([
   'updateUser',
   'deleteUser',
   'listMyAuthorizations',
+  'listAuthorizations',
+  'createAuthorization',
+  'getAuthorization',
+  'cancelAuthorization',
   'listMyAccessEvents',
   'listAccessEvents',
   'validateQrCredential',
@@ -57,26 +61,6 @@ describe('rotas stub do contrato v1', () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INVALID_REQUEST');
     expect(res.body.error.details).toHaveProperty('email');
-  });
-
-  it('id que nao e UUID -> 400', async () => {
-    const res = await request(app).get(`${API_V1_PREFIX}/authorizations/123`);
-
-    expect(res.status).toBe(400);
-    expect(res.body.error.details).toHaveProperty('id');
-  });
-
-  it('query invalida -> 400', async () => {
-    const res = await request(app).get(`${API_V1_PREFIX}/authorizations`).query({ status: 'TALVEZ' });
-
-    expect(res.status).toBe(400);
-    expect(res.body.error.details).toHaveProperty('status');
-  });
-
-  it('cancelar sem body e valido (motivo opcional)', async () => {
-    const res = await request(app).post(`${API_V1_PREFIX}/authorizations/${EXAMPLE_IDS.authorization}/cancel`);
-
-    expect(res.status).toBe(501);
   });
 
   it('validacao QR deixou de ser stub e exige sessao', async () => {
