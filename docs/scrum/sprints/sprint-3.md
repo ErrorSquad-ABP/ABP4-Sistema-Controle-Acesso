@@ -24,6 +24,8 @@ Stories do backlog com **Sprint alvo S3** e com **S2/S3** no [`product-backlog.m
 
 **US-21 (S2/S3)**: o que não fechou na Sprint 2 é retomado aqui.
 
+**US-20 (antecipada)**: fechada na Sprint 2 pelo PR #42; a linha da US-20 na tabela fica só como registro do plano original, não como escopo novo.
+
 **US-38**: além do build web, troca os ícones padrão do Flutter (web e Android) por uma identidade única, com o nome público "Controle de Acesso".
 
 Resumo por épico: **E2** acrescenta a validação por geofence e o histórico completo · **E3** entrega NFC, GPS/heartbeat e a resiliência do terminal · **E4** fecha o admin no app com acessibilidade para o público idoso (RNF04) · **E5** escreve a qualidade (E2E no CI, revisão de segurança, hardware real) · **E6** consolida arquitetura e diagramas.
