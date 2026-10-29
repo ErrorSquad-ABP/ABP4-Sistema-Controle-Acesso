@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import type { AuthorizationRecord } from '../../src/domain/authorizations/authorization.js';
+import type { AuthorizationRepository } from '../../src/domain/ports/authorization-repository.js';
 import type { UserRecord } from '../../src/domain/ports/user-repository.js';
 import { buildContainer } from '../../src/main/composition-root.js';
 import { loadEnv } from '../../src/main/config/env.js';
@@ -41,6 +42,15 @@ const visitor: UserRecord = {
 const location = { id: '1b4e28ba-2fa1-41d2-883f-0016d3cca427', name: 'Recepcao' };
 const residentUser = { id: resident.id, name: resident.name, role: 'RESIDENT' as const };
 
+const ids = {
+  active: '6ec0bd7f-11c0-43da-975e-2a8ad9ebae01',
+  scheduled: '6ec0bd7f-11c0-43da-975e-2a8ad9ebae02',
+  expired: '6ec0bd7f-11c0-43da-975e-2a8ad9ebae03',
+  exhausted: '6ec0bd7f-11c0-43da-975e-2a8ad9ebae04',
+  canceled: '6ec0bd7f-11c0-43da-975e-2a8ad9ebae05',
+  visitor: '6ec0bd7f-11c0-43da-975e-2a8ad9ebae06',
+} as const;
+
 function authorization(
   id: string,
   overrides: Partial<AuthorizationRecord> = {},
@@ -60,30 +70,53 @@ function authorization(
   };
 }
 
-const records: AuthorizationRecord[] = [
-  authorization('6ec0bd7f-11c0-43da-975e-2a8ad9ebae01'),
-  authorization('6ec0bd7f-11c0-43da-975e-2a8ad9ebae02', {
-    startsAt: new Date(now + 60 * minute),
-    endsAt: new Date(now + 120 * minute),
-  }),
-  authorization('6ec0bd7f-11c0-43da-975e-2a8ad9ebae03', {
-    startsAt: new Date(now - 120 * minute),
-    endsAt: new Date(now - 60 * minute),
-  }),
-  authorization('6ec0bd7f-11c0-43da-975e-2a8ad9ebae04', {
-    startsAt: new Date(now - 45 * minute),
-    maxUses: 2,
-    usedCount: 2,
-  }),
-  authorization('6ec0bd7f-11c0-43da-975e-2a8ad9ebae05', {
-    startsAt: new Date(now - 90 * minute),
-    canceledAt: new Date(now - 10 * minute),
-    cancelReason: 'Visita remarcada',
-  }),
-  authorization('6ec0bd7f-11c0-43da-975e-2a8ad9ebae06', {
-    user: { id: visitor.id, name: visitor.name, role: 'VISITOR' },
-  }),
-];
+/** Cada teste recebe o proprio conjunto: cancelar muta o registro. */
+function fixtureRecords(): AuthorizationRecord[] {
+  return [
+    authorization(ids.active),
+    authorization(ids.scheduled, {
+      startsAt: new Date(now + 60 * minute),
+      endsAt: new Date(now + 120 * minute),
+    }),
+    authorization(ids.expired, {
+      startsAt: new Date(now - 120 * minute),
+      endsAt: new Date(now - 60 * minute),
+    }),
+    authorization(ids.exhausted, {
+      startsAt: new Date(now - 45 * minute),
+      maxUses: 2,
+      usedCount: 2,
+    }),
+    authorization(ids.canceled, {
+      startsAt: new Date(now - 90 * minute),
+      canceledAt: new Date(now - 10 * minute),
+      cancelReason: 'Visita remarcada',
+    }),
+    authorization(ids.visitor, {
+      user: { id: visitor.id, name: visitor.name, role: 'VISITOR' },
+    }),
+  ];
+}
+
+/** Segura as duas leituras do cancelamento para as duas requisicoes verem o estado ACTIVE. */
+class RacingCancelRepository extends InMemoryAuthorizationRepository {
+  private waiting: Array<() => void> = [];
+  private gates = 2;
+
+  override async findById(id: string): Promise<AuthorizationRecord | null> {
+    const record = await super.findById(id);
+    const snapshot = record ? structuredClone(record) : null;
+    if (this.gates === 0) return snapshot;
+
+    this.gates -= 1;
+    if (this.gates === 1) {
+      await new Promise<void>((resolve) => this.waiting.push(resolve));
+    } else {
+      this.waiting.shift()?.();
+    }
+    return snapshot;
+  }
+}
 
 const env = loadEnv({
   QR_TOKEN_SECRET: 'a'.repeat(64),
@@ -92,13 +125,13 @@ const env = loadEnv({
   JWT_SECRET: 'segredo-de-teste-com-32-caracteres',
 });
 
-function buildApp() {
+function buildApp(authorizationRepository?: AuthorizationRepository) {
   const users = new InMemoryUserAdminRepository([base, resident, visitor]);
   const app = createApp(
     buildContainer(env, {
       userRepository: users,
       userAdminRepository: users,
-      authorizationRepository: new InMemoryAuthorizationRepository(records),
+      authorizationRepository: authorizationRepository ?? new InMemoryAuthorizationRepository(fixtureRecords()),
       tokenService: new FakeTokenService(users),
     }),
   );
@@ -149,11 +182,11 @@ describe('minhas autorizacoes', () => {
       .set('Authorization', `Bearer ${await token('res@abp4.local')}`);
 
     expect(res.body.items.map((item: { id: string }) => item.id)).toEqual([
-      '6ec0bd7f-11c0-43da-975e-2a8ad9ebae02',
-      '6ec0bd7f-11c0-43da-975e-2a8ad9ebae01',
-      '6ec0bd7f-11c0-43da-975e-2a8ad9ebae04',
-      '6ec0bd7f-11c0-43da-975e-2a8ad9ebae05',
-      '6ec0bd7f-11c0-43da-975e-2a8ad9ebae03',
+      ids.scheduled,
+      ids.active,
+      ids.exhausted,
+      ids.canceled,
+      ids.expired,
     ]);
   });
 
@@ -167,15 +200,15 @@ describe('minhas autorizacoes', () => {
       res.body.items.map((item: { id: string }) => [item.id, item]),
     ) as Record<string, { status: string; remainingUses: number; canceledAt: string | null }>;
 
-    expect(byId['6ec0bd7f-11c0-43da-975e-2a8ad9ebae01']).toMatchObject({ status: 'ACTIVE', remainingUses: 2 });
-    expect(byId['6ec0bd7f-11c0-43da-975e-2a8ad9ebae02']).toMatchObject({ status: 'SCHEDULED' });
-    expect(byId['6ec0bd7f-11c0-43da-975e-2a8ad9ebae03']).toMatchObject({ status: 'EXPIRED' });
-    expect(byId['6ec0bd7f-11c0-43da-975e-2a8ad9ebae04']).toMatchObject({ status: 'EXPIRED', remainingUses: 0 });
-    expect(byId['6ec0bd7f-11c0-43da-975e-2a8ad9ebae05']).toMatchObject({
+    expect(byId[ids.active]).toMatchObject({ status: 'ACTIVE', remainingUses: 2 });
+    expect(byId[ids.scheduled]).toMatchObject({ status: 'SCHEDULED' });
+    expect(byId[ids.expired]).toMatchObject({ status: 'EXPIRED' });
+    expect(byId[ids.exhausted]).toMatchObject({ status: 'EXPIRED', remainingUses: 0 });
+    expect(byId[ids.canceled]).toMatchObject({
       status: 'CANCELED',
       cancelReason: 'Visita remarcada',
     });
-    expect(byId['6ec0bd7f-11c0-43da-975e-2a8ad9ebae05']?.canceledAt).toMatch(/Z$/);
+    expect(byId[ids.canceled]?.canceledAt).toMatch(/Z$/);
   });
 
   it('filtra pelo status calculado', async () => {
@@ -185,7 +218,7 @@ describe('minhas autorizacoes', () => {
     const active = await request(app).get('/api/v1/me/authorizations').query({ status: 'ACTIVE' }).set('Authorization', auth);
     expect(active.status, JSON.stringify(active.body)).toBe(200);
     expect(active.body.total).toBe(1);
-    expect(active.body.items.map((item: { id: string }) => item.id)).toEqual(['6ec0bd7f-11c0-43da-975e-2a8ad9ebae01']);
+    expect(active.body.items.map((item: { id: string }) => item.id)).toEqual([ids.active]);
 
     const expired = await request(app).get('/api/v1/me/authorizations').query({ status: 'EXPIRED' }).set('Authorization', auth);
     expect(expired.body.total).toBe(2);
@@ -209,8 +242,8 @@ describe('minhas autorizacoes', () => {
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body).toMatchObject({ page: 2, pageSize: 2, total: 5 });
     expect(res.body.items.map((item: { id: string }) => item.id)).toEqual([
-      '6ec0bd7f-11c0-43da-975e-2a8ad9ebae04',
-      '6ec0bd7f-11c0-43da-975e-2a8ad9ebae05',
+      ids.exhausted,
+      ids.canceled,
     ]);
   });
 
@@ -238,6 +271,29 @@ describe('autorizacoes administrativas (US-16/17)', () => {
     expect(user.status).toBe(403);
   });
 
+  it('recusa janela invalida e limite de usos invalido', async () => {
+    const { app, token } = buildApp();
+    const auth = `Bearer ${await token('admin@abp4.local')}`;
+    const body = {
+      userId: resident.id,
+      locationId: location.id,
+      startsAt: new Date(now + 60 * minute).toISOString(),
+      endsAt: new Date(now + minute).toISOString(),
+      maxUses: 2,
+    };
+
+    const window = await request(app).post('/api/v1/authorizations').set('Authorization', auth).send(body);
+    expect(window.status, JSON.stringify(window.body)).toBe(400);
+    expect(window.body.error.details).toHaveProperty('endsAt');
+
+    const uses = await request(app)
+      .post('/api/v1/authorizations')
+      .set('Authorization', auth)
+      .send({ ...body, startsAt: new Date(now + minute).toISOString(), endsAt: new Date(now + 60 * minute).toISOString(), maxUses: 0 });
+    expect(uses.status, JSON.stringify(uses.body)).toBe(400);
+    expect(uses.body.error.details).toHaveProperty('maxUses');
+  });
+
   it('lista com filtros e paginação, e só ADMIN consulta a lista', async () => {
     const { app, token } = buildApp();
     const adminToken = await token('admin@abp4.local');
@@ -248,13 +304,99 @@ describe('autorizacoes administrativas (US-16/17)', () => {
     expect(denied.status).toBe(403);
   });
 
+  it('combina o filtro de periodo com o status', async () => {
+    const { app, token } = buildApp();
+    const auth = `Bearer ${await token('admin@abp4.local')}`;
+    const period = {
+      userId: resident.id,
+      from: new Date(now - 40 * minute).toISOString(),
+      to: new Date(now + 90 * minute).toISOString(),
+    };
+
+    const active = await request(app).get('/api/v1/authorizations').query({ ...period, status: 'ACTIVE' }).set('Authorization', auth);
+    expect(active.status, JSON.stringify(active.body)).toBe(200);
+    expect(active.body.total).toBe(1);
+    expect(active.body.items.map((item: { id: string }) => item.id)).toEqual([ids.active]);
+
+    const scheduled = await request(app).get('/api/v1/authorizations').query({ ...period, status: 'SCHEDULED' }).set('Authorization', auth);
+    expect(scheduled.status, JSON.stringify(scheduled.body)).toBe(200);
+    expect(scheduled.body.total).toBe(1);
+    expect(scheduled.body.items.map((item: { id: string }) => item.id)).toEqual([ids.scheduled]);
+  });
+
+  it('pagina a lista administrativa na segunda pagina', async () => {
+    const { app, token } = buildApp();
+    const auth = `Bearer ${await token('admin@abp4.local')}`;
+
+    const first = await request(app).get('/api/v1/authorizations').query({ page: 1, pageSize: 2 }).set('Authorization', auth);
+    const second = await request(app).get('/api/v1/authorizations').query({ page: 2, pageSize: 2 }).set('Authorization', auth);
+
+    expect(first.status, JSON.stringify(first.body)).toBe(200);
+    expect(first.body).toMatchObject({ page: 1, pageSize: 2, total: 6 });
+    expect(first.body.items.map((item: { id: string }) => item.id)).toEqual([ids.scheduled, ids.visitor]);
+    expect(second.body).toMatchObject({ page: 2, pageSize: 2, total: 6 });
+    expect(second.body.items.map((item: { id: string }) => item.id)).toEqual([ids.active, ids.exhausted]);
+  });
+
+  it('detalha a propria autorizacao e esconde a de outro usuario', async () => {
+    const { app, token } = buildApp();
+    const residentToken = await token('res@abp4.local');
+
+    const own = await request(app).get(`/api/v1/authorizations/${ids.active}`).set('Authorization', `Bearer ${residentToken}`);
+    expect(own.status, JSON.stringify(own.body)).toBe(200);
+    expect(own.body).toMatchObject({ id: ids.active, user: { id: resident.id } });
+
+    const another = await request(app).get(`/api/v1/authorizations/${ids.visitor}`).set('Authorization', `Bearer ${residentToken}`);
+    expect(another.status).toBe(404);
+
+    const asAdmin = await request(app).get(`/api/v1/authorizations/${ids.visitor}`).set('Authorization', `Bearer ${await token('admin@abp4.local')}`);
+    expect(asAdmin.status, JSON.stringify(asAdmin.body)).toBe(200);
+  });
+
   it('cancela autorização ativa com motivo e rejeita expirada', async () => {
     const { app, token } = buildApp();
     const auth = `Bearer ${await token('admin@abp4.local')}`;
-    const canceled = await request(app).post(`/api/v1/authorizations/${records[0]?.id}/cancel`).set('Authorization', auth).send({ reason: 'Remarcada' });
+    const canceled = await request(app).post(`/api/v1/authorizations/${ids.active}/cancel`).set('Authorization', auth).send({ reason: 'Remarcada' });
     expect(canceled.status, JSON.stringify(canceled.body)).toBe(200);
     expect(canceled.body).toMatchObject({ status: 'CANCELED', cancelReason: 'Remarcada' });
-    const expired = await request(app).post(`/api/v1/authorizations/${records[2]?.id}/cancel`).set('Authorization', auth);
+    const expired = await request(app).post(`/api/v1/authorizations/${ids.expired}/cancel`).set('Authorization', auth);
     expect(expired.status).toBe(409);
+  });
+
+  it('nao cancela duas vezes a mesma autorizacao', async () => {
+    const { app, token } = buildApp();
+    const auth = `Bearer ${await token('admin@abp4.local')}`;
+
+    const already = await request(app).post(`/api/v1/authorizations/${ids.canceled}/cancel`).set('Authorization', auth).send({ reason: 'Outro motivo' });
+    expect(already.status, JSON.stringify(already.body)).toBe(409);
+
+    const detail = await request(app).get(`/api/v1/authorizations/${ids.canceled}`).set('Authorization', auth);
+    expect(detail.body).toMatchObject({ status: 'CANCELED', cancelReason: 'Visita remarcada' });
+  });
+
+  it('cancelamento concorrente: uma escrita vence e a outra recebe 409', async () => {
+    const repository = new RacingCancelRepository(fixtureRecords());
+    const { app, token } = buildApp(repository);
+    const auth = `Bearer ${await token('admin@abp4.local')}`;
+
+    const responses = await Promise.all([
+      request(app).post(`/api/v1/authorizations/${ids.active}/cancel`).set('Authorization', auth).send({ reason: 'Primeiro motivo' }),
+      request(app).post(`/api/v1/authorizations/${ids.active}/cancel`).set('Authorization', auth).send({ reason: 'Segundo motivo' }),
+    ]);
+
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+    const winner = responses.find((response) => response.status === 200);
+
+    const detail = await request(app).get(`/api/v1/authorizations/${ids.active}`).set('Authorization', auth);
+    expect(detail.body).toMatchObject({ status: 'CANCELED' });
+    expect(detail.body.cancelReason).toBe(winner?.body.cancelReason);
+  });
+
+  it('cancelar id inexistente -> 404', async () => {
+    const { app, token } = buildApp();
+    const res = await request(app)
+      .post('/api/v1/authorizations/6ec0bd7f-11c0-43da-975e-2a8ad9ebaeff/cancel')
+      .set('Authorization', `Bearer ${await token('admin@abp4.local')}`);
+    expect(res.status).toBe(404);
   });
 });
