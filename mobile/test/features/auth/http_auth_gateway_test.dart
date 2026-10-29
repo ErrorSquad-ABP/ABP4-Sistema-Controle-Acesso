@@ -106,7 +106,7 @@ void main() {
       );
     });
 
-    test('tempo esgotado vira network', () async {
+    test('tempo esgotado não é falta de conexão', () async {
       final gateway = HttpAuthGateway(
         client: MockClient(
           (_) =>
@@ -118,7 +118,7 @@ void main() {
       );
       await expectLater(
         gateway.login(request),
-        _failsWith(AuthFailureReason.network),
+        _failsWith(AuthFailureReason.timeout),
       );
     });
 

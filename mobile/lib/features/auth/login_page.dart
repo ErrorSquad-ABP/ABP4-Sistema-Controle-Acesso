@@ -109,6 +109,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           'Sem conexão com o servidor. Verifique sua internet e tente '
               'novamente.',
         ),
+        AuthFailureReason.timeout => (
+          FeedbackTone.warning,
+          'O servidor demorou para responder. Tente novamente em instantes.',
+        ),
         AuthFailureReason.unexpected => (
           FeedbackTone.error,
           'Não foi possível entrar. Tente novamente.',

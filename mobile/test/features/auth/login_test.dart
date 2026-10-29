@@ -116,6 +116,10 @@ void main() {
         'Sem conexão com o servidor',
         FeedbackTone.warning,
       ),
+      AuthFailureReason.timeout: (
+        'O servidor demorou para responder',
+        FeedbackTone.warning,
+      ),
       AuthFailureReason.unexpected: (
         'Não foi possível entrar',
         FeedbackTone.error,

@@ -177,8 +177,11 @@ enum AuthFailureReason {
   /// 503 ou 5xx: backend ou banco fora do ar.
   unavailable,
 
-  /// Sem resposta: sem rede, DNS ou tempo esgotado.
+  /// Sem resposta: sem rede ou DNS.
   network,
+
+  /// O servidor não respondeu dentro do prazo.
+  timeout,
 
   /// Resposta fora do contrato.
   unexpected,

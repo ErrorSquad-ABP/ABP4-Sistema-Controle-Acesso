@@ -72,7 +72,7 @@ class HttpAuthGateway implements AuthGateway {
     try {
       response = await request().timeout(_timeout);
     } on TimeoutException {
-      throw const AuthFailure(AuthFailureReason.network);
+      throw const AuthFailure(AuthFailureReason.timeout);
     } on http.ClientException {
       throw const AuthFailure(AuthFailureReason.network);
     } on FormatException {
