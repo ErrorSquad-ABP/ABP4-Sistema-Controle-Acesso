@@ -71,28 +71,72 @@ Esperado: `200` com `{"status":"ok","version":"<sha>","database":"ok",...}`. Se 
 
 ## Orçamento de conexões (DT-14)
 
-Cada instância serverless da API abre o próprio conjunto de pools no Neon. Os limites ficam em [`connection-budget.ts`](../../backend/src/main/config/connection-budget.ts); cada pool tem um `application_name` para dar para medir.
+O DT-14 orça **conexões clientes**: quantas conexões cada processo abre para o endpoint `-pooler` do Neon. Isso **não** é o teto de conexões do projeto. Entre os clientes e o Postgres existe o PgBouncer do pooler, e o número de conexões reais ao compute é decidido por ele — depende do plano, do tamanho do compute e da configuração (não ajustável) do pooler.
 
-| Processo | Fonte | Uso | Máx. | `application_name` |
+Os limites ficam em [`connection-budget.ts`](../../backend/src/main/config/connection-budget.ts); cada pool tem um `application_name` para dar para medir.
+
+### Conexões clientes por processo
+
+| Processo | Fonte | Uso | Máx. clientes | `application_name` |
 |---|---|---|---|---|
 | API (por instância) | Prisma | usuários, autorizações, histórico | 3 | `abp4-api-prisma` |
 | API (por instância) | pool de acesso | decisão QR e comandos | 3 | `abp4-api-access` |
 | API (por instância) | probe | `/health` | 1 | `abp4-api-probe` |
 | **API, total por instância** | | | **7** | |
-| Worker (instância única) | pool de acesso | decisão NFC, comandos e ACKs | 5 | `abp4-worker-access` |
-| Worker (instância única) | deduplicação | reserva das mensagens MQTT | 2 | `abp4-worker-events` |
-| **Worker, total** | | | **7** | |
+| Worker (por réplica) | pool de acesso | decisão NFC, comandos e ACKs | 5 | `abp4-worker-access` |
+| Worker (por réplica) | deduplicação | reserva das mensagens MQTT | 2 | `abp4-worker-events` |
+| **Worker, total por réplica** | | | **7** | |
 
 A deduplicação MQTT existe só no worker: a API não recebe mensagens do broker e não cria essa pool.
 
-**Total no Neon:** `7 × instâncias ativas da API + 7 (worker) + 1 (migration do CD, conexão direta)`. Com 5 instâncias da API, por exemplo, são até 43 conexões. Antes de subir o tráfego, confira no painel do Neon o limite de conexões do plano e do pooler.
+**Clientes abertos:** `7 × instâncias da API + 7 × réplicas do worker + 1 (migration do CD, conexão direta sem pooler)`. Hoje o worker roda em uma réplica, então o total é `7N + 8`.
 
-**Concorrência por instância da API:**
+Esse número é um orçamento **por instância/réplica**, não um teto global: cada instância fria da API que a Vercel sobe abre outros 7, e não há limite configurado no código para o total. O único teto global é o do pooler, na tabela abaixo.
+
+### Onde os 7 + 7 param (o teto real)
+
+| Camada | Quem limita | Valor | Efeito ao estourar |
+|---|---|---|---|
+| Cliente → pooler | este orçamento | `7N + 8` conexões abertas | cada instância nova soma 7; não há teto global |
+| Cliente → pooler | `max_client_conn` do PgBouncer | 10.000 (fixo) | "no more connections allowed" |
+| Pooler → Postgres | `default_pool_size` do PgBouncer | 0,9 × `max_connections` do compute | consulta espera na fila |
+| Fila do pooler | `query_wait_timeout` | 120 s | erro `query_wait_timeout` depois de 2 min |
+| Direto ao compute | `max_connections` | 104 (0,25 CU) a 4000 (9+ CU) | "remaining connection slots are reserved" |
+
+Valores do pooler e de `max_connections` em [Connection pooling](https://neon.com/docs/connect/connection-pooling) e [Parameter settings by compute size](https://neon.com/docs/reference/compatibility); conferidos em 29/10/2026.
+
+`max_connections` segue a fórmula `max(100, min(4000, floor(CU × 419,66)))`; sete conexões ficam reservadas para o superusuário do Neon. Com o autoscaling padrão do plano free (0,25 a 2 CU), o valor efetivo é o do topo da faixa: `min(2, 8 × 0,25) = 2 CU` → 839.
+
+### Cenário de envelope (estimativa)
+
+Premissas, todas estimadas: compute fixo no tamanho indicado; pooler com `default_pool_size = 0,9 × max_connections`; pico de consultas simultâneas ≈ `7N + 2` (7 por instância da API e 2 decisões NFC no worker); 1 conexão da migration; folga desejada de pelo menos 20% dos backends.
+
+| Cenário | `max_connections` | Backends no pooler (0,9×) | Clientes abertos (`7N + 8`) | Pico de consultas (`7N + 2`) | Folga vs. backends | Leitura |
+|---|---|---|---|---|---|---|
+| 0,25 CU, N = 1 | 104 | 93 | 15 | 9 | 84 | folgado |
+| 0,25 CU, N = 5 | 104 | 93 | 43 | 37 | 56 | ok |
+| 0,25 CU, N = 10 | 104 | 93 | 78 | 72 | 21 | encosta no limite (20% de folga = ~74) |
+| 0,5 CU, N = 10 | 209 | 188 | 78 | 72 | 116 | folgado |
+| 1 CU, N = 25 | 419 | 377 | 183 | 177 | 200 | folgado |
+
+Envelope admissível, em uma frase: o `max_client_conn` do pooler (10.000) não é o gargalo; o gargalo é o número de backends. O pico de consultas simultâneas precisa ficar abaixo de `0,9 × max_connections` com margem — na prática, com 0,25 CU, até ~10 instâncias da API; acima disso, aumente o compute ou reduza o `max` das pools.
+
+O que é estimativa nesta seção: `default_pool_size`, o pico de consultas simultâneas e a folga de 20%. O que é documentado pelo Neon: `max_client_conn = 10.000`, `query_wait_timeout = 120 s`, `default_pool_size = 0,9 × max_connections` e a tabela de `max_connections`.
+
+### Concorrência e tempo de espera por instância da API
+
 - até 3 decisões QR e 3 consultas Prisma ao mesmo tempo;
-- o excedente espera uma conexão livre por até 5 s e depois falha;
-- mais tráfego simultâneo escala em instâncias novas da Vercel, cada uma somando mais 7 conexões ao total.
+- o excedente espera uma conexão livre por até 5 s (`POOL_CONNECTION_TIMEOUT_MS`) e depois falha;
+- uma consulta já enviada tem teto de 4 s no cliente (`POOL_QUERY_TIMEOUT_MS`, `query_timeout` do `pg`), inclusive nas consultas do Prisma via driver adapter. Esse teto libera quem espera, mas **não cancela a consulta no servidor**: ela pode continuar na fila do pooler até o `query_wait_timeout` de 120 s. Não usamos `statement_timeout` no startup porque o pooler do Neon recusa parâmetros de startup fora da lista permitida (`client_encoding`, `datestyle`, `timezone`, `standard_conforming_strings`, `application_name`) — ver [Connection errors](https://neon.com/docs/connect/connection-errors). Para um teto no servidor seria preciso `ALTER ROLE ... SET statement_timeout`, que vale para todos os clientes (inclusive migrations) e não foi aplicado;
+- mais tráfego simultâneo escala em instâncias novas da Vercel, cada uma somando mais 7 conexões clientes.
 
 O worker decide até 2 NFC em paralelo, limitado pela pool da deduplicação, e não disputa conexões com a API.
+
+### O que ainda não foi verificado
+
+- **Neon real:** nenhuma medição no projeto de produção. Os números de compute, `max_connections` e pooler acima vêm da documentação do Neon e de contas, não de observação; a conferência abaixo precisa ser feita com o deploy no ar.
+- **Múltiplas instâncias da Vercel:** o E2E roda uma única instância da API e um único worker. A multiplicação por instâncias frias é comportamento esperado da plataforma, não medido.
+- **Teto no servidor:** o `query_timeout` é do cliente; o cancelamento server-side (`statement_timeout` por role) não está configurado nem testado.
 
 Para conferir em produção:
 
@@ -101,7 +145,7 @@ SELECT application_name, state, count(*) FROM pg_stat_activity
 WHERE application_name LIKE 'abp4-%' GROUP BY 1, 2 ORDER BY 1;
 ```
 
-O E2E `DT-14` dispara uma rajada concorrente contra a API, mede o `pg_stat_activity` e falha se alguma fonte passar do limite ou se o NFC do worker atrasar.
+O E2E `DT-14` dispara uma rajada concorrente contra a API, mede o `pg_stat_activity` e falha se alguma fonte passar do limite ou se o NFC do worker atrasar. Ele mede o tempo só do ramo MQTT (evento → ACK), então um HTTP lento não contamina a medição.
 
 ## Rollback
 
