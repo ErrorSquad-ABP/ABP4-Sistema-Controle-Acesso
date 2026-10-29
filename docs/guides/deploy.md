@@ -69,13 +69,47 @@ Esperado: `200` com `{"status":"ok","version":"<sha>","database":"ok",...}`. Se 
 | Smoke test falha por versão diferente | o domínio de produção ainda aponta para o deploy anterior; confira o último deploy no painel |
 | Deploy duplicado | deploy do Git ainda ligado na Vercel (seção 2, item 3) |
 
+## Orçamento de conexões (DT-14)
+
+Cada instância serverless da API abre o próprio conjunto de pools no Neon. Os limites ficam em [`connection-budget.ts`](../../backend/src/main/config/connection-budget.ts); cada pool tem um `application_name` para dar para medir.
+
+| Processo | Fonte | Uso | Máx. | `application_name` |
+|---|---|---|---|---|
+| API (por instância) | Prisma | usuários, autorizações, histórico | 3 | `abp4-api-prisma` |
+| API (por instância) | pool de acesso | decisão QR e comandos | 3 | `abp4-api-access` |
+| API (por instância) | probe | `/health` | 1 | `abp4-api-probe` |
+| **API, total por instância** | | | **7** | |
+| Worker (instância única) | pool de acesso | decisão NFC, comandos e ACKs | 5 | `abp4-worker-access` |
+| Worker (instância única) | deduplicação | reserva das mensagens MQTT | 2 | `abp4-worker-events` |
+| **Worker, total** | | | **7** | |
+
+A deduplicação MQTT existe só no worker: a API não recebe mensagens do broker e não cria essa pool.
+
+**Total no Neon:** `7 × instâncias ativas da API + 7 (worker) + 1 (migration do CD, conexão direta)`. Com 5 instâncias da API, por exemplo, são até 43 conexões. Antes de subir o tráfego, confira no painel do Neon o limite de conexões do plano e do pooler.
+
+**Concorrência por instância da API:**
+- até 3 decisões QR e 3 consultas Prisma ao mesmo tempo;
+- o excedente espera uma conexão livre por até 5 s e depois falha;
+- mais tráfego simultâneo escala em instâncias novas da Vercel, cada uma somando mais 7 conexões ao total.
+
+O worker decide até 2 NFC em paralelo, limitado pela pool da deduplicação, e não disputa conexões com a API.
+
+Para conferir em produção:
+
+```sql
+SELECT application_name, state, count(*) FROM pg_stat_activity
+WHERE application_name LIKE 'abp4-%' GROUP BY 1, 2 ORDER BY 1;
+```
+
+O E2E `DT-14` dispara uma rajada concorrente contra a API, mede o `pg_stat_activity` e falha se alguma fonte passar do limite ou se o NFC do worker atrasar.
+
 ## Rollback
 
 No painel da Vercel use **Instant Rollback** no deploy anterior, ou reverta o commit na `main` e deixe o CD publicar de novo.
 
 ## Worker MQTT no Render (US-37)
 
-A API é serverless e não mantém conexão MQTT aberta; quem assina os tópicos do terminal é um **web service** no Render (`backend/src/main/worker.ts`), com URL própria e o mesmo broker MQTT. Nesta versão o worker **não acessa o banco**: decisão e persistência de eventos continuam na API.
+A API é serverless e não mantém conexão MQTT aberta; quem assina os tópicos do terminal é um **web service** no Render (`backend/src/main/worker.ts`), com URL própria e o mesmo broker MQTT. No modo real (`ACCESS_MODE=real`) o worker também acessa o Neon: decide os acessos NFC, deduplica as mensagens e correlaciona os ACKs. As conexões que ele usa estão em [Orçamento de conexões](#orçamento-de-conexões-dt-14).
 
 1. No Render: **New → Blueprint** e aponte para o repositório (o `render.yaml` é lido da raiz). O serviço `abp4-mqtt-worker` usa `rootDir: backend`, build `npm ci && npm run build` e start `node dist/main/worker.js`.
 2. Em **Environment**, preencha `MQTT_URL` (`mqtts://<host>:8883` do HiveMQ), `MQTT_USERNAME` e `MQTT_PASSWORD`. O `PORT` é injetado pelo Render.
