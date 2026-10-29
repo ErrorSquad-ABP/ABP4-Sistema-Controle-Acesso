@@ -19,10 +19,18 @@ flowchart LR
   M -. prod .- MP[HiveMQ Cloud · MQTT TLS]
 ```
 
-**Transporte**: app ↔ API por **HTTPS REST**; terminal ↔ backend por **MQTT bidirecional**. Na S1 o processo MQTT do backend roda localmente (US-04); na S2 o mesmo processo vai para o Render (US-37). A Vercel hospeda só a API.
+**Transporte**: app ↔ API por **HTTPS REST**; terminal ↔ backend por **MQTT bidirecional**. Na S1 o processo MQTT do backend roda localmente (US-04); na S2 o mesmo processo foi para o Render (US-37, PR #26). A Vercel hospeda só a API.
+
+**O que está mergeado ≠ o que foi observado em deploy** (29/10/2026):
+
+- **API na Vercel**: no ar. O `/health` público respondeu `version: 7eab133` (o commit da `main` no momento da verificação) e `database: ok`.
+- **Worker no Render**: código (`backend/src/main/worker.ts`) e `render.yaml` na `main`, mas **o deploy efetivo não foi observado** — nenhuma evidência de serviço em execução.
+- **Relay da outbox**: roda só entre **18:45 e 23:05** em `America/Sao_Paulo` (DT-21, PR #45); fora da janela o polling não consulta o banco.
+
+**Ambientes**:
 
 - **Dev**: broker Mosquitto local (porta `1884` no host, `1883` interna do container; sem TLS) e Postgres do compose — ver [`../guides/como-rodar.md`](../guides/como-rodar.md).
-- **Prod**: HiveMQ Cloud (MQTT sobre TLS, com credenciais), Postgres no Neon, API no Vercel e processo MQTT no Render.
+- **Prod**: HiveMQ Cloud (MQTT sobre TLS, com credenciais), Postgres no Neon, API no Vercel e processo MQTT no Render (mergeado, deploy não observado).
 
 ## Fluxo de acesso via QR
 

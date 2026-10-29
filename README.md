@@ -19,7 +19,7 @@ flowchart LR
   W -- regras --> DB
 ```
 
-Na S1 o processo MQTT roda localmente (US-04); na S2 ele vai para o Render (US-37). A Vercel hospeda só a API. Detalhes dos fluxos de acesso (QR e NFC), dos ambientes e da matriz de transporte em [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md); tópicos, payloads, QoS e expiração do MQTT em [`docs/architecture/contratos-mqtt.md`](docs/architecture/contratos-mqtt.md).
+Na S1 o processo MQTT roda localmente (US-04); na S2 ele foi para o Render (US-37, PR #26) — o código e o `render.yaml` estão na `main`, mas o deploy efetivo no Render **não foi observado**. A Vercel hospeda só a API, e essa está no ar: em 29/10/2026 o `/health` público respondeu `version: 7eab133`, `database: ok`. O relay da outbox roda apenas entre **18:45 e 23:05** em `America/Sao_Paulo` (DT-21, PR #45), para não manter o Neon acordado 24/7. Detalhes dos fluxos de acesso (QR e NFC), dos ambientes e da matriz de transporte em [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md); tópicos, payloads, QoS e expiração do MQTT em [`docs/architecture/contratos-mqtt.md`](docs/architecture/contratos-mqtt.md).
 
 ## Estrutura do monorepo
 
@@ -73,6 +73,7 @@ Passo a passo de ambiente, infraestrutura e execução em [`docs/guides/como-rod
 
 - [`docs/scrum/README.md`](docs/scrum/README.md) — como o time aplica Scrum (backlog, DoD, sprints e templates).
 - [`docs/entrega/review-1.md`](docs/entrega/review-1.md) — documento de entrega da Review 1 (Sprint 1).
+- [`docs/entrega/README.md`](docs/entrega/README.md) — índice das evidências por card (`docs/entrega/evidencias/`).
 - [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md) — arquitetura, fluxos de acesso e matriz de transporte.
 - [`docs/architecture/contratos-mqtt.md`](docs/architecture/contratos-mqtt.md) — contrato MQTT v1 (tópicos, payloads, QoS, ids e expiração).
 - [`docs/architecture/modelo-dados.md`](docs/architecture/modelo-dados.md) — diagrama ER do modelo Prisma v1.
