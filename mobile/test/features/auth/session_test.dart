@@ -247,6 +247,26 @@ void main() {
       expect(current(container).ended?.reason, SessionEndReason.notErased);
       expect(current(container).ended?.email, maria.email);
     });
+
+    test(
+      'saída com falha de delete não restaura na abertura seguinte',
+      () async {
+        final store = SecureSessionStore(_MemoryVault()..failDelete = true);
+        final first = containerWith(store: store);
+        await restored(first);
+        await first.read(sessionControllerProvider.notifier).login(request);
+        expect(current(first).session, isNotNull);
+
+        await first.read(sessionControllerProvider.notifier).logout();
+        expect(current(first).session, isNull);
+
+        // Reabrir o app: outra sessão do controller sobre o mesmo cofre.
+        final reopened = containerWith(store: store);
+        final state = await restored(reopened);
+        expect(state.session, isNull);
+        expect(state.ended, isNull);
+      },
+    );
   });
 
   group('encerramento pelo backend e pelo relógio', () {

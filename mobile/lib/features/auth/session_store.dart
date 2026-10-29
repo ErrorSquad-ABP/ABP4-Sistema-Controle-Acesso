@@ -87,7 +87,7 @@ class SecureSessionStore implements SessionStore {
     // falhar depois, a sessão ainda assim não volta ao reabrir o app.
     try {
       await _vault.write(key, '');
-    } catch (writeError) {
+    } catch (_) {
       // Fase 2: sem gravar, apagar resolve; se nem isso funcionar, `deleteAll`
       // é o último recurso antes de avisar quem chamou.
       try {
@@ -98,7 +98,7 @@ class SecureSessionStore implements SessionStore {
           await _vault.deleteAll();
           return;
         } catch (_) {
-          throw writeError;
+          throw Exception('Sessao local nao invalidada');
         }
       }
     }
