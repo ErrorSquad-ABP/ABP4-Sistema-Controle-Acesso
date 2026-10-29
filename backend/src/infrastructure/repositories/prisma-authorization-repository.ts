@@ -9,7 +9,7 @@ import type {
   AuthorizationRepository,
   NewAuthorization,
 } from '../../domain/ports/authorization-repository.js';
-import { ValidationError } from '../../domain/errors/domain-error.js';
+import { ConflictError, ValidationError } from '../../domain/errors/domain-error.js';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 
 const SELECT = {
@@ -120,11 +120,24 @@ export class PrismaAuthorizationRepository implements AuthorizationRepository {
   }
 
   async cancel(id: string, at: Date, reason: string | null): Promise<AuthorizationRecord | null> {
-    try {
-      return toRecord(await this.prisma.authorization.update({ where: { id }, data: { canceledAt: at, cancelReason: reason }, select: SELECT }));
-    } catch (err) {
-      if ((err as { code?: string }).code === 'P2025') return null;
-      throw err;
+    // Escrita condicional: duas requisicoes concorrentes nao podem cancelar a mesma
+    // autorizacao nem sobrescrever o motivo; o perdedor da corrida leva 409.
+    const { count } = await this.prisma.authorization.updateMany({
+      where: {
+        id,
+        canceledAt: null,
+        endsAt: { gt: at },
+        usedCount: { lt: this.prisma.authorization.fields.maxUses },
+      },
+      data: { canceledAt: at, cancelReason: reason },
+    });
+
+    if (count === 0) {
+      if (!(await this.prisma.authorization.findUnique({ where: { id }, select: { id: true } }))) return null;
+      throw new ConflictError('Autorizacao cancelada ou expirada nao pode ser cancelada');
     }
+
+    const row = await this.prisma.authorization.findUniqueOrThrow({ where: { id }, select: SELECT });
+    return toRecord(row);
   }
 }

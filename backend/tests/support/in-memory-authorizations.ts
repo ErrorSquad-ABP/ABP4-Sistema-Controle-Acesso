@@ -9,6 +9,7 @@ import type {
   AuthorizationRepository,
   NewAuthorization,
 } from '../../src/domain/ports/authorization-repository.js';
+import { ConflictError } from '../../src/domain/errors/domain-error.js';
 import { randomUUID } from 'node:crypto';
 
 export class InMemoryAuthorizationRepository implements AuthorizationRepository {
@@ -60,8 +61,11 @@ export class InMemoryAuthorizationRepository implements AuthorizationRepository 
   async cancel(id: string, at: Date, reason: string | null) {
     const record = this.authorizations.find((a) => a.id === id);
     if (!record) return null;
+    if (record.canceledAt || at >= record.endsAt || record.usedCount >= record.maxUses) {
+      throw new ConflictError('Autorizacao cancelada ou expirada nao pode ser cancelada');
+    }
     record.canceledAt = at;
     record.cancelReason = reason;
-    return record;
+    return structuredClone(record);
   }
 }

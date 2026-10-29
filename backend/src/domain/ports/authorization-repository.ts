@@ -14,6 +14,10 @@ export interface AuthorizationRepository {
   list(filters: AuthorizationAdminFilters): Promise<{ items: AuthorizationView[]; total: number }>;
   findById(id: string): Promise<AuthorizationRecord | null>;
   create(input: NewAuthorization): Promise<AuthorizationRecord>;
+  /**
+   * Cancelamento condicional: `null` quando o id nao existe e `ConflictError`
+   * quando a autorizacao ja foi cancelada ou expirou (inclusive na corrida).
+   */
   cancel(id: string, at: Date, reason: string | null): Promise<AuthorizationRecord | null>;
 }
 
