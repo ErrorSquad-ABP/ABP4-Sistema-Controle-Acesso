@@ -9,7 +9,12 @@ import { PublishCommandUseCase } from '../../src/application/terminal/publish-co
 import { ServiceUnavailableError } from '../../src/domain/errors/domain-error.js';
 import type { AccessRecord, AccessRepository } from '../../src/domain/ports/access-repository.js';
 import type { AckResult, CommandStore } from '../../src/domain/ports/command-store.js';
-import type { AckMessage, CommandMessage } from '../../src/domain/terminal/messages.js';
+import type {
+  AckMessage,
+  Channel,
+  CommandMessage,
+  MessagesByChannel,
+} from '../../src/domain/terminal/messages.js';
 import { HmacQrTokenSigner } from '../../src/infrastructure/ids/hmac-qr-token-signer.js';
 import { DispatchPendingCommandsUseCase } from '../../src/application/terminal/dispatch-pending-commands.use-case.js';
 import { FixedClock, NOW, RecordingBus, SequentialIds, silentLogger } from '../support/terminal-fakes.js';
@@ -176,12 +181,10 @@ class InMemoryAccessRepository implements AccessRepository {
   }
 }
 
-function setup() {
-  const clock = new FixedClock(NOW);
+function setup(clock = new FixedClock(NOW), bus = new RecordingBus()) {
   const ids = new SequentialIds();
   const repository = new InMemoryAccessRepository();
   const qr = new ValidateQrCredentialUseCase(clock, signer);
-  const bus = new RecordingBus();
   const publish = new PublishCommandUseCase(repository.store, bus, clock, ids);
   const useCase = new RequestQrAccessUseCase(
     new DecideAccessUseCase(repository, clock, qr, ids),
@@ -223,6 +226,28 @@ const after = (clock: FixedClock, ms: number) => {
 };
 
 const published = (bus: RecordingBus, index: number) => bus.published[index]?.message as CommandMessage;
+
+/**
+ * Broker lento: cada publish avanca o relogio como se a entrega levasse `delayMs`.
+ * A janela do claim e medida no relogio, entao nao precisa de timer real.
+ * `during[i]` roda no meio do publish `i`; e onde a replica concorrente entra.
+ */
+class SlowBus extends RecordingBus {
+  readonly during: (() => Promise<void>)[] = [];
+  private cursor = 0;
+
+  constructor(private readonly clock: FixedClock, private readonly delayMs: number) {
+    super();
+  }
+
+  override async publish<C extends Channel>(channel: C, message: MessagesByChannel[C]): Promise<void> {
+    const index = this.cursor;
+    this.cursor += 1;
+    await super.publish(channel, message);
+    this.clock.date = new Date(this.clock.date.getTime() + this.delayMs);
+    await this.during[index]?.();
+  }
+}
 
 describe('DT-02: pedido QR idempotente', () => {
   it('nao republica apos desativar o terminal, mesmo dentro da janela', async () => {
@@ -370,7 +395,7 @@ describe('DT-13: relay recupera a publicacao QR apos falha de transporte', () =>
     expect(bus.published).toHaveLength(1);
   });
 
-  it('devolve o lote inteiro quando o transporte falha no primeiro comando', async () => {
+  it('devolve a reserva e interrompe o ciclo quando o transporte falha no primeiro comando', async () => {
     const { useCase, bus, request, clock, relay } = setup();
     const restore = failTransport(bus);
     await useCase.execute(request);
@@ -378,8 +403,9 @@ describe('DT-13: relay recupera a publicacao QR apos falha de transporte', () =>
     expect(bus.published).toHaveLength(0);
 
     after(clock, 2_000);
+    // Claim por item: so o comando corrente estava reservado quando falhou.
     expect(await relay().execute())
-      .toMatchObject({ claimed: 2, published: 0, failed: 2, interrupted: true });
+      .toMatchObject({ claimed: 1, published: 0, failed: 1, interrupted: true });
 
     restore();
     after(clock, 3_000);
@@ -391,7 +417,7 @@ describe('DT-13: relay recupera a publicacao QR apos falha de transporte', () =>
     expect(bus.published).toHaveLength(2);
   });
 
-  it('devolve o lote quando a checagem de terminal/local lanca', async () => {
+  it('devolve a reserva e interrompe o ciclo quando a checagem de terminal/local lanca', async () => {
     const { useCase, repository, bus, request, clock, relay } = setup();
     const restore = failTransport(bus);
     await useCase.execute(request);
@@ -401,12 +427,40 @@ describe('DT-13: relay recupera a publicacao QR apos falha de transporte', () =>
     repository.canDispatch = () => Promise.reject(new Error('banco fora'));
     after(clock, 2_000);
     expect(await relay().execute())
-      .toMatchObject({ claimed: 2, published: 0, failed: 2, interrupted: true });
+      .toMatchObject({ claimed: 1, published: 0, failed: 1, interrupted: true });
 
     repository.canDispatch = async () => true;
     after(clock, 3_000);
     expect(await relay().execute()).toMatchObject({ claimed: 2, published: 2 });
     expect(bus.published).toHaveLength(2);
+  });
+
+  it('nao republica o comando enquanto o publish lento da outra replica ainda corre', async () => {
+    const clock = new FixedClock(NOW);
+    // 2,8 s por publish: o segundo comando da primeira replica fica em voo ate 5,6 s,
+    // acima da janela de 5 s que libera uma reserva em lote.
+    const bus = new SlowBus(clock, 2_800);
+    const { useCase, request, relay } = setup(clock, bus);
+    const restore = failTransport(bus);
+    await useCase.execute(request);
+    await useCase.execute({ ...request, requestId: OTHER_REQUEST_ID });
+    restore();
+    expect(bus.published).toHaveLength(0);
+
+    after(clock, 2_000);
+    let rivalPublished = -1;
+    // A replica concorrente entra no meio do segundo publish, com a reserva antiga.
+    bus.during[1] = async () => {
+      rivalPublished = (await relay().execute()).published;
+    };
+
+    expect(await relay().execute())
+      .toMatchObject({ claimed: 2, published: 2, failed: 0, interrupted: false });
+    expect(rivalPublished).toBe(0);
+
+    const ids = bus.published.map((entry) => (entry.message as CommandMessage).commandId);
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids).size).toBe(2);
   });
 
   it('reclama reserva orfa de 6 s, ainda dentro do prazo do comando', async () => {

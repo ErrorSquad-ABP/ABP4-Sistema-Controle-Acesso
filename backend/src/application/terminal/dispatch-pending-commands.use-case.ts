@@ -7,10 +7,12 @@ import type { PublishCommandUseCase } from './publish-command.use-case.js';
 /** Folga para nao republicar o que o publicador original ainda esta enviando. */
 export const DISPATCH_GRACE_MS = 1_500;
 /**
- * Idade maxima de uma reserva antes de outra replica poder retoma-la. Precisa caber
- * no prazo do comando (10 s): a consulta exige `expiresAt > now`, entao uma janela
- * acima do TTL nunca reclama nada. Fica acima do teto de PUBACK (3 s), para um relay
- * vivo nunca perder a reserva; um processo morto a libera com o comando ainda valido.
+ * Idade maxima de uma reserva antes de outra replica poder retoma-la. O claim reserva
+ * um comando por vez, entao a reserva dura so o publish daquele comando (teto de 3 s
+ * do PUBACK): um relay vivo nao perde o que ainda esta enviando, e so a reserva de um
+ * processo que morreu entre marcar e publicar chega aqui. Precisa caber no prazo do
+ * comando (10 s): a consulta exige `expiresAt > now`, entao uma janela acima do TTL
+ * nunca reclama nada.
  */
 export const CLAIM_STALE_MS = 5_000;
 const BATCH_SIZE = 50;
@@ -20,9 +22,12 @@ export interface DispatchPendingCommandsOutput {
   claimed: number;
   published: number;
   skipped: number;
-  /** Reservas devolvidas por saida anormal (transporte, checagem, excecao). */
+  /**
+   * Comandos cuja publicacao saiu anormal (transporte, checagem, excecao). A reserva
+   * e devolvida na hora; se a devolucao tambem falhar, expira em `CLAIM_STALE_MS`.
+   */
   failed: number;
-  /** `true` quando o ciclo parou e devolveu o que ainda nao tinha processado. */
+  /** `true` quando o ciclo parou e devolveu a reserva do comando corrente. */
   interrupted: boolean;
   /**
    * Lote cheio: a fila pode ter mais pendentes que os `BATCH_SIZE` deste ciclo.
@@ -36,11 +41,12 @@ export interface DispatchPendingCommandsOutput {
  * chegaram ao broker (falha de transporte ou reinicio), com o mesmo `commandId`
  * e prazo. Nunca publica vencido nem para terminal/local fora de operacao.
  *
- * Cada intencao e reservada no store antes da publicacao: duas replicas do worker
- * nao publicam o mesmo comando. A entrega continua *at-least-once* — a reserva
- * pode ser devolvida depois de um publish que chegou ao broker e, quando o
- * processo morre entre marcar e publicar, a reserva orfa expira em
- * `CLAIM_STALE_MS`. O terminal deduplica por `commandId`.
+ * Cada intencao e reservada no store antes da publicacao, uma por vez: duas replicas
+ * do worker nao publicam o mesmo comando, e a reserva cobre so o envio daquele
+ * comando (nao um lote que ficaria velho enquanto os primeiros ainda saem). A entrega
+ * continua *at-least-once* — a reserva pode ser devolvida depois de um publish que
+ * chegou ao broker e, quando o processo morre entre marcar e publicar, a reserva orfa
+ * expira em `CLAIM_STALE_MS`. O terminal deduplica por `commandId`.
  */
 export class DispatchPendingCommandsUseCase {
   constructor(
@@ -52,28 +58,37 @@ export class DispatchPendingCommandsUseCase {
   ) {}
 
   async execute(): Promise<DispatchPendingCommandsOutput> {
-    const now = this.clock.now();
-    const claimed = await this.store.claimUndispatched(
-      now,
-      new Date(now.getTime() - DISPATCH_GRACE_MS),
-      BATCH_SIZE,
-      new Date(now.getTime() - CLAIM_STALE_MS),
-    );
     const output: DispatchPendingCommandsOutput = {
-      claimed: claimed.length,
+      claimed: 0,
       published: 0,
       skipped: 0,
       failed: 0,
       interrupted: false,
-      backlog: claimed.length >= BATCH_SIZE,
+      backlog: false,
     };
 
-    for (let index = 0; index < claimed.length; index += 1) {
-      const command = claimed[index]!;
+    // Reservas de comandos retidos (terminal/local inativo). Nao serao publicados neste
+    // ciclo, entao a devolucao espera o fim: liberar na hora faria o proximo claim
+    // devolver o mesmo comando para sempre e travaria a fila atras dele.
+    const retained: string[] = [];
+
+    // Uma reserva por comando: a janela de `CLAIM_STALE_MS` cobre so o publish em voo,
+    // entao a fila pode ser longa sem que o fim dela pareca abandonado.
+    while (output.claimed < BATCH_SIZE) {
+      const now = this.clock.now();
+      const [command] = await this.store.claimUndispatched(
+        now,
+        new Date(now.getTime() - DISPATCH_GRACE_MS),
+        1,
+        new Date(now.getTime() - CLAIM_STALE_MS),
+      );
+      if (!command) break;
+      output.claimed += 1;
+
       try {
         if (command.action === 'open' && !(await this.access.canDispatch(command.terminalId))) {
           // Fica pendente e vence sozinho: reativar dentro do prazo ainda entrega.
-          await this.store.releaseClaim(command.commandId);
+          retained.push(command.commandId);
           this.logger.warn('comando pendente retido: terminal ou local inativo', {
             terminalId: command.terminalId,
             commandId: command.commandId,
@@ -93,35 +108,32 @@ export class DispatchPendingCommandsUseCase {
           output.skipped += 1;
         }
       } catch (error) {
-        // Qualquer saida anormal devolve o lote inteiro: as reservas restantes nunca
-        // foram tentadas e ficariam presas (o comando vale 10 s), sem volta no TTL.
-        output.failed += await this.releaseFrom(claimed, index);
+        // So o comando corrente estava reservado: devolve a reserva dele e para o ciclo.
+        await this.release(command.commandId);
+        output.failed += 1;
         output.interrupted = true;
-        this.logger.warn('relay de comandos interrompido; reservas devolvidas', {
+        this.logger.warn('relay de comandos interrompido; reserva devolvida', {
           commandId: command.commandId,
-          released: output.failed,
           error: error instanceof Error ? error.message : String(error),
         });
         break;
       }
     }
+
+    for (const commandId of retained) await this.release(commandId);
+    output.backlog = output.claimed >= BATCH_SIZE;
     return output;
   }
 
-  /** Devolve da posicao `from` ao fim; uma falha ao devolver nao impede as demais. */
-  private async releaseFrom(claimed: readonly { commandId: string }[], from: number): Promise<number> {
-    let released = 0;
-    for (const command of claimed.slice(from)) {
-      try {
-        await this.store.releaseClaim(command.commandId);
-        released += 1;
-      } catch (error) {
-        this.logger.error('falha ao devolver reserva do relay', {
-          commandId: command.commandId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
+  /** Devolve a reserva sem derrubar o ciclo: se falhar, ela expira em `CLAIM_STALE_MS`. */
+  private async release(commandId: string): Promise<void> {
+    try {
+      await this.store.releaseClaim(commandId);
+    } catch (error) {
+      this.logger.error('falha ao devolver reserva do relay', {
+        commandId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
-    return released;
   }
 }
