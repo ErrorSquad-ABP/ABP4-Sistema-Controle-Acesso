@@ -670,6 +670,9 @@ describe('DT-05: deduplicacao persistente', () => {
 describe('DT-15: retencao da deduplicacao', () => {
   it('worker do Render expurga no boot e mostra o resultado no /healthz', async () => {
     const port = await freePort();
+    // Marca recente: fica fora da retencao, sobrevive ao expurgo e sustenta `rows > 0`
+    // mesmo rodando este arquivo isolado, sem depender dos testes anteriores.
+    await pool.query('INSERT INTO "ProcessedAccessMessage" ("messageId") VALUES ($1)', [randomUUID()]);
     const run = launch('worker', { PORT: String(port) });
     try {
       await waitFor(
