@@ -931,6 +931,7 @@ describe('DT-14: orcamento de conexoes da API', () => {
         const [{ acked, latency: nfcLatency }, responses] = await Promise.all([nfc, httpBurst]);
 
         expect(responses.map((response) => response.status)).toEqual(Array(30).fill(200));
+        expect(acked?.ackStatus).toBe('executed');
         expect(acked?.payload.action).toBe('open');
         // Sem o limite, o Prisma abriria ate 10 conexoes com 10 listagens simultaneas.
         expect(peaks.get('abp4-api-prisma') ?? 0).toBeGreaterThan(0);
