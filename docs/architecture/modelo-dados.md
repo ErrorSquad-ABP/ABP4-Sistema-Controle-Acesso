@@ -120,6 +120,8 @@ Persistir só os fatos (janela, contador e cancelamento) evita linha `ACTIVE` ve
 - `Terminal` associa o identificador MQTT ao local com FK obrigatória. O banco valida o formato do identificador; terminal e local devem estar ativos para conceder acesso. Sem mapeamento, não há abertura.
 - `TerminalCommand` é compartilhado por API e worker. A intenção de comando é gravada na mesma transação do evento e do consumo, com prazo ancorado no instante da decisão; o ACK atualiza atomicamente somente o comando do terminal correspondente e não sobrescreve um resultado anterior. `requestId` único preserva comando e validade em retentativas. Não tem FK de terminal, permitindo persistir comandos de negativa para terminais desconhecidos.
 - Consumo de autorização e evento são transacionais. Locks por tentativa e autorização evitam duplicar consumo entre instâncias; uma negativa nunca incrementa o contador.
+
+  A decisão **não carrega nem bloqueia o histórico** (DT-17): a consulta traz as autorizações que ainda podem valer — `canceledAt IS NULL`, `usedCount < maxUses` e `endsAt >= agora` — na ordem de escolha `(endsAt, id)`, com `FOR UPDATE`, apoiada no índice `Authorization_userId_locationId_endsAt_id_idx`. Canceladas, esgotadas e já terminadas ficam fora da leitura e do lock. Não há filtro de `startsAt`: a política revalida o instante **depois** da espera pelo lock, então uma autorização que começa durante a espera continua sendo julgada validamente. A primeira linha da ordem de escolha sobre **todas** as autorizações acompanha a lista, porque é dela que a política tira o motivo da negativa (`authorizations[0]`). Assim a decisão e o motivo são os mesmos da leitura completa anterior, sem ler o histórico. O `UPDATE` condicional do consumo continua sendo a garantia final do último uso.
 - Os `DateTime` persistidos pelo Prisma usam UTC. O adapter SQL converte `TIMESTAMP` sem fuso para UTC ao ler e grava strings ISO UTC; filtros com offset são normalizados. Isso preserva janelas e validade do QR entre API e worker com fusos diferentes.
 - Exclusão de usuário, local e credencial referenciados por autorizações é restringida. Ao excluir uma entidade referenciada por um evento, a FK do evento é anulada para preservar o histórico.
 - `UserRole`: `ADMIN`, `RESIDENT`, `VISITOR` · `CredentialType` e `AccessMethod`: `QR`, `NFC` · `AccessDecision`: `GRANTED`, `DENIED`.
@@ -131,3 +133,13 @@ Persistir só os fatos (janela, contador e cancelamento) evita linha `ACTIVE` ve
 ## Retencao da deduplicacao
 
 `ProcessedAccessMessage` guarda uma linha por `messageId` processado, sem TTL definido; o crescimento e linear ao volume de tentativas. Acompanhar o tamanho da tabela e, se necessario, definir expurgo por `processedAt` (com indice) preservando a idempotencia das mensagens ainda em transito.
+
+## Retencao do comando do terminal
+
+`TerminalCommand` guarda o payload publicado, o prazo, o resultado do ACK e a correlacao usada pelo worker. A retencao e de **7 dias depois de `expiresAt`** (`COMMAND_RETENTION_MS` em [`command-retention.ts`](../../backend/src/domain/terminal/command-retention.ts)), muito acima do prazo de 10 s do comando e da janela de frescor de 30 s: cobre ACK tardio, reinicio do worker e investigacao de uma abertura.
+
+- **Comandos com ACK**: a linha permanece 7 dias depois de expirar, com `ackStatus`, `ackMessageId`, `ackReason` e `acknowledgedAt`. Um ACK repetido continua devolvendo `duplicate`.
+- **Comandos sem ACK**: a linha expira e sai no mesmo prazo. O ACK que chegar depois do expurgo devolve `unknown` (nada e reaberto); o worker registra a falha de correlacao no log.
+- **Expurgo**: `PurgeExpiredCommandsUseCase` roda no boot do worker e a cada 24 h, em lotes de 500 com teto de 10 lotes por execucao, usando o indice `TerminalCommand_expiresAt_idx`. Cada execucao registra `expurgo de comandos concluido` com o total removido; falha vira log de erro e nao derruba o processo MQTT.
+- **Por que nao reabre acesso**: a idempotencia da tentativa e o `AccessEvent` (o `requestId` vira o id do evento), nao o `TerminalCommand`. Apos o expurgo, repetir o pedido devolve o evento ja gravado sem consumir autorizacao de novo, e o `expiresAt` do comando segue ancorado no instante da decisao — `PublishCommandUseCase` responde `published: false` em vez de abrir. Coberto em `tests/integration/postgres-command-store.test.ts`.
+

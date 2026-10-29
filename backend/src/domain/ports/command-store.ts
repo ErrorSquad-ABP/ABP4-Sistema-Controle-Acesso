@@ -9,4 +9,6 @@ export interface CommandStore {
   save(command: CommandMessage, requestId: string): Promise<CommandMessage>;
   findByRequestId(requestId: string): Promise<CommandMessage | undefined>;
   acknowledge(ack: AckMessage): Promise<AckResult>;
+  /** Remove ate `limit` comandos com `expiresAt` antes de `before` (DT-18). */
+  purgeExpired(before: Date, limit: number): Promise<number>;
 }

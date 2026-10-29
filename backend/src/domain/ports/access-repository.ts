@@ -31,7 +31,12 @@ export interface AccessTransaction {
   findTerminal(id: string): Promise<TerminalContext | null>;
   findUser(id: string): Promise<AccessUser | null>;
   findCredential(hash: string): Promise<AccessCredential | null>;
-  findAuthorizations(userId: string, locationId: string): Promise<AccessAuthorization[]>;
+  /**
+   * Apenas as linhas necessarias para decidir (DT-17): a primeira candidata
+   * utilizavel ja bloqueada ou, sem candidata, a primeira da ordem de escolha
+   * (`endsAt`, `id`) que define o motivo da negativa.
+   */
+  findAuthorizations(userId: string, locationId: string, now: Date): Promise<AccessAuthorization[]>;
   consumeAuthorization(id: string, now: Date): Promise<boolean>;
   record(event: AccessRecord): Promise<AccessRecord>;
   saveCommand(command: CommandMessage, requestId: string): Promise<CommandMessage>;

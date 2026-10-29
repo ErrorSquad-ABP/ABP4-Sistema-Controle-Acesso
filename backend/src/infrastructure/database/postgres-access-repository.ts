@@ -25,6 +25,31 @@ const eventSelect = `SELECT e.id,e."terminalId",e.method,e.decision,e.reason,e."
   CASE WHEN l.id IS NULL THEN NULL ELSE json_build_object('id',l.id,'name',l.name) END AS location
   FROM "AccessEvent" e LEFT JOIN "User" u ON u.id=e."userId" LEFT JOIN "AccessLocation" l ON l.id=e."locationId"`;
 
+const AUTHORIZATION_SELECT = `SELECT id,"userId","locationId","maxUses","usedCount",
+  "startsAt" AT TIME ZONE 'UTC' AS "startsAt", "endsAt" AT TIME ZONE 'UTC' AS "endsAt",
+  "canceledAt" AT TIME ZONE 'UTC' AS "canceledAt" FROM "Authorization"`;
+
+/**
+ * DT-17: autorizacoes que ainda podem valer, na ordem de escolha (`endsAt`, `id`).
+ * Sem filtro de `startsAt`: a politica revalida o instante **depois** da espera
+ * pelo lock, e uma autorizacao pode comecar durante a espera — filtrar por
+ * `startsAt <= agora` aqui a excluiria da escolha. Ficam de fora apenas as que
+ * nunca mais podem ser usadas: cancelada, esgotada e ja terminada.
+ */
+export const AUTHORIZATION_CANDIDATES_SQL = `${AUTHORIZATION_SELECT}
+  WHERE "userId"=$1 AND "locationId"=$2 AND "canceledAt" IS NULL
+    AND "usedCount" < "maxUses" AND "endsAt" >= $3
+  ORDER BY "Authorization"."endsAt", id FOR UPDATE`;
+
+/**
+ * Primeira linha da ordem de escolha sobre todas as autorizacoes do usuario no
+ * local. E dela que a politica tira o motivo da negativa (`authorizations[0]`),
+ * exatamente como quando recebia a lista completa; por isso acompanha as
+ * candidatas mesmo quando e cancelada, esgotada ou vencida.
+ */
+const AUTHORIZATION_FIRST_SQL = `${AUTHORIZATION_SELECT}
+  WHERE "userId"=$1 AND "locationId"=$2 ORDER BY "Authorization"."endsAt", id LIMIT 1`;
+
 function mapEvent(row: EventRow): AccessRecord {
   return {
     ...row,
@@ -71,16 +96,25 @@ class PostgresAccessTransaction implements AccessTransaction {
     return result.rows[0] ?? null;
   }
 
-  async findAuthorizations(userId: string, locationId: string): Promise<AccessAuthorization[]> {
-    // Ordem estavel e lock: duas instancias nao podem gastar o mesmo ultimo uso.
-    const result = await this.connection.query<AccessAuthorization>(
-      `SELECT id,"userId","locationId","maxUses","usedCount",
-        "startsAt" AT TIME ZONE 'UTC' AS "startsAt", "endsAt" AT TIME ZONE 'UTC' AS "endsAt",
-        "canceledAt" AT TIME ZONE 'UTC' AS "canceledAt" FROM "Authorization"
-        WHERE "userId"=$1 AND "locationId"=$2 ORDER BY "endsAt",id FOR UPDATE`,
-      [userId, locationId],
-    );
-    return result.rows;
+  async findAuthorizations(userId: string, locationId: string, now: Date): Promise<AccessAuthorization[]> {
+    // DT-17: carrega e trava apenas o que ainda pode valer; o historico morto
+    // (cancelada, esgotada, terminada) nao entra na consulta nem no lock.
+    const candidates = await this.connection.query<AccessAuthorization>(AUTHORIZATION_CANDIDATES_SQL, [
+      userId,
+      locationId,
+      now.toISOString(),
+    ]);
+
+    // A primeira linha da ordem de escolha vem sempre: e o motivo da negativa
+    // quando nada estiver utilizavel (mesmo comportamento da lista completa).
+    // Lida depois da consulta bloqueante: se uma concorrente esgotou ou cancelou
+    // uma linha durante a espera, o motivo reflete o estado ja commitado.
+    const first = await this.connection.query<AccessAuthorization>(AUTHORIZATION_FIRST_SQL, [userId, locationId]);
+    const head = first.rows[0];
+    if (!head) return [];
+
+    // `head` tem o menor `(endsAt, id)` de todas: quando tambem e candidata, ja e a primeira.
+    return candidates.rows[0]?.id === head.id ? candidates.rows : [head, ...candidates.rows];
   }
 
   async consumeAuthorization(id: string, now: Date): Promise<boolean> {

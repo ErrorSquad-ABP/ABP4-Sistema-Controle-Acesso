@@ -108,7 +108,7 @@ describe('decisao e auditoria transacional', () => {
     const { useCase, tx } = setup();
     const event = await useCase.execute(attempt);
     expect(tx.findCredential).toHaveBeenCalledWith(expect.not.stringContaining('04a1b2c3'));
-    expect(tx.findAuthorizations).toHaveBeenCalledWith('user', 'local-01');
+    expect(tx.findAuthorizations).toHaveBeenCalledWith('user', 'local-01', NOW);
     expect(tx.consumeAuthorization).toHaveBeenCalledOnce();
     expect(event).toMatchObject({ decision: 'GRANTED', location: { id: 'local-01' }, reason: null });
     expect(JSON.stringify(event)).not.toContain('04a1b2c3');
