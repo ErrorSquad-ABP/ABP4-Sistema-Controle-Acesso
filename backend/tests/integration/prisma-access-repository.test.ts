@@ -184,6 +184,11 @@ describe.skipIf(!repository)('PostgresAccessRepository (DT-17)', () => {
     try {
       await client.query('BEGIN');
       await client.query('SET LOCAL enable_seqscan = off');
+      // Com estatisticas antigas o planner tambem pode preferir o indice so de
+      // locationId e ordenar depois; desligar o sort forca o indice que ja
+      // entrega a ordem de endsAt/id, que e o que a consulta real precisa.
+      await client.query('SET LOCAL enable_sort = off');
+      await client.query('SET LOCAL enable_incremental_sort = off');
       const explained = await client.query<{ 'QUERY PLAN': unknown }>(
         `EXPLAIN (FORMAT JSON) ${AUTHORIZATION_CANDIDATES_SQL}`,
         [userId, locationId, now.toISOString()],

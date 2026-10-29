@@ -133,7 +133,13 @@ Persistir só os fatos (janela, contador e cancelamento) evita linha `ACTIVE` ve
 
 ## Retencao da deduplicacao
 
-`ProcessedAccessMessage` guarda uma linha por `messageId` processado, sem TTL definido; o crescimento e linear ao volume de tentativas. Nao existe rotina de expurgo desta tabela no codigo: o worker so expurga `TerminalCommand` (DT-18). Acompanhar o tamanho da tabela e, se necessario, definir expurgo por `processedAt` (com indice) preservando a idempotencia das mensagens ainda em transito.
+`ProcessedAccessMessage` guarda uma linha por `messageId` processado. A retencao e de **24 h depois de `processedAt`** (`DEDUP_RETENTION_MS` em [`dedup-retention.ts`](../../backend/src/domain/terminal/dedup-retention.ts)), DT-15.
+
+- **Por que 24 h basta**: o worker rejeita por frescor **antes** de deduplicar (`isFreshAccessEvent`: idade menor que 30 s e no maximo 5 s no futuro). Uma retransmissao QoS 1 so chega a deduplicacao ate ~35 s depois da primeira entrega; 24 h e mais de 2000x isso e absorve desvio de relogio entre terminal, workers e banco. Uma mensagem expurgada ja seria descartada como antiga antes de consultar a tabela.
+- **Margem de relogio**: o corte e calculado no banco (`LOCALTIMESTAMP - 24 h`), mesmo relogio e fuso do `DEFAULT` que grava `processedAt`; o relogio do worker nao entra na conta.
+- **Expurgo**: `PurgeProcessedMessagesUseCase` roda no boot do worker e a cada 24 h, em lotes de 500 com teto de 10 lotes por execucao, usando o indice `ProcessedAccessMessage_processedAt_idx`. Usa a pool da deduplicacao (uma conexao por `DELETE` curto). Falha vira log de erro e nao derruba o processo MQTT.
+- **Onde ver**: cada execucao registra `expurgo da deduplicacao concluido` com `removed`, `rows` e `bytes` (contagem e `pg_total_relation_size` da tabela apos o expurgo). O `/healthz` do worker devolve o ultimo resultado em `dedupPurge` (`at`, `status` e os mesmos campos, ou `error`), lido da memoria: o self-ping nao gera consulta ao banco.
+- **Mensagem ainda elegivel continua deduplicada**: coberto em `tests/integration/postgres-event-deduplicator.test.ts` (marca recente sobrevive ao expurgo e o replay devolve `duplicate`).
 
 ## Retencao do comando do terminal
 
