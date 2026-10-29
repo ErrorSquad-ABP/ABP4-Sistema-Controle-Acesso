@@ -1,5 +1,6 @@
 // Worker exclusivo dos E2E: usa os adapters reais e injeta falhas somente no teste.
-import { buildAccessRuntime } from '../../../dist/main/access-composition-root.js';
+import { buildAccessRuntime, buildEventDeduplication } from '../../../dist/main/access-composition-root.js';
+import { WORKER_CONNECTIONS } from '../../../dist/main/config/connection-budget.js';
 import { buildMqttConsumer } from '../../../dist/main/mqtt-composition-root.js';
 import { loadEnvOrExit } from '../../../dist/main/config/load-env-or-exit.js';
 import { ValidateQrCredentialUseCase } from '../../../dist/application/terminal/qr-credential.use-cases.js';
@@ -16,10 +17,11 @@ const access = buildAccessRuntime(env, {
   clock,
   ids: new CryptoIdGenerator(),
   qr: new ValidateQrCredentialUseCase(clock, new HmacQrTokenSigner(env.QR_TOKEN_SECRET)),
-});
-if (!access) throw new Error('DT-05 exige banco real');
+}, WORKER_CONNECTIONS.access);
+const dedup = buildEventDeduplication(env, WORKER_CONNECTIONS.events);
+if (!access || !dedup) throw new Error('DT-05 exige banco real');
 await access.repository.ready();
-await access.events.ready();
+await dedup.events.ready();
 const terminalId = process.env.DT05_TERMINAL;
 const mode = process.env.DT05_FAULT;
 const signal = (message) => process.send?.(message);
@@ -64,7 +66,7 @@ const { router } = buildMqttConsumer(instrumentedBus, logger, () => {}, env, {
         signal({ type: 'arrived', messageId: id });
         await gate;
       }
-      return access.events.run(id, work);
+      return dedup.events.run(id, work);
     },
   },
 });

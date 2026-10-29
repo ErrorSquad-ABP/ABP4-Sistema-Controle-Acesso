@@ -28,13 +28,13 @@ Cada stack tem seu workflow. **Em PR os três rodam sempre** (são os checks obr
 | Workflow | Pasta | Job (check obrigatório) | Etapas |
 |---|---|---|---|
 | [`ci-backend.yml`](../../.github/workflows/ci-backend.yml) | `backend/` | `ci-backend-check` · `ci-backend-docker` | `npm ci` → lint (inclui regra de camadas) → typecheck → testes com cobertura → build → imagem Docker + smoke test do `/health` |
-| [`ci-mobile.yml`](../../.github/workflows/ci-mobile.yml) | `mobile/` | `ci-mobile-check` | `flutter pub get` → `flutter analyze` → `flutter test` |
+| [`ci-mobile.yml`](../../.github/workflows/ci-mobile.yml) | `mobile/` | `ci-mobile-check` · `ci-mobile-build-android` · `ci-mobile-install-android` | `flutter pub get` → `flutter analyze` → `flutter test`; em paralelo, `flutter build apk --release` → conferência do pacote → artefato `controle-acesso-apk`; depois instala e abre o APK num emulador (detalhes em [`mobile/README.md`](../../mobile/README.md#apk-android-no-ci-dt-10)) |
 | [`ci-firmware.yml`](../../.github/workflows/ci-firmware.yml) | `firmware/` | `ci-firmware-build` | testes C++ host → `pio run` (com `config.h` copiado do `config.example.h`) |
 | [`cd-backend.yml`](../../.github/workflows/cd-backend.yml) | `backend/` | `cd-backend-check` · `cd-backend-deploy` (não obrigatórios) | **só push na `main`**: lint → typecheck → testes → build → deploy na Vercel → smoke test do `/health` público (guia em [`deploy.md`](deploy.md)) |
 | [`trello-link.yml`](../../.github/workflows/trello-link.yml) | — | — | anexa o PR ao card da linha `Card: US-XX` ou `Card: DT-XX` e comenta o status (também a cada push, via `synchronize`) |
 
 - O `ci-firmware-build` sempre exige os testes host e o build; ausência de `firmware/platformio.ini` ou do exemplo de configuração falha o check, sem skip.
-- Os quatro checks acima são obrigatórios na `main`, além de 1 aprovação. Merge com check vermelho ou pendente não passa.
+- Os checks `ci-backend-check`, `ci-backend-docker`, `ci-mobile-check`, `ci-mobile-build-android`, `ci-mobile-install-android` e `ci-firmware-build` são obrigatórios na `main`, além de 1 aprovação. Merge com check vermelho ou pendente não passa.
 - Os badges no `README.md` raiz mostram o estado da `main`.
 - Antes de abrir PR, rode localmente o mesmo que o CI roda: no backend, `npm run lint && npm run typecheck && npm test && npm run build`.
 - Para alterações no acesso, rode também `npm run test:e2e`: PostgreSQL temporário e broker MQTT próprios, sem Docker ou administrador. O CI backend executa esse cenário depois do build.

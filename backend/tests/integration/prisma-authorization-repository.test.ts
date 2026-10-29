@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { ConflictError } from '../../src/domain/errors/domain-error.js';
 import { createPrismaClient } from '../../src/infrastructure/database/prisma-client.js';
 import { PrismaAuthorizationRepository } from '../../src/infrastructure/repositories/prisma-authorization-repository.js';
 
@@ -99,5 +100,116 @@ describe.skipIf(!prisma)('PrismaAuthorizationRepository', () => {
     });
     expect(anotherUser.items.some((item) => item.id === seedAuthorizationId)).toBe(false);
     await prisma!.$disconnect();
+  });
+
+  it('combina o filtro de periodo com ACTIVE e SCHEDULED', async () => {
+    const now = new Date();
+    const hour = 3_600_000;
+    const base = {
+      userId: memberId,
+      locationId: 'a1000000-0000-4000-8000-000000000003',
+      createdById: 'a1000000-0000-4000-8000-000000000001',
+      maxUses: 5,
+      usedCount: 1,
+    };
+    const ids = {
+      activeInside: randomUUID(),
+      activeOutside: randomUUID(),
+      scheduledInside: randomUUID(),
+      scheduledOutside: randomUUID(),
+    };
+
+    await prisma!.authorization.createMany({
+      data: [
+        { ...base, id: ids.activeInside, startsAt: new Date(now.getTime() - 30 * 60_000), endsAt: new Date(now.getTime() + hour) },
+        { ...base, id: ids.activeOutside, startsAt: new Date(now.getTime() - 5 * hour), endsAt: new Date(now.getTime() + 5 * hour) },
+        { ...base, id: ids.scheduledInside, startsAt: new Date(now.getTime() + 30 * 60_000), endsAt: new Date(now.getTime() + 2 * hour) },
+        { ...base, id: ids.scheduledOutside, startsAt: new Date(now.getTime() + 10 * hour), endsAt: new Date(now.getTime() + 12 * hour) },
+      ],
+    });
+
+    const from = new Date(now.getTime() - hour);
+    const to = new Date(now.getTime() + 3 * hour);
+    const repo = new PrismaAuthorizationRepository(prisma!);
+    const listed = (page: { items: { id: string }[] }) => page.items.map((item) => item.id);
+
+    try {
+      const active = await repo.list({ userId: memberId, from, to, status: 'ACTIVE', page: 1, pageSize: 100, now });
+      expect(listed(active)).toContain(ids.activeInside);
+      expect(listed(active)).not.toContain(ids.activeOutside);
+
+      const scheduled = await repo.list({ userId: memberId, from, to, status: 'SCHEDULED', page: 1, pageSize: 100, now });
+      expect(listed(scheduled)).toContain(ids.scheduledInside);
+      expect(listed(scheduled)).not.toContain(ids.scheduledOutside);
+      expect(scheduled.total).toBeGreaterThanOrEqual(1);
+    } finally {
+      await prisma!.authorization.deleteMany({ where: { id: { in: Object.values(ids) } } });
+    }
+  });
+
+  it('cancelamento concorrente grava uma unica vez', async () => {
+    const id = randomUUID();
+    const at = new Date();
+    await prisma!.authorization.create({
+      data: {
+        id,
+        userId: memberId,
+        locationId: 'a1000000-0000-4000-8000-000000000003',
+        createdById: 'a1000000-0000-4000-8000-000000000001',
+        startsAt: new Date(at.getTime() - 60_000),
+        endsAt: new Date(at.getTime() + 3_600_000),
+        maxUses: 5,
+      },
+    });
+
+    const repo = new PrismaAuthorizationRepository(prisma!);
+
+    try {
+      const results = await Promise.allSettled([
+        repo.cancel(id, at, 'Primeiro motivo'),
+        repo.cancel(id, at, 'Segundo motivo'),
+      ]);
+      const written = results.filter((result) => result.status === 'fulfilled');
+      const rejected = results.filter((result) => result.status === 'rejected');
+
+      expect(written).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+      expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(ConflictError);
+
+      const stored = await repo.findById(id);
+      expect(stored?.cancelReason).toBe(
+        (written[0] as PromiseFulfilledResult<{ cancelReason: string | null } | null>).value?.cancelReason,
+      );
+      expect(stored?.canceledAt).not.toBeNull();
+    } finally {
+      await prisma!.authorization.deleteMany({ where: { id } });
+    }
+  });
+
+  it('cancelar inexistente devolve null e ja cancelada conflita', async () => {
+    const repo = new PrismaAuthorizationRepository(prisma!);
+
+    expect(await repo.cancel(randomUUID(), new Date(), null)).toBeNull();
+
+    const id = randomUUID();
+    await prisma!.authorization.create({
+      data: {
+        id,
+        userId: memberId,
+        locationId: 'a1000000-0000-4000-8000-000000000003',
+        createdById: 'a1000000-0000-4000-8000-000000000001',
+        startsAt: new Date(),
+        endsAt: new Date(Date.now() + 3_600_000),
+        maxUses: 5,
+      },
+    });
+
+    try {
+      await repo.cancel(id, new Date(), 'Primeiro motivo');
+      await expect(repo.cancel(id, new Date(), 'Segundo motivo')).rejects.toBeInstanceOf(ConflictError);
+      expect((await repo.findById(id))?.cancelReason).toBe('Primeiro motivo');
+    } finally {
+      await prisma!.authorization.deleteMany({ where: { id } });
+    }
   });
 });

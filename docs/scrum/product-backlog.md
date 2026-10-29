@@ -56,7 +56,7 @@ Duas superfícies, dois papéis: o **Trello** (board `ERRORSQUAD ABP 4DSM`) é a
 **Critérios de aceite**:
 
 - [ ] Workflow `ci-backend.yml` verde em PR (lint + typecheck + test + build)
-- [ ] Workflow `ci-mobile.yml` verde em PR (analyze + test)
+- [ ] Workflow `ci-mobile.yml` verde em PR (analyze + test; build do APK e instalação em emulador desde a DT-10)
 - [ ] Workflow `ci-firmware.yml` verde em PR (build)
 - [ ] Workflow `trello-link.yml` anexa o PR ao card `US-XX` e comenta o status
 - [ ] Secrets configurados sem exposição de valores

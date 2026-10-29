@@ -10,10 +10,11 @@ const TIMEOUT_MS = 3000;
 export class PostgresDatabaseProbe implements DatabaseProbe {
   private readonly pool: pg.Pool;
 
-  constructor(connectionString: string) {
+  constructor(connectionString: string, applicationName?: string) {
     this.pool = new pg.Pool({
       connectionString,
       max: 1,
+      ...(applicationName ? { application_name: applicationName } : {}),
       connectionTimeoutMillis: TIMEOUT_MS,
       query_timeout: TIMEOUT_MS,
       idleTimeoutMillis: 10_000,

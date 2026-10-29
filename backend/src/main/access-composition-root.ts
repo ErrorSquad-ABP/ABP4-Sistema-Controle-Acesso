@@ -10,16 +10,21 @@ import { PostgresAccessRepository } from '../infrastructure/database/postgres-ac
 import { PostgresCommandStore } from '../infrastructure/database/postgres-command-store.js';
 import { PostgresEventDeduplicator } from '../infrastructure/database/postgres-event-deduplicator.js';
 import { DatabaseAccessDecider } from '../infrastructure/terminal/database-access-decider.js';
+import { POOL_CONNECTION_TIMEOUT_MS, POOL_QUERY_TIMEOUT_MS, type PoolBudget } from './config/connection-budget.js';
 import type { Env } from './config/env.js';
 
 export interface AccessRuntime {
   pool: pg.Pool;
-  eventPool: pg.Pool;
-  events: PostgresEventDeduplicator;
   repository: AccessRepository;
   commands: CommandStore;
   decide: DecideAccessUseCase;
   decider: AccessDecider;
+}
+
+/** Exclusiva do worker MQTT: a API nao recebe mensagens e nao abre esta pool (DT-14). */
+export interface EventDeduplicationRuntime {
+  pool: pg.Pool;
+  events: PostgresEventDeduplicator;
 }
 
 /**
@@ -29,13 +34,15 @@ export interface AccessRuntime {
 export function buildAccessRuntime(
   env: Env,
   deps: { clock: Clock; qr: ValidateQrCredentialUseCase; ids: IdGenerator },
+  budget: PoolBudget,
 ): AccessRuntime | undefined {
   if (!env.DATABASE_URL) return undefined;
   const pool = new pg.Pool({
     connectionString: env.DATABASE_URL,
-    max: 5,
-    connectionTimeoutMillis: 5_000,
-    query_timeout: 10_000,
+    max: budget.max,
+    application_name: budget.applicationName,
+    connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
+    query_timeout: POOL_QUERY_TIMEOUT_MS,
     idleTimeoutMillis: 10_000,
     allowExitOnIdle: true,
     options: '-c timezone=UTC',
@@ -43,15 +50,21 @@ export function buildAccessRuntime(
   pool.on('error', () => {});
   const repository = new PostgresAccessRepository(pool);
   const commands = new PostgresCommandStore(pool);
-  const eventPool = new pg.Pool({
+  const decide = new DecideAccessUseCase(repository, deps.clock, deps.qr, deps.ids);
+  return { pool, repository, commands, decide, decider: new DatabaseAccessDecider(decide) };
+}
+
+export function buildEventDeduplication(env: Env, budget: PoolBudget): EventDeduplicationRuntime | undefined {
+  if (!env.DATABASE_URL) return undefined;
+  const pool = new pg.Pool({
     connectionString: env.DATABASE_URL,
-    max: 2,
-    connectionTimeoutMillis: 5_000,
+    max: budget.max,
+    application_name: budget.applicationName,
+    connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
+    query_timeout: POOL_QUERY_TIMEOUT_MS,
     idleTimeoutMillis: 10_000,
     allowExitOnIdle: true,
   });
-  eventPool.on('error', () => {});
-  const events = new PostgresEventDeduplicator(eventPool);
-  const decide = new DecideAccessUseCase(repository, deps.clock, deps.qr, deps.ids);
-  return { pool, eventPool, events, repository, commands, decide, decider: new DatabaseAccessDecider(decide) };
+  pool.on('error', () => {});
+  return { pool, events: new PostgresEventDeduplicator(pool) };
 }

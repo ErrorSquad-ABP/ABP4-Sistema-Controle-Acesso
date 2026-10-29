@@ -2,6 +2,7 @@ import { CheckHealthUseCase } from '../application/health/check-health.use-case.
 import { GetCurrentUserUseCase } from '../application/auth/get-current-user.use-case.js';
 import { LoginUseCase } from '../application/auth/login.use-case.js';
 import { ListMyAuthorizationsUseCase } from '../application/authorizations/list-my-authorizations.use-case.js';
+import { CancelAuthorizationUseCase, CreateAuthorizationUseCase, GetAuthorizationUseCase, ListAuthorizationsUseCase } from '../application/authorizations/admin-use-cases.js';
 import { CreateUserUseCase } from '../application/users/create-user.use-case.js';
 import { DeleteUserUseCase } from '../application/users/delete-user.use-case.js';
 import { GetUserUseCase } from '../application/users/get-user.use-case.js';
@@ -31,6 +32,7 @@ import { PrismaUserAdminRepository } from '../infrastructure/repositories/prisma
 import { PrismaUserRepository } from '../infrastructure/repositories/prisma-user-repository.js';
 import { createLogger, type Logger } from '../shared/logger.js';
 import { buildAccessRuntime } from './access-composition-root.js';
+import { API_CONNECTIONS, POOL_CONNECTION_TIMEOUT_MS, POOL_QUERY_TIMEOUT_MS } from './config/connection-budget.js';
 import { InvalidEnvError, type Env } from './config/env.js';
 
 /**
@@ -59,6 +61,10 @@ export interface Container {
     updateUser: UpdateUserUseCase | undefined;
     deleteUser: DeleteUserUseCase | undefined;
     listMyAuthorizations: ListMyAuthorizationsUseCase | undefined;
+    listAuthorizations: ListAuthorizationsUseCase | undefined;
+    getAuthorization: GetAuthorizationUseCase | undefined;
+    createAuthorization: CreateAuthorizationUseCase | undefined;
+    cancelAuthorization: CancelAuthorizationUseCase | undefined;
     listMyAccessEvents: ListMyAccessEventsUseCase | undefined;
     listAccessEvents: ListAccessEventsUseCase | undefined;
     /** Decisao real por QR; ausente sem banco, e a rota responde 503. */
@@ -89,13 +95,23 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
   const validateQrCredential = new ValidateQrCredentialUseCase(clock, signer);
   const databaseProbe =
     overrides.databaseProbe ??
-    (env.DATABASE_URL ? new PostgresDatabaseProbe(env.DATABASE_URL) : undefined);
+    (env.DATABASE_URL
+      ? new PostgresDatabaseProbe(env.DATABASE_URL, API_CONNECTIONS.probe.applicationName)
+      : undefined);
   const needsPrisma =
     !overrides.userRepository ||
     !overrides.accessEventRepository ||
     !overrides.userAdminRepository ||
     !overrides.authorizationRepository;
-  const prisma = needsPrisma && env.DATABASE_URL ? createPrismaClient(env.DATABASE_URL) : undefined;
+  // Limites do orcamento por instancia serverless (DT-14); o padrao do pg seria 10.
+  const prisma =
+    needsPrisma && env.DATABASE_URL
+      ? createPrismaClient(env.DATABASE_URL, {
+          ...API_CONNECTIONS.prisma,
+          connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
+          queryTimeoutMillis: POOL_QUERY_TIMEOUT_MS,
+        })
+      : undefined;
   const tokens = overrides.tokenService ?? new JwtTokenService(env.JWT_SECRET, env.JWT_TTL_SECONDS);
   const users =
     overrides.userRepository ?? (prisma ? new PrismaUserRepository(prisma) : undefined);
@@ -108,7 +124,8 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
     overrides.accessEventRepository ??
     (prisma ? new PrismaAccessEventRepository(prisma) : undefined);
   const ids = new CryptoIdGenerator();
-  const access = buildAccessRuntime(env, { clock, qr: validateQrCredential, ids });
+  // Sem a deduplicacao MQTT: a API nao recebe mensagens do broker (DT-14).
+  const access = buildAccessRuntime(env, { clock, qr: validateQrCredential, ids }, API_CONNECTIONS.access);
   // A API so conecta no broker quando precisa publicar: boot sem MQTT continua possivel.
   const accessBus = access
     ? new LazyMqttMessageBus(
@@ -130,7 +147,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
     close: async () => {
       await accessBus?.close();
       await access?.pool.end();
-      await access?.eventPool.end();
+      await prisma?.$disconnect();
     },
     useCases: {
       checkHealth: new CheckHealthUseCase(
@@ -151,6 +168,10 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
       listMyAuthorizations: authorizations
         ? new ListMyAuthorizationsUseCase(authorizations, clock)
         : undefined,
+      listAuthorizations: authorizations ? new ListAuthorizationsUseCase(authorizations, clock) : undefined,
+      getAuthorization: authorizations ? new GetAuthorizationUseCase(authorizations, clock) : undefined,
+      createAuthorization: authorizations ? new CreateAuthorizationUseCase(authorizations, clock) : undefined,
+      cancelAuthorization: authorizations ? new CancelAuthorizationUseCase(authorizations, clock) : undefined,
       listMyAccessEvents: accessEvents ? new ListMyAccessEventsUseCase(accessEvents) : undefined,
       listAccessEvents: accessEvents ? new ListAccessEventsUseCase(accessEvents) : undefined,
       requestQrAccess:
