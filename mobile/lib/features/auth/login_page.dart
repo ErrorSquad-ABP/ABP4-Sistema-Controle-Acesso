@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../core/router/app_router.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/feedback_banner.dart';
-import 'login_contract.dart';
+import 'auth_contract.dart';
+import 'session_controller.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -20,7 +19,40 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _password = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
-  String? _message;
+  (FeedbackTone, String)? _message;
+
+  @override
+  void initState() {
+    super.initState();
+    // Sessão encerrada sem o usuário pedir: explica o motivo e já traz o
+    // e-mail preenchido.
+    final ended = ref.read(sessionControllerProvider).value?.ended;
+    if (ended != null) _applyEnded(ended);
+    // O cofre pode recusar a exclusão depois de a tela já estar aberta.
+    ref.listenManual(sessionControllerProvider, (_, next) {
+      final late = next.value?.ended;
+      if (late == null || !mounted) return;
+      setState(() => _applyEnded(late));
+    });
+  }
+
+  void _applyEnded(SessionEnd ended) {
+    _email.text = ended.email;
+    _message = _endedMessage(ended);
+  }
+
+  static (FeedbackTone, String) _endedMessage(SessionEnd ended) => (
+    ended.reason == SessionEndReason.notErased
+        ? FeedbackTone.error
+        : FeedbackTone.warning,
+    switch (ended.reason) {
+      SessionEndReason.expired => 'Sua sessão expirou. Entre novamente.',
+      SessionEndReason.revoked => 'Sua sessão foi encerrada. Entre novamente.',
+      SessionEndReason.notErased =>
+        'Sua sessão foi encerrada, mas o aparelho não confirmou a exclusão. '
+            'Se o app abrir conectado, saia novamente.',
+    },
+  );
 
   @override
   void dispose() {
@@ -32,27 +64,60 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _submit() async {
     if (_loading) return;
     setState(() => _message = null);
+    ref.read(sessionControllerProvider.notifier).dismissNotice();
     if (!_form.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
     setState(() => _loading = true);
     try {
+      // Sucesso muda a sessão e o redirect do router leva à Home.
       await ref
-          .read(loginGatewayProvider)
+          .read(sessionControllerProvider.notifier)
           .login(LoginRequest(email: _email.text, password: _password.text));
-    } on LoginUnavailable {
+    } on AuthFailure catch (failure) {
       if (!mounted) return;
-      setState(() {
-        _message =
-            'O login ainda não está disponível. Tente novamente após '
-            'a liberação do serviço de autenticação.';
-      });
+      setState(() => _message = _failureMessage(failure.reason));
     } catch (_) {
       if (!mounted) return;
-      setState(() => _message = 'Não foi possível entrar. Tente novamente.');
+      setState(() => _message = _failureMessage(AuthFailureReason.unexpected));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  static (FeedbackTone, String) _failureMessage(AuthFailureReason reason) =>
+      switch (reason) {
+        AuthFailureReason.unauthorized => (
+          FeedbackTone.error,
+          'E-mail ou senha incorretos. Se o problema continuar, procure a '
+              'administração.',
+        ),
+        AuthFailureReason.invalidRequest => (
+          FeedbackTone.error,
+          'Confira o e-mail e a senha informados.',
+        ),
+        AuthFailureReason.tooManyRequests => (
+          FeedbackTone.warning,
+          'Muitas tentativas seguidas. Aguarde alguns minutos e tente '
+              'novamente.',
+        ),
+        AuthFailureReason.unavailable => (
+          FeedbackTone.warning,
+          'O serviço de acesso está fora do ar. Tente novamente em instantes.',
+        ),
+        AuthFailureReason.network => (
+          FeedbackTone.warning,
+          'Sem conexão com o servidor. Verifique sua internet e tente '
+              'novamente.',
+        ),
+        AuthFailureReason.timeout => (
+          FeedbackTone.warning,
+          'O servidor demorou para responder. Tente novamente em instantes.',
+        ),
+        AuthFailureReason.unexpected => (
+          FeedbackTone.error,
+          'Não foi possível entrar. Tente novamente.',
+        ),
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -104,51 +169,62 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text('E-MAIL', style: text.labelSmall),
+                              // O rótulo visível do Figma fica fora do campo;
+                              // o leitor de tela o recebe pelo Semantics.
+                              ExcludeSemantics(
+                                child: Text('E-MAIL', style: text.labelSmall),
+                              ),
                               const SizedBox(height: AppSpacing.xs),
-                              TextFormField(
-                                controller: _email,
-                                enabled: !_loading,
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                autofillHints: const [AutofillHints.username],
-                                autocorrect: false,
-                                validator: LoginValidation.email,
-                                decoration: const InputDecoration(
-                                  hintText: 'maria.souza@exemplo.com',
-                                  prefixIcon: Icon(Icons.mail_outline),
-                                  semanticCounterText: 'E-mail',
+                              Semantics(
+                                label: 'E-mail',
+                                child: TextFormField(
+                                  controller: _email,
+                                  enabled: !_loading,
+                                  keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next,
+                                  autofillHints: const [AutofillHints.username],
+                                  autocorrect: false,
+                                  validator: LoginValidation.email,
+                                  decoration: const InputDecoration(
+                                    hintText: 'maria.souza@exemplo.com',
+                                    prefixIcon: Icon(Icons.mail_outline),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: AppSpacing.md),
-                              Text('SENHA', style: text.labelSmall),
+                              ExcludeSemantics(
+                                child: Text('SENHA', style: text.labelSmall),
+                              ),
                               const SizedBox(height: AppSpacing.xs),
-                              TextFormField(
-                                controller: _password,
-                                enabled: !_loading,
-                                obscureText: _obscure,
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                autofillHints: const [AutofillHints.password],
-                                textInputAction: TextInputAction.done,
-                                onFieldSubmitted: (_) => _submit(),
-                                validator: LoginValidation.password,
-                                decoration: InputDecoration(
-                                  hintText: 'Sua senha',
-                                  prefixIcon: const Icon(Icons.lock_outline),
-                                  suffixIcon: IconButton(
-                                    tooltip: _obscure
-                                        ? 'Mostrar senha'
-                                        : 'Ocultar senha',
-                                    onPressed: _loading
-                                        ? null
-                                        : () => setState(
-                                            () => _obscure = !_obscure,
-                                          ),
-                                    icon: Icon(
-                                      _obscure
-                                          ? Icons.visibility_outlined
-                                          : Icons.visibility_off_outlined,
+                              Semantics(
+                                label: 'Senha',
+                                child: TextFormField(
+                                  controller: _password,
+                                  enabled: !_loading,
+                                  obscureText: _obscure,
+                                  autocorrect: false,
+                                  enableSuggestions: false,
+                                  autofillHints: const [AutofillHints.password],
+                                  textInputAction: TextInputAction.done,
+                                  onFieldSubmitted: (_) => _submit(),
+                                  validator: LoginValidation.password,
+                                  decoration: InputDecoration(
+                                    hintText: 'Sua senha',
+                                    prefixIcon: const Icon(Icons.lock_outline),
+                                    suffixIcon: IconButton(
+                                      tooltip: _obscure
+                                          ? 'Mostrar senha'
+                                          : 'Ocultar senha',
+                                      onPressed: _loading
+                                          ? null
+                                          : () => setState(
+                                              () => _obscure = !_obscure,
+                                            ),
+                                      icon: Icon(
+                                        _obscure
+                                            ? Icons.visibility_outlined
+                                            : Icons.visibility_off_outlined,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -156,8 +232,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               const SizedBox(height: AppSpacing.md),
                               if (_message != null) ...[
                                 FeedbackBanner(
-                                  tone: FeedbackTone.warning,
-                                  message: _message!,
+                                  tone: _message!.$1,
+                                  message: _message!.$2,
                                 ),
                                 const SizedBox(height: AppSpacing.md),
                               ],
@@ -221,23 +297,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      const Divider(),
-                      const SizedBox(height: AppSpacing.md),
-                      OutlinedButton.icon(
-                        onPressed: _loading
-                            ? null
-                            : () => context.go(AppRoutes.home),
-                        icon: const Icon(Icons.visibility_outlined),
-                        label: const Text('Entrar em modo demonstração'),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
+                      const SizedBox(height: AppSpacing.xl),
                       Text(
-                        'Abre a Home sem autenticar: nenhuma sessão é criada.',
-                        style: text.bodySmall,
+                        'ERRORSQUAD · FATEC',
+                        style: text.labelSmall,
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: AppSpacing.md),
                     ],
                   ),
                 ),
