@@ -36,7 +36,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | RNF04 | Interface simples, acessível ao público idoso | Parcial | Fonte 2x sem estouro e rótulos acessíveis (US-27, #43); telas de admin com acessibilidade são US-31 (S3) |
 | RNF05 | Modularidade e separação de responsabilidades | Atendido | Clean Architecture com regra de camadas verificada no lint (`backend/src/{domain,application,infrastructure,main}`) |
 | RNF06 | Banco de dados em nuvem | Atendido | Postgres no Neon; `/health` com `database: ok` |
-| RNF07 | Eficiência energética do dispositivo | **Não comprovado** | Não há evidência de medição nem de estratégia (deep sleep, duty cycle) no firmware |
+| RNF07 | Eficiência energética do dispositivo | Parcial | Terminal alimentado pela rede e sem deep sleep por causa do QR de 10 s (RF12); QR só é redesenhado quando o token muda e LEDs/buzzer só ligam no feedback — mecanismos verificáveis no firmware. Falta a medição de corrente e o teste de continuidade ([`evidencias/dt-22.md`](evidencias/dt-22.md), US-34) |
 | RNF08 | CI com build, testes e lint | Atendido | `ci-backend`, `ci-mobile`, `ci-firmware` + CodeQL, todos obrigatórios |
 | RNF09 | CD automatizado | Atendido | `cd-backend` publica na Vercel após CI; smoke em `/health` |
 | RNF10 | Testes automatizados no pipeline | Atendido | Vitest (backend, incl. e2e com Postgres embarcado), Flutter test, testes host do firmware |
@@ -68,7 +68,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 4. **RF10/RF11/RF14**: NFC e GPS do terminal (US-23/24, S3).
 5. **RF17**: registrar tentativa NFC depende de US-23.
 6. **RNF02**: TLS no firmware (DT-06) para falar com o broker de produção.
-7. **RNF07**: sem evidência de eficiência energética.
+7. **RNF07**: estratégia e orçamento documentados em [`evidencias/dt-22.md`](evidencias/dt-22.md); falta medir corrente no hardware (US-34).
 8. **RF03**: confirmar com o professor/PO se "horário inicial/final" exige janela diária dentro do período — hoje é um intervalo contínuo.
 
 ## Leitura do edital sobre "admin"
