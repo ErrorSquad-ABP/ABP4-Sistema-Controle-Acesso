@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ValidateQrCredentialUseCase } from '../../src/application/terminal/qr-credential.use-cases.js';
 import { prismaPoolOptions } from '../../src/infrastructure/database/prisma-client.js';
 import { HmacQrTokenSigner } from '../../src/infrastructure/ids/hmac-qr-token-signer.js';
@@ -12,7 +12,7 @@ import {
   workerConnectionTotal,
 } from '../../src/main/config/connection-budget.js';
 import { loadEnv } from '../../src/main/config/env.js';
-import { FixedClock, NOW, SequentialIds } from '../support/terminal-fakes.js';
+import { FixedClock, NOW, SequentialIds, silentLogger } from '../support/terminal-fakes.js';
 
 // pg.Pool so conecta na primeira consulta: montar os pools aqui nao abre conexao.
 const env = loadEnv({
@@ -40,7 +40,7 @@ describe('DT-14: orcamento de conexoes', () => {
   });
 
   it('o runtime de acesso nao cria a deduplicacao MQTT e respeita o limite pedido', async () => {
-    const access = buildAccessRuntime(env, deps, API_CONNECTIONS.access);
+    const access = buildAccessRuntime(env, deps, API_CONNECTIONS.access, silentLogger);
     try {
       expect(access && Object.keys(access).sort()).toEqual(['commands', 'decide', 'decider', 'pool', 'repository']);
       expect(access?.pool.options.max).toBe(API_CONNECTIONS.access.max);
@@ -51,7 +51,7 @@ describe('DT-14: orcamento de conexoes', () => {
   });
 
   it('a deduplicacao e montada a parte, so com o orcamento do worker', async () => {
-    const dedup = buildEventDeduplication(env, WORKER_CONNECTIONS.events);
+    const dedup = buildEventDeduplication(env, WORKER_CONNECTIONS.events, silentLogger);
     try {
       expect(dedup?.pool.options.max).toBe(WORKER_CONNECTIONS.events.max);
       expect(dedup?.pool.options.application_name).toBe(WORKER_CONNECTIONS.events.applicationName);
@@ -61,8 +61,8 @@ describe('DT-14: orcamento de conexoes', () => {
   });
 
   it('todo pool limita a espera pela resposta da consulta, alem da conexao livre', async () => {
-    const access = buildAccessRuntime(env, deps, API_CONNECTIONS.access);
-    const dedup = buildEventDeduplication(env, WORKER_CONNECTIONS.events);
+    const access = buildAccessRuntime(env, deps, API_CONNECTIONS.access, silentLogger);
+    const dedup = buildEventDeduplication(env, WORKER_CONNECTIONS.events, silentLogger);
     try {
       for (const pool of [access?.pool, dedup?.pool]) {
         expect(pool?.options.connectionTimeoutMillis).toBe(POOL_CONNECTION_TIMEOUT_MS);
@@ -89,5 +89,33 @@ describe('DT-14: orcamento de conexoes', () => {
     // Startup GUC: o pooler do Neon recusa `statement_timeout` como parametro de
     // startup ("unsupported startup parameter"), entao ele nao entra na conexao.
     expect(options).not.toHaveProperty('statement_timeout');
+  });
+});
+
+describe('DT-16: falhas das pools no log', () => {
+  it('conexao ociosa que cai vira warn com a fonte e sem a senha', async () => {
+    const logger = { ...silentLogger, warn: vi.fn() };
+    const access = buildAccessRuntime(env, deps, WORKER_CONNECTIONS.access, logger);
+    const dedup = buildEventDeduplication(env, WORKER_CONNECTIONS.events, logger);
+    try {
+      const failure = Object.assign(new Error('conexao perdida com postgresql://abp4:segredo@db.neon.tech/abp4'), {
+        code: 'ECONNRESET',
+      });
+      expect(() => access?.pool.emit('error', failure)).not.toThrow();
+      dedup?.pool.emit('error', failure);
+
+      expect(logger.warn).toHaveBeenCalledWith('falha em conexao ociosa do postgres', {
+        pool: WORKER_CONNECTIONS.access.applicationName,
+        code: 'ECONNRESET',
+        error: 'conexao perdida com postgresql://***',
+      });
+      expect(logger.warn).toHaveBeenCalledWith('falha em conexao ociosa do postgres', expect.objectContaining({
+        pool: WORKER_CONNECTIONS.events.applicationName,
+      }));
+      expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('segredo');
+    } finally {
+      await access?.pool.end();
+      await dedup?.pool.end();
+    }
   });
 });

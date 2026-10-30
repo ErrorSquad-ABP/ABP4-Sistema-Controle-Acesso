@@ -38,9 +38,9 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
   const qr = new ValidateQrCredentialUseCase(clock, new HmacQrTokenSigner(env.QR_TOKEN_SECRET));
   const real = env.ACCESS_MODE === 'real';
   const access = real
-    ? buildAccessRuntime(env, { clock, qr, ids: new CryptoIdGenerator() }, WORKER_CONNECTIONS.access)
+    ? buildAccessRuntime(env, { clock, qr, ids: new CryptoIdGenerator() }, WORKER_CONNECTIONS.access, logger)
     : undefined;
-  const dedup = real ? buildEventDeduplication(env, WORKER_CONNECTIONS.events) : undefined;
+  const dedup = real ? buildEventDeduplication(env, WORKER_CONNECTIONS.events, logger) : undefined;
 
   let decider: AccessDecider;
   try {

@@ -12,6 +12,8 @@ import { PostgresEventDeduplicator } from '../infrastructure/database/postgres-e
 import { DatabaseAccessDecider } from '../infrastructure/terminal/database-access-decider.js';
 import { POOL_CONNECTION_TIMEOUT_MS, POOL_QUERY_TIMEOUT_MS, type PoolBudget } from './config/connection-budget.js';
 import type { Env } from './config/env.js';
+import type { Logger } from '../shared/logger.js';
+import { redactConnectionString } from '../shared/redact.js';
 
 export interface AccessRuntime {
   pool: pg.Pool;
@@ -35,6 +37,7 @@ export function buildAccessRuntime(
   env: Env,
   deps: { clock: Clock; qr: ValidateQrCredentialUseCase; ids: IdGenerator },
   budget: PoolBudget,
+  logger: Logger,
 ): AccessRuntime | undefined {
   if (!env.DATABASE_URL) return undefined;
   const pool = new pg.Pool({
@@ -47,14 +50,18 @@ export function buildAccessRuntime(
     allowExitOnIdle: true,
     options: '-c timezone=UTC',
   });
-  pool.on('error', () => {});
+  logPoolErrors(pool, budget, logger);
   const repository = new PostgresAccessRepository(pool);
   const commands = new PostgresCommandStore(pool);
   const decide = new DecideAccessUseCase(repository, deps.clock, deps.qr, deps.ids);
   return { pool, repository, commands, decide, decider: new DatabaseAccessDecider(decide) };
 }
 
-export function buildEventDeduplication(env: Env, budget: PoolBudget): EventDeduplicationRuntime | undefined {
+export function buildEventDeduplication(
+  env: Env,
+  budget: PoolBudget,
+  logger: Logger,
+): EventDeduplicationRuntime | undefined {
   if (!env.DATABASE_URL) return undefined;
   const pool = new pg.Pool({
     connectionString: env.DATABASE_URL,
@@ -65,6 +72,20 @@ export function buildEventDeduplication(env: Env, budget: PoolBudget): EventDedu
     idleTimeoutMillis: 10_000,
     allowExitOnIdle: true,
   });
-  pool.on('error', () => {});
+  logPoolErrors(pool, budget, logger);
   return { pool, events: new PostgresEventDeduplicator(pool) };
+}
+
+/**
+ * Conexao ociosa que cai (restart do Neon, rede) chega aqui; sem listener o
+ * processo morre. Registra a fonte e o codigo, nunca a URL com a senha (DT-16).
+ */
+function logPoolErrors(pool: pg.Pool, budget: PoolBudget, logger: Logger): void {
+  pool.on('error', (err: Error & { code?: string }) => {
+    logger.warn('falha em conexao ociosa do postgres', {
+      pool: budget.applicationName,
+      code: err.code,
+      error: redactConnectionString(err.message),
+    });
+  });
 }
