@@ -6,9 +6,32 @@ import type {
   ProcessedMessageStats,
 } from '../../domain/ports/event-deduplicator.js';
 
+/** Prazos da reserva, aplicados no servidor e so dentro da transacao (DT-16). */
+export interface DedupTimeouts {
+  /** Espera pelo advisory lock: a duplicata bloqueada desiste nesse prazo. */
+  lockMs: number;
+  /** Teto de cada consulta da reserva; abaixo do `query_timeout` de 4 s do cliente. */
+  statementMs: number;
+  /** Teto da transacao parada durante o callback; acima disso o servidor encerra a sessao. */
+  reservationMs: number;
+}
+
+/**
+ * 3 s < 3,5 s < 4 s (`POOL_QUERY_TIMEOUT_MS`): o servidor aborta antes do cliente
+ * e a conexao volta limpa. 20 s cobrem decisao + PUBACK (3 s) com folga; o
+ * frescor de 30 s ja descartaria uma tentativa mais lenta que isso.
+ */
+export const DEFAULT_DEDUP_TIMEOUTS: DedupTimeouts = { lockMs: 3_000, statementMs: 3_500, reservationMs: 20_000 };
+
+/** `lock_not_available` (lock_timeout) e `query_canceled` (statement_timeout). */
+const SERVER_TIMEOUT_CODES = new Set(['55P03', '57014']);
+
 /** Pool separada da decisao/comandos: callbacks nao disputam as conexoes reservadas aqui. */
 export class PostgresEventDeduplicator implements EventDeduplicator, ProcessedMessageRetention {
-  constructor(private readonly pool: pg.Pool) {}
+  constructor(
+    private readonly pool: pg.Pool,
+    private readonly timeouts: DedupTimeouts = DEFAULT_DEDUP_TIMEOUTS,
+  ) {}
 
   async ready(): Promise<void> {
     await this.pool.query('SELECT "messageId", "processedAt" FROM "ProcessedAccessMessage" LIMIT 0');
@@ -18,8 +41,19 @@ export class PostgresEventDeduplicator implements EventDeduplicator, ProcessedMe
     id = id.toLowerCase();
     const client = await this.pool.connect();
     let discardConnection = false;
+    // Sessao encerrada pelo servidor durante o callback emite 'error' no client em uso:
+    // sem listener o processo cai. A falha reaparece na proxima consulta.
+    const onClientError = () => {
+      discardConnection = true;
+    };
+    client.on('error', onClientError);
     try {
       await client.query('BEGIN');
+      await client.query(
+        `SELECT set_config('lock_timeout', $1, true), set_config('statement_timeout', $2, true),
+          set_config('idle_in_transaction_session_timeout', $3, true)`,
+        [`${this.timeouts.lockMs}ms`, `${this.timeouts.statementMs}ms`, `${this.timeouts.reservationMs}ms`],
+      );
       // Lock transacional: crash/rollback libera a reserva sem deixar marca orfa.
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 5))', [id]);
       const existing = await client.query('SELECT 1 FROM "ProcessedAccessMessage" WHERE "messageId" = $1', [id]);
@@ -32,14 +66,22 @@ export class PostgresEventDeduplicator implements EventDeduplicator, ProcessedMe
       await client.query('COMMIT');
       return { duplicate: false, value };
     } catch (error) {
-      try {
-        await client.query('ROLLBACK');
-      } catch {
-        // Preserva a falha original mesmo quando a conexao foi perdida.
+      if (isClientTimeout(error)) {
+        // Consulta ainda pendente no socket: um ROLLBACK ficaria na fila atras dela.
+        // Descartar a conexao faz o servidor abortar a transacao e soltar o lock.
         discardConnection = true;
+      } else if (!discardConnection) {
+        try {
+          await client.query('ROLLBACK');
+        } catch {
+          // Preserva a falha original mesmo quando a conexao foi perdida.
+          discardConnection = true;
+        }
       }
+      if (isServerTimeout(error)) throw new Error('reserva da deduplicacao excedeu o prazo', { cause: error });
       throw error;
     } finally {
+      client.off('error', onClientError);
       client.release(discardConnection);
     }
   }
@@ -69,4 +111,13 @@ export class PostgresEventDeduplicator implements EventDeduplicator, ProcessedMe
     // bigint chega como string no `pg`; o tamanho da tabela cabe com folga em Number.
     return { rows: row.rows, bytes: Number(row.bytes) };
   }
+}
+
+function isServerTimeout(error: unknown): boolean {
+  return SERVER_TIMEOUT_CODES.has((error as { code?: string } | null)?.code ?? '');
+}
+
+/** `query_timeout` do `pg`: o cliente desistiu, mas a consulta segue no servidor. */
+function isClientTimeout(error: unknown): boolean {
+  return error instanceof Error && error.message === 'Query read timeout';
 }
