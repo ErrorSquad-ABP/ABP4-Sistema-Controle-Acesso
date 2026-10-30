@@ -129,7 +129,7 @@ O que é estimativa nesta seção: o `default_pool_size` como teto do nosso par,
 
 - até 3 decisões QR e 3 consultas Prisma ao mesmo tempo;
 - o excedente espera uma conexão livre por até 5 s (`POOL_CONNECTION_TIMEOUT_MS`) e depois falha;
-- uma consulta já enviada tem teto de 4 s no cliente (`POOL_QUERY_TIMEOUT_MS`, `query_timeout` do `pg`), inclusive nas consultas do Prisma via driver adapter. O teto é **por consulta**, não por pedido: um pedido que espera até 5 s por uma conexão livre e encadeia várias consultas soma esses tempos e pode passar de 4 s. Esse teto libera quem espera, mas **não cancela a consulta no servidor**: ela pode continuar na fila do pooler até o `query_wait_timeout` de 120 s. Não usamos `statement_timeout` no startup porque o pooler do Neon recusa parâmetros de startup fora da lista permitida (`client_encoding`, `datestyle`, `timezone`, `standard_conforming_strings`, `application_name`) — ver [Connection errors](https://neon.com/docs/connect/connection-errors). Para um teto no servidor seria preciso `ALTER ROLE ... SET statement_timeout`, que vale para todos os clientes (inclusive migrations) e não foi aplicado;
+- uma consulta já enviada tem teto de 4 s no cliente (`POOL_QUERY_TIMEOUT_MS`, `query_timeout` do `pg`), inclusive nas consultas do Prisma via driver adapter. O teto é **por consulta**, não por pedido: um pedido que espera até 5 s por uma conexão livre e encadeia várias consultas soma esses tempos e pode passar de 4 s. Esse teto libera quem espera, mas **não cancela a consulta no servidor**: ela pode continuar na fila do pooler até o `query_wait_timeout` de 120 s. Não usamos `statement_timeout` no startup porque o pooler do Neon recusa parâmetros de startup fora da lista permitida (`client_encoding`, `datestyle`, `timezone`, `standard_conforming_strings`, `application_name`) — ver [Connection errors](https://neon.com/docs/connect/connection-errors). Para um teto no servidor seria preciso `ALTER ROLE ... SET statement_timeout`, que vale para todos os clientes (inclusive migrations) e não foi aplicado. A exceção é a reserva da deduplicação: ela fixa `lock_timeout` 3 s, `statement_timeout` 3,5 s e `idle_in_transaction_session_timeout` 20 s dentro da própria transação (DT-16, [contratos MQTT](../architecture/contratos-mqtt.md));
 - mais tráfego simultâneo escala em instâncias novas da Vercel, cada uma somando mais 7 conexões clientes.
 
 O worker decide até 2 NFC em paralelo, limitado pela pool da deduplicação, e não disputa conexões com a API.
@@ -146,7 +146,8 @@ A janela não afeta a publicação imediata de um comando (a API publica na hora
 
 - **Neon real:** nenhuma medição no projeto de produção. Os números de compute, `max_connections` e pooler acima vêm da documentação do Neon e de contas, não de observação; a conferência abaixo precisa ser feita com o deploy no ar.
 - **Múltiplas instâncias da Vercel:** o E2E roda uma única instância da API e um único worker. A multiplicação por instâncias frias é comportamento esperado da plataforma, não medido.
-- **Teto no servidor:** o `query_timeout` é do cliente; o cancelamento server-side (`statement_timeout` por role) não está configurado nem testado.
+- **Teto no servidor:** fora da reserva da deduplicação, o `query_timeout` é do cliente; o cancelamento server-side (`statement_timeout` por role) não está configurado nem testado. Os prazos da reserva (DT-16) foram testados em PostgreSQL local, não no pooler do Neon.
+- **Falhas das pools:** conexão ociosa que cai gera `falha em conexao ociosa do postgres` com `pool` (o `application_name`), `code` e a mensagem sem a URL do banco (DT-16).
 
 Para conferir em produção:
 
