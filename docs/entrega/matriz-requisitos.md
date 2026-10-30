@@ -1,6 +1,6 @@
 # Matriz de requisitos — Desafio 4DSM 2026-2
 
-Fonte: `Desafio 4DSM - 2026-2.pdf` (versão 31/08/2026, FATEC Jacareí), cruzada com o código da `main` em 29/10/2026 (`b170a06`).
+Fonte: `Desafio 4DSM - 2026-2.pdf` (versão 31/08/2026, FATEC Jacareí), cruzada com o código da `main` em 29/10/2026 (`6b6aa26`).
 
 Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · **Não comprovado** (não há evidência no repo).
 

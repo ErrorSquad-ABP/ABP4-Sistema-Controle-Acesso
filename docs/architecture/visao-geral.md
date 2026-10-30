@@ -23,7 +23,7 @@ flowchart LR
 
 **O que está mergeado ≠ o que foi observado em deploy** (29/10/2026):
 
-- **API na Vercel**: no ar. O `/health` público respondeu `version: 7eab133` (o commit da `main` no momento da verificação) e `database: ok`.
+- **API na Vercel**: no ar. O `/health` público respondeu `version: 6b6aa26` (o commit da `main` no momento da verificação) e `database: ok`.
 - **Worker no Render**: código (`backend/src/main/worker.ts`) e `render.yaml` na `main`, mas **o deploy efetivo não foi observado** — nenhuma evidência de serviço em execução.
 - **Relay da outbox**: roda só entre **18:45 e 23:05** em `America/Sao_Paulo` (DT-21, PR #45); fora da janela o polling não consulta o banco.
 

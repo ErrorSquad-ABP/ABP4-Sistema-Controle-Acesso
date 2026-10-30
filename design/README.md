@@ -30,10 +30,10 @@ O tema do Flutter (US-09) espelha estes tokens nos dois modos (ThemeData claro/e
 | Pasta / arquivo | Conteúdo |
 |---|---|
 | `design-system/` | Fundamentos (claro e escuro) + catálogo de componentes |
-| `telas-claro/` | Fluxo completo em 9 telas: Entrar → Minhas autorizações → Detalhe → Escanear QR → Acesso liberado/negado → estados |
-| `telas-escuro/` | O mesmo fluxo no tema escuro + Perfil com seletor de tema |
+| `telas-claro/` | Fluxo completo em 11 telas: Entrar → Minhas autorizações → Detalhe → Escanear QR → Acesso liberado/negado → estados → Perfil e configurações → Locais de acesso (admin, US-39) |
+| `telas-escuro/` | O mesmo fluxo no tema escuro, com Perfil (seletor de tema) e Locais de acesso (US-39) |
 | `handoff-regras-de-negocio.png` | Página de regras e handoffs (QR 10s, geofence 100m, perfis, NFC, fluxos) |
 
-PNGs exportados do Figma em 16/10, já com a tipografia **Figtree** (a fonte viva continua sendo o arquivo no Figma).
+PNGs exportados do Figma em 16/10 e atualizados em 29/10 (Perfil claro e Locais de acesso nos dois temas), já com a tipografia **Figtree** (a fonte viva continua sendo o arquivo no Figma).
 
 > Histórico: `Page 1` (protótipo inicial) e a exploração azul anterior estão descartadas — mantidas apenas como referência.

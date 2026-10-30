@@ -271,8 +271,10 @@ Descobertas por sprint. Títulos, épico e sprint alvo conforme previsto; o refi
 
 ## Estado em 29/10/2026
 
-`main` em `7eab133`. Fechado na Sprint 2: US-14, US-21 (fatia de consulta), US-22 e US-37 no PR #26 · US-19 no #27 · US-15 e US-18 no #33 · US-16 e US-17 no #36 · US-27 no #43 · US-26 herdada da US-08 (evidência em [`../entrega/evidencias/us-26-mqtt-servo.md`](../entrega/evidencias/us-26-mqtt-servo.md)). A US-20 foi antecipada da S3 e fechou no #42.
+Código em `6b6aa26` (a versão no ar). Fechado na Sprint 2: US-14, US-21 (fatia de consulta), US-22 e US-37 no PR #26 · US-19 no #27 · US-15 e US-18 no #33 · US-16 e US-17 no #36 · US-27 no #43 · US-26 herdada da US-08 (evidência em [`../entrega/evidencias/us-26-mqtt-servo.md`](../entrega/evidencias/us-26-mqtt-servo.md)). A US-20 foi antecipada da S3 e fechou no #42. A dívida técnica andou junto: DT-13 no #37, DT-14 no #44, DT-17 no #41, DT-18 no #40, DT-19 no #39, DT-20 no #38, DT-21 no #45 e DT-15 no #48.
 
 Aberto: **US-28** (minhas autorizações no app) e **US-29** (scanner QR + resultado no app), ainda com alvo S2 nesta tabela — escorregam para a S3. A US-21 entregou só leitura (`GET /me/access-events`, `GET /access-events`); a gravação de tentativas NFC segue na S3 com a US-23.
 
-O worker MQTT tem código e `render.yaml` na `main` (US-37), mas o deploy efetivo no Render não foi observado. A API está no ar na Vercel: `/health` respondeu `version: 7eab133`, `database: ok`. Detalhe da sprint em [`sprints/sprint-2.md`](sprints/sprint-2.md).
+Em 29/10 a [matriz de requisitos](../entrega/matriz-requisitos.md) abriu duas lacunas do edital que estavam sem card: **US-39** (RF02, cadastro de locais de acesso) e **DT-22** (RNF07, eficiência energética do terminal). A tela de locais já está no Figma (claro e escuro); sprint alvo a definir.
+
+O worker MQTT tem código e `render.yaml` na `main` (US-37), mas o deploy efetivo no Render não foi observado — inclusive o `dedupPurge` do `/healthz` (DT-15) só aparece depois de um redeploy manual. A API está no ar na Vercel: `/health` respondeu `version: 6b6aa26`, `database: ok`, depois do deploy do DT-15. Detalhe da sprint em [`sprints/sprint-2.md`](sprints/sprint-2.md).
