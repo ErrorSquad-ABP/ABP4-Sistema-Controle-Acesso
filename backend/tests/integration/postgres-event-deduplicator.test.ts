@@ -85,3 +85,79 @@ describe.skipIf(!pool)('PostgresEventDeduplicator (DT-15)', () => {
     expect(stats.bytes).toBeGreaterThan(0);
   });
 });
+
+// Conexoes independentes: cada pool simula uma replica do worker (DT-16).
+const contention = connectionString
+  ? [new pg.Pool({ connectionString, max: 2 }), new pg.Pool({ connectionString, max: 2 })]
+  : null;
+const SHORT = { lockMs: 300, statementMs: 400, reservationMs: 800 };
+
+describe.skipIf(!contention)('PostgresEventDeduplicator: prazos da reserva (DT-16)', () => {
+  const [poolA, poolB] = contention ?? [];
+  const a = poolA ? new PostgresEventDeduplicator(poolA, SHORT) : null;
+  const b = poolB ? new PostgresEventDeduplicator(poolB, SHORT) : null;
+
+  async function marked(messageId: string) {
+    return (await poolB!.query('SELECT 1 FROM "ProcessedAccessMessage" WHERE "messageId" = $1', [messageId])).rowCount;
+  }
+
+  afterAll(async () => {
+    await poolA?.end();
+    await poolB?.end();
+  });
+
+  it('duplicata bloqueada desiste no prazo, sem marca, e a posterior prossegue', async () => {
+    const id = randomUUID();
+    let release!: () => void;
+    let reserved!: () => void;
+    const holding = new Promise<void>((resolve) => { reserved = resolve; });
+    const first = a!.run(id, async () => {
+      reserved();
+      await new Promise<void>((resolve) => { release = resolve; });
+      return 'primeira';
+    });
+    await holding;
+
+    const started = Date.now();
+    let executed = false;
+    await expect(b!.run(id, async () => { executed = true; })).rejects.toThrow('reserva da deduplicacao excedeu o prazo');
+    const elapsed = Date.now() - started;
+    expect(elapsed).toBeGreaterThanOrEqual(SHORT.lockMs - 50);
+    expect(elapsed).toBeLessThan(SHORT.lockMs + 1_000);
+    expect(executed).toBe(false);
+    expect(await marked(id)).toBe(0);
+
+    // A conexao de B voltou limpa: outro id na mesma pool reserva na hora.
+    expect(await b!.run(randomUUID(), async () => 'outro')).toEqual({ duplicate: false, value: 'outro' });
+
+    release();
+    expect(await first).toEqual({ duplicate: false, value: 'primeira' });
+    expect(await b!.run(id, async () => 'replay')).toEqual({ duplicate: true });
+  });
+
+  it('callback travado alem do teto perde a reserva sem marca e outra replica processa', async () => {
+    const id = randomUUID();
+    let callbackDone = false;
+    const stuck = a!.run(id, async () => {
+      await new Promise((resolve) => setTimeout(resolve, SHORT.reservationMs * 4));
+      callbackDone = true;
+      return 'tarde';
+    });
+    const settled = stuck.catch((err: unknown) => err as Error);
+
+    // Passado o teto, o servidor encerra a sessao de A e solta o lock com o callback ainda rodando.
+    await new Promise((resolve) => setTimeout(resolve, SHORT.reservationMs * 2));
+    expect(callbackDone).toBe(false);
+    expect(await marked(id)).toBe(0);
+    const started = Date.now();
+    expect(await b!.run(id, async () => 'retentativa')).toEqual({ duplicate: false, value: 'retentativa' });
+    expect(Date.now() - started).toBeLessThan(SHORT.lockMs);
+
+    // A nao confirma nada ao terminar: a sessao ja tinha caido.
+    expect(await settled).toBeInstanceOf(Error);
+    expect(callbackDone).toBe(true);
+    expect(await marked(id)).toBe(1);
+    // A pool de A segue utilizavel: a conexao encerrada foi descartada.
+    expect(await a!.run(randomUUID(), async () => 'nova')).toEqual({ duplicate: false, value: 'nova' });
+  });
+});

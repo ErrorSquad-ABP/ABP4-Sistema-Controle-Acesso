@@ -9,6 +9,7 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 | [`dt-13.md`](evidencias/dt-13.md) | DT-13 | outbox de comando (`publishedAt`) com relay independente do terminal | #37 |
 | [`dt-14.md`](evidencias/dt-14.md) | DT-14 | orçamento de conexões por pool e medição da rajada concorrente | #44 |
 | [`dt-15.md`](evidencias/dt-15.md) | DT-15 | retenção de 24 h da deduplicação com expurgo em lotes e resultado no `/healthz` | #48 |
+| [`dt-16.md`](evidencias/dt-16.md) | DT-16 | prazos da reserva de deduplicação no servidor e falhas das pools no log sem segredos | — |
 | [`dt-17.md`](evidencias/dt-17.md) | DT-17 | candidatas de autorização restritas na consulta e no lock | #41 |
 | [`dt-18.md`](evidencias/dt-18.md) | DT-18 | retenção de `TerminalCommand` com expurgo em lotes | #40 |
 | [`dt-19.md`](evidencias/dt-19.md) | DT-19 | limite do token QR no firmware alinhado ao backend | #39 |
