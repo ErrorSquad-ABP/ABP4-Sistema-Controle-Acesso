@@ -1,6 +1,6 @@
 # Product Backlog — ErrorSquad ABP 4DSM
 
-Este é o backlog oficial do **Sistema Integrado de Controle de Acesso** (QR Code + NFC + IoT): as 38 user stories do projeto, organizadas por épico. As 13 stories da **Sprint 1** estão detalhadas abaixo (narrativa + critérios de aceite); as outras 25 estão previstas por sprint e são refinadas/estimadas sprint a sprint, a partir da Sprint 2.
+Este é o backlog oficial do **Sistema Integrado de Controle de Acesso** (QR Code + NFC + IoT): **39 user stories**, incluindo a US-39 descoberta após o plano original de 38. As 13 stories da **Sprint 1** estão detalhadas abaixo (narrativa + critérios de aceite); as demais são refinadas/estimadas sprint a sprint. As tabelas de sprint alvo preservam o planejamento original; o estado observado está na seção final, sem replanejamento retroativo.
 
 Duas superfícies, dois papéis: o **Trello** (board `ERRORSQUAD ABP 4DSM`) é a fonte viva — onde o card se move durante a sprint; **este documento** é a fonte oficial — o backlog como o time acordou, espelhado nos cards do board.
 
@@ -30,6 +30,8 @@ Duas superfícies, dois papéis: o **Trello** (board `ERRORSQUAD ABP 4DSM`) é a
 ## Sprint 1 — 13 stories detalhadas
 
 **Goal**: fundação no ar + esqueleto conversando ponta-a-ponta, simulado (15/10 → 21/10, Review em 21/10).
+
+Os critérios abaixo preservam o texto de planejamento; os checkboxes não foram remarcados retroativamente como resultado desta auditoria. Status declarado e ressalvas de comprovação estão na seção de estado atual e na [conferência por card](../entrega/auditoria-estado-atual.md).
 
 ### US-01 · Repo vivo
 
@@ -228,7 +230,7 @@ Pontos:   — (Planning 1)
 
 ## Backlog futuro — US-14 a US-38 (25 stories)
 
-Descobertas por sprint. Títulos, épico e sprint alvo conforme previsto; o refinamento fatiar e detalha cada uma antes da sprint em que entra (narrativa + critérios de aceite + pontos).
+Plano original, não uma lista de stories ainda abertas. Títulos, épico e sprint alvo conforme previsto; o refinamento detalha cada uma antes da sprint em que entra (narrativa + critérios de aceite + pontos). Várias já foram entregues ou antecipadas; ver estado abaixo.
 
 | US | Título | Épico | Sprint alvo |
 |---|---|---|---|
@@ -261,7 +263,7 @@ Descobertas por sprint. Títulos, épico e sprint alvo conforme previsto; o refi
 **US-37**: publica no Render o processo MQTT local da US-04, sem recriar a integração.
 **US-38**: além do build web, troca os ícones padrão do Flutter (web e Android) por uma identidade única, com o nome público "Controle de Acesso".
 
-**Distribuição por épico** (cada story conta **uma vez**, pelo épico primário): E1 com 4 (3 na Sprint 1 + US-37) · E2 com 11 · E3 com 7 · E4 com 7 · E5 com 4 · E6 com 5 **(US-12 = E4/E6 compartilhada; contada em E6)** — **38 stories no total**, sendo 13 detalhadas na Sprint 1 e 25 futuras.
+**Distribuição original por épico** (cada story conta **uma vez**, pelo épico primário): E1 com 4 (3 na Sprint 1 + US-37) · E2 com 11 · E3 com 7 · E4 com 7 · E5 com 4 · E6 com 5 **(US-12 = E4/E6 compartilhada; contada em E6)** — **38 stories no plano inicial**, sendo 13 detalhadas na Sprint 1 e 25 previstas para depois. US-39 foi acrescentada posteriormente (seção de estado atual).
 
 ## Índice
 
@@ -269,12 +271,23 @@ Descobertas por sprint. Títulos, épico e sprint alvo conforme previsto; o refi
 - [`definition-of-done.md`](definition-of-done.md) — o que significa "pronto" para um card.
 - `sprints/` e `templates/` completam a pasta (US-11).
 
-## Estado em 29/10/2026
+## Estado observado em 02/11/2026
 
-Código em `6b6aa26` (a versão no ar). Fechado na Sprint 2: US-14, US-21 (fatia de consulta), US-22 e US-37 no PR #26 · US-19 no #27 · US-15 e US-18 no #33 · US-16 e US-17 no #36 · US-27 no #43 · US-26 herdada da US-08 (evidência em [`../entrega/evidencias/us-26-mqtt-servo.md`](../entrega/evidencias/us-26-mqtt-servo.md)). A US-20 foi antecipada da S3 e fechou no #42. A dívida técnica andou junto: DT-13 no #37, DT-14 no #44, DT-17 no #41, DT-18 no #40, DT-19 no #39, DT-20 no #38, DT-21 no #45 e DT-15 no #48.
+Código local auditado: `66fe44a`; API pública observada em `6b6aa26`, com banco ok (uma primeira consulta retornou 503). Trello: **61 cards não arquivados**, sendo **43 em Concluído (26 US + 17 DT)** e 18 nas demais listas. A contagem é declarada no quadro, não certificação de todos os aceites; a [auditoria por card](../entrega/auditoria-estado-atual.md) registra diferenças.
 
-Aberto: **US-28** (minhas autorizações no app) e **US-29** (scanner QR + resultado no app), ainda com alvo S2 nesta tabela — escorregam para a S3. A US-21 entregou só leitura (`GET /me/access-events`, `GET /access-events`); a gravação de tentativas NFC segue na S3 com a US-23.
+**Entregas integradas:** US-14/21/22/37 (#26), US-19 (#27), US-15/18 (#33), US-16/17 (#36), US-27 (#43), US-26 herdada da US-08 ([evidência](../entrega/evidencias/us-26-mqtt-servo.md)), US-20 (#42) e US-32 (E2E antecipado, #32). US-21 foi fechada pela fatia de consulta; o backend atual também grava decisões QR/NFC simulado, mas falta o leitor NFC do terminal (US-23). US-37 tem implementação, não deploy validado; US-22 tem código de renderização, não demonstração visual atual comprovada. US-14 excluiu refresh/logout no comentário do card, ainda não refletido em sua descrição.
 
-Em 29/10 a [matriz de requisitos](../entrega/matriz-requisitos.md) abriu duas lacunas do edital que estavam sem card: **US-39** (RF02, cadastro de locais de acesso) e **DT-22** (RNF07, eficiência energética do terminal). A tela de locais já está no Figma (claro e escuro); sprint alvo a definir.
+**Listas abertas no Trello:** Sprint 2 = US-23, DT-06, DT-08 e US-29; Product Backlog = US-24/25/28/30/31/33/34/35/36/38/39; Dívida Técnica = DT-22; Em review = DT-16; Bloqueado = DT-12. US-28/29 continuam abertas e a S2 ainda não terminou; não há transferência para S3 confirmada por esta auditoria.
 
-O worker MQTT tem código e `render.yaml` na `main` (US-37), mas o deploy efetivo no Render não foi observado — inclusive o `dedupPurge` do `/healthz` (DT-15) só aparece depois de um redeploy manual. A API está no ar na Vercel: `/health` respondeu `version: 6b6aa26`, `database: ok`, depois do deploy do DT-15. Detalhe da sprint em [`sprints/sprint-2.md`](sprints/sprint-2.md).
+**Dívidas declaradas concluídas:** DT-01/02/03/04/05/07/09/10/11/13/14/15/17/18/19/20/21. A **DT-11 não atende ao aceite atual**: várias Actions continuam por tags e não há Dependabot. US-20 valida o raio configurado por local, default 100 m, mas não impõe teto absoluto de 100 m — divergência reproduzida na auditoria.
+
+### US-39 · Cadastro de locais de acesso (RF02) — descoberta em 29/10
+
+- **Épico:** E2/E4 (proposta de classificação, a confirmar) · **Sprint alvo:** a definir (candidata S3, não comprometida) · **Status Trello:** Product Backlog · [Card](https://trello.com/c/Lg7ehTp4).
+- CRUD admin de locais, endereço/complemento separados de ponto geográfico confirmado, vínculo terminal→local e desativação; sem ampliar o limite QR de 100 m. O card detalha captura/validação do ponto de instalação, cenários sem posição e distinção entre coordenadas reais/simuladas.
+- `AccessLocation`/seed/mapeamento existem, mas **não há endpoint nem tela funcional** de cadastro; os PNGs claro/escuro são design, não implementação.
+- A distribuição histórica acima soma as 38 stories originais; a US-39 é adicional e sua classificação definitiva depende de refinamento.
+
+**DT-22 (RNF07):** decisão, estimativas e procedimento de medição já estão em [`../entrega/evidencias/dt-22.md`](../entrega/evidencias/dt-22.md); consumo e continuidade não foram medidos. A descrição no Trello ainda diz que não existe estratégia e precisa ser sincronizada pelo time.
+
+Detalhe da sprint em [`sprints/sprint-2.md`](sprints/sprint-2.md). A API na Vercel não comprova a operação do worker no Render nem o fluxo físico completo.
