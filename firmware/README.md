@@ -154,21 +154,23 @@ firewall à máquina/rede de desenvolvimento.
 ## TLS com o broker de produção (DT-06)
 
 O padrão do `config.example.h` é `MQTT_USE_TLS 0` (texto claro, Mosquitto dev e
-Wokwi). Em produção o terminal fala TLS com o HiveMQ Cloud:
+Wokwi). Em produção o terminal fala TLS com o broker EMQX Cloud Serverless:
 
-1. No `config.h` local, defina `MQTT_USE_TLS 1`, `MQTT_HOST` (host do cluster),
-   `MQTT_PORT 8883`, `MQTT_USERNAME` e `MQTT_PASSWORD`. Credenciais ficam só no
+1. No `config.h` local, defina `MQTT_USE_TLS 1`, `MQTT_HOST` (host do deployment,
+   página Overview), `MQTT_PORT 8883`, `MQTT_USERNAME` e `MQTT_PASSWORD` (usuário
+   criado em *Access Control → Authentication*). Credenciais ficam só no
    `config.h`, ignorado pelo Git.
-2. O CA vem de [`include/mqtt_ca.h`](include/mqtt_ca.h): **ISRG Root X1**
-   (Let's Encrypt, válido até 2035-06-04, SHA-256 `96:BC:EC:06:…:DF:08:C6` conferido
-   no commit). É um certificado público, por isso versionado. Antes de usar outro
-   cluster, confira a cadeia dele:
+2. O CA vem de [`include/mqtt_ca.h`](include/mqtt_ca.h): **DigiCert Global Root G2**
+   (raiz pública, válida até 2038-01-15, SHA-256 `CB:3C:CB:B7:…:B1:CB:5F` conferido no
+   commit; é o `emqxsl-ca.crt` do link "CA Certificate" do Overview). É um certificado
+   público, por isso versionado. Antes de usar outro broker, confira a cadeia dele:
 
    ```bash
    openssl s_client -showcerts -servername <host> -connect <host>:8883 </dev/null
    ```
 
-   Se o emissor não for ISRG Root X1, troque o PEM; o terminal falha fechado até lá.
+   Se a raiz da cadeia não for a DigiCert Global Root G2, troque o PEM; o terminal
+   falha fechado até lá.
 3. O `WiFiClientSecure` valida cadeia, validade e hostname. `setInsecure()` não existe
    no firmware e o CI falha se aparecer.
 4. A conexão só é tentada com **hora UTC confiável** (SNTP): sem ela todo certificado
@@ -259,7 +261,7 @@ conexão do simulador ao broker nem o movimento real do servo.
 
 ## Limites desta história
 
-- O TLS (DT-06) está coberto por teste host e build; a conexão real ao HiveMQ e o
+- O TLS (DT-06) está coberto por teste host e build; a conexão real do ESP32 ao broker e o
   teste de certificado inválido no hardware ou Wokwi estão pendentes
   ([`evidencias/dt-06.md`](../docs/entrega/evidencias/dt-06.md)). Sem mTLS nem
   rotação automática de CA.
