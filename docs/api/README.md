@@ -62,6 +62,7 @@ Regras:
 - **Preflight** (`OPTIONS` com `Origin` e `Access-Control-Request-Method`) de origem permitida: `204` com `Access-Control-Allow-Origin` igual à origem que chamou (nunca `*` nem a lista), `Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS`, `Allow-Headers: Authorization, Content-Type` e `Max-Age: 600`. De origem fora da lista: `204` sem nenhum cabeçalho de permissão, e o navegador bloqueia.
 - O cabeçalho `Access-Control-Allow-Origin` vai em **toda** resposta à origem permitida, inclusive `4xx`, `429` e `5xx`, para o app conseguir ler o erro. `Vary: Origin` acompanha qualquer resposta a uma requisição com `Origin`.
 - Sem `Allow-Credentials`: a autenticação é `Authorization: Bearer`, não cookie. O preflight não conta no limite de login.
+- **Valor inválido derruba o boot, inclusive na Vercel**, onde isso deixa a API inteira fora do ar. Confira a lista antes de salvar a variável; o comando está em [`deploy.md`](../guides/deploy.md#2-vercel).
 - **CORS não é autenticação.** Ele só controla o que o navegador deixa o app ler: uma origem fora da lista ainda consegue enviar a requisição ao servidor. A proteção real continua sendo o JWT, o perfil e o rate limit.
 
 ## Como o contrato é mantido
