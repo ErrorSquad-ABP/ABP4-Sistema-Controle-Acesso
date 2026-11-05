@@ -19,6 +19,7 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 | [`us-08-wokwi.md`](evidencias/us-08-wokwi.md) | US-08 | servo, LEDs, buzzer e LCD herdados do protótipo | #19 |
 | [`us-10-scanner.md`](evidencias/us-10-scanner.md) | US-10 | scanner QR, geolocalização e textos em pt-BR | #20 |
 | [`us-20.md`](evidencias/us-20.md) | US-20 | decisão de acesso QR e geofence de 100 m | #42 |
+| [`us-29.md`](evidencias/us-29.md) | US-29 | scanner QR que pede o acesso ao backend e mostra o resultado liberado/negado; câmera e GPS reais pendentes | — |
 | [`us-26-mqtt-servo.md`](evidencias/us-26-mqtt-servo.md) | US-26 | comando de abertura do servo via MQTT (herdado da US-08) | #19 · #25 |
 
 ## Matriz de requisitos
