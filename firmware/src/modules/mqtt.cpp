@@ -14,7 +14,8 @@
 #include <WiFiClientSecure.h>
 
 #include "mqtt_ca.h"
-// Sem CA o core cai para "sem validacao" com so um aviso: recusar na compilacao.
+// O core 2.0.17 ja recusa a conexao sem CA (ssl_client.cpp); recusar tambem na
+// compilacao evita um firmware de producao que nunca conecta.
 static_assert(sizeof(mqtt_ca::kRootPem) > 64, "MQTT_USE_TLS=1 exige um CA em include/mqtt_ca.h");
 #endif
 
