@@ -1,6 +1,7 @@
 import express, { type Express, type Router } from 'express';
 import type { Container } from '../composition-root.js';
 import { API_V1_PREFIX } from './contract/openapi.js';
+import { createCors } from './middlewares/cors.js';
 import { errorHandler } from './middlewares/error-handler.js';
 import { notFound } from './middlewares/not-found.js';
 import { apiV1StubRoutes } from './routes/api-v1.routes.js';
@@ -31,6 +32,8 @@ export function configureApp(
   app.disable('x-powered-by');
   // So confia no proxy quando o deployment declara quantos existem (Vercel = 1).
   if (container.trustProxy > 0) app.set('trust proxy', container.trustProxy);
+  // Antes do parser e dos rate limits: o preflight e respondido aqui e o erro tambem leva o cabecalho.
+  app.use(createCors(container.corsAllowedOrigins));
   app.use(express.json({ limit: '100kb' }));
 
   app.use(healthRoutes(container.useCases.checkHealth));

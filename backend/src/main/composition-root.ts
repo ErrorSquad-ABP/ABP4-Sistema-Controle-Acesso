@@ -43,6 +43,8 @@ export interface Container {
   logger: Logger;
   /** 0 desliga o trust proxy; ver TRUST_PROXY em env.ts. */
   trustProxy: number;
+  /** Origens liberadas no CORS (DT-08); vazio desliga. Ver CORS_ALLOWED_ORIGINS em env.ts. */
+  corsAllowedOrigins: readonly string[];
   tokens: TokenService;
   repositories: {
     users: UserRepository | undefined;
@@ -142,6 +144,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
   return {
     logger,
     trustProxy: env.TRUST_PROXY,
+    corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS,
     tokens,
     repositories: { users, userAdmin, authorizations, accessEvents },
     close: async () => {

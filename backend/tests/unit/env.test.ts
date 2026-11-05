@@ -18,6 +18,7 @@ describe('loadEnv', () => {
       JWT_SECRET: 'dev-only-secret-nao-use-em-producao-32',
       JWT_TTL_SECONDS: 3600,
       TRUST_PROXY: 0,
+      CORS_ALLOWED_ORIGINS: [],
       COMMAND_RELAY_INTERVAL_MS: 5000,
       RELAY_WINDOW_ENABLED: true,
       RELAY_WINDOW_START: '18:45',
@@ -81,6 +82,22 @@ describe('loadEnv', () => {
       'https://abp4.onrender.com',
     );
     expect(() => loadEnv({ RENDER_EXTERNAL_URL: 'nao-e-url' })).toThrow('RENDER_EXTERNAL_URL');
+  });
+
+  it('le CORS_ALLOWED_ORIGINS como lista de origens exatas', () => {
+    const env = configured({ CORS_ALLOWED_ORIGINS: 'https://app.exemplo.com, http://localhost:5000' });
+
+    expect(env.CORS_ALLOWED_ORIGINS).toEqual(['https://app.exemplo.com', 'http://localhost:5000']);
+    expect(configured({ CORS_ALLOWED_ORIGINS: '' }).CORS_ALLOWED_ORIGINS).toEqual([]);
+  });
+
+  it.each([
+    ['curinga', '*'],
+    ['barra final', 'https://app.exemplo.com/'],
+    ['http fora de loopback', 'http://app.exemplo.com'],
+  ])('falha no boot com CORS_ALLOWED_ORIGINS com %s, citando a variavel', (_caso, value) => {
+    expect(() => configured({ CORS_ALLOWED_ORIGINS: value })).toThrow(InvalidEnvError);
+    expect(() => configured({ CORS_ALLOWED_ORIGINS: value })).toThrow('CORS_ALLOWED_ORIGINS');
   });
 
   it('retorna objeto congelado', () => {
