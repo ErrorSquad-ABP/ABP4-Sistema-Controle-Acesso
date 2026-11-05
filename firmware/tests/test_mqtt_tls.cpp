@@ -16,6 +16,7 @@ TestSerial Serial;
 TestWiFi WiFi;
 TestBroker broker;
 TestTls tls;
+TestEsp ESP;
 uint32_t tcpTimeoutSeconds = 0;
 
 namespace {

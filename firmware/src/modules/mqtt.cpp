@@ -239,6 +239,9 @@ void update() {
 #endif
     if (!mqttRetry.ready(now)) return;
 
+#if MQTT_USE_TLS
+    const uint32_t connectStartedAt = millis();
+#endif
     // Credenciais vazias no Mosquitto dev; nao enviar username vazio.
     const bool established = MQTT_USERNAME[0] == '\0'
         ? client.connect(terminal_settings::id)
@@ -267,6 +270,12 @@ void update() {
     }
     // subscribe() confirma o envio; o broker dev precisa aceitar a inscricao.
     Serial.println("[mqtt] conectado e inscrito nos comandos");
+#if MQTT_USE_TLS
+    // Medidas para a evidencia da DT-06: custo do handshake (bloqueia o loop) e heap livre.
+    Serial.printf("[mqtt] tls ok em %u ms, heap livre %u B\n",
+                  static_cast<unsigned>(millis() - connectStartedAt),
+                  static_cast<unsigned>(ESP.getFreeHeap()));
+#endif
   }
   client.loop();
 }

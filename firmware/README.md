@@ -177,7 +177,8 @@ Wokwi). Em produção o terminal fala TLS com o HiveMQ Cloud:
    transporte é liberado, a serial informa o motivo do TLS e a retentativa segue
    `MQTT_RETRY_MS`. Sem conexão não há inscrição: nenhum comando chega e a porta não abre.
 6. O handshake **bloqueia o `loop()`** (servo, display e feedback) até
-   `MQTT_HANDSHAKE_TIMEOUT_SECONDS` (5 s; no core 2.x o valor é em segundos).
+   `MQTT_HANDSHAKE_TIMEOUT_SECONDS` (5 s; no core 2.x o valor é em segundos). Ao
+   conectar, a serial mostra `[mqtt] tls ok em <N> ms, heap livre <M> B`.
 
 A porta 8883 é convenção: a regra é "CA obrigatório". Com `MQTT_USE_TLS 1` e um
 `mqtt_ca.h` sem PEM, a compilação falha (`static_assert`).
