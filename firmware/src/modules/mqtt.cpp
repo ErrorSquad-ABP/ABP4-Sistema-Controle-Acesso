@@ -10,9 +10,21 @@
 #include "retry_interval.h"
 #include "terminal_settings.h"
 
+#if MQTT_USE_TLS
+#include <WiFiClientSecure.h>
+
+#include "mqtt_ca.h"
+// Sem CA o core cai para "sem validacao" com so um aviso: recusar na compilacao.
+static_assert(sizeof(mqtt_ca::kRootPem) > 64, "MQTT_USE_TLS=1 exige um CA em include/mqtt_ca.h");
+#endif
+
 namespace {
 
+#if MQTT_USE_TLS
+WiFiClientSecure transport;
+#else
 WiFiClient transport;
+#endif
 PubSubClient client(transport);
 RetryInterval wifiRetry(WIFI_RETRY_MS);
 RetryInterval mqttRetry(MQTT_RETRY_MS);
@@ -186,6 +198,11 @@ void begin() {
   WiFi.setAutoReconnect(false);  // Uma unica politica de retentativas, abaixo.
   // Arduino-ESP32 2.x: setTimeout recebe segundos e tambem limita connect().
   transport.setTimeout(MQTT_TCP_TIMEOUT_SECONDS);
+#if MQTT_USE_TLS
+  // O CA vale para toda conexao (inclusive reconexoes); nunca usar setInsecure().
+  transport.setCACert(mqtt_ca::kRootPem);
+  transport.setHandshakeTimeout(MQTT_HANDSHAKE_TIMEOUT_SECONDS);
+#endif
   client.setServer(MQTT_HOST, MQTT_PORT);
   client.setSocketTimeout(MQTT_SOCKET_TIMEOUT_SECONDS);
   client.setBufferSize(kPayloadCapacity);
@@ -207,6 +224,17 @@ void update() {
   }
 
   if (!client.connected()) {
+#if MQTT_USE_TLS
+    // Sem hora UTC confiavel todo certificado parece vencido ou ainda invalido:
+    // esperar o SNTP sem gastar tentativa nem segurar o loop num handshake inutil.
+    static bool waitingForClock = false;
+    if (!clock_policy::reliable(clockNow())) {
+      if (!waitingForClock) Serial.println("[mqtt] tls aguardando hora (sntp)");
+      waitingForClock = true;
+      return;
+    }
+    waitingForClock = false;
+#endif
     if (!mqttRetry.ready(now)) return;
 
     // Credenciais vazias no Mosquitto dev; nao enviar username vazio.
@@ -214,8 +242,18 @@ void update() {
         ? client.connect(terminal_settings::id)
         : client.connect(terminal_settings::id, MQTT_USERNAME, MQTT_PASSWORD);
     if (!established) {
+#if MQTT_USE_TLS
+      // O PubSubClient so informa estado -2; o motivo real (certificado, hostname,
+      // handshake) vem do transporte. Nao imprime credenciais nem payload.
+      char tlsError[96] = {};
+      const int tlsCode = transport.lastError(tlsError, sizeof tlsError);
+      Serial.printf("[mqtt] conexao falhou (estado=%d, tls=%d %s); nova tentativa depois\n",
+                    client.state(), tlsCode, tlsError);
+      transport.stop();  // Libera o contexto mbedTLS antes da proxima tentativa.
+#else
       Serial.printf("[mqtt] conexao falhou (estado=%d); nova tentativa depois\n",
                     client.state());
+#endif
       return;
     }
     if (!client.subscribe(terminal_settings::commandsTopic, 1) ||
