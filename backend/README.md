@@ -70,7 +70,7 @@ Validadas em [`src/main/config/env.ts`](src/main/config/env.ts); modelo em [`.en
 | `DATABASE_URL` | — | Postgres (`postgres://` ou `postgresql://`); compose no dev, Neon com `-pooler` em produção. Sem ela o `/health` informa `not_configured` |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | — | só para `db:provision`: e-mail (fora de `@abp4.local`), senha com 12+ caracteres e nome do primeiro administrador |
 | `MQTT_URL` | `mqtt://localhost:1884` | broker MQTT (`mqtt://` ou `mqtts://`); dev = Mosquitto do compose |
-| `MQTT_USERNAME` / `MQTT_PASSWORD` | — | credenciais do broker (HiveMQ Cloud em produção; vazias no dev) |
+| `MQTT_USERNAME` / `MQTT_PASSWORD` | — | credenciais do broker (EMQX Cloud em produção; vazias no dev) |
 | `QR_TOKEN_SECRET` | obrigatório | 32 bytes aleatórios em hexadecimal, iguais nos processos HTTP e MQTT; gere com `openssl rand -hex 32` |
 | `SIM_TERMINAL_ID` | `terminal-01` | id do terminal simulado |
 | `SIM_NFC_UID` | `04A1B2C3` | UID NFC que o simulador lê |
