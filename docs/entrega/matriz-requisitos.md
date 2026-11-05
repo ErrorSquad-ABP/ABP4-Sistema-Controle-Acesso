@@ -31,7 +31,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | ID | Requisito | Status | Evidência / lacuna |
 |---|---|---|---|
 | RNF01 | Dispositivo IoT + backend Node/TS + API REST + app móvel | Atendido | Monorepo `firmware/`, `backend/`, `mobile/` |
-| RNF02 | Autenticação, proteção de dados e comunicação segura | Parcial | JWT, rate limit, HTTPS na Vercel, Keystore no app, broker de produção com TLS; **firmware sem TLS** (DT-06) |
+| RNF02 | Autenticação, proteção de dados e comunicação segura | Parcial | JWT, rate limit, HTTPS na Vercel, Keystore no app, broker de produção com TLS; firmware com TLS e validação de certificado (DT-06, `MQTT_USE_TLS 1`), comprovado só em teste host e build — **conexão real ao HiveMQ ainda não observada** ([`dt-06.md`](evidencias/dt-06.md)) |
 | RNF03 | Funcionamento com retry/persistência sob falha de conexão | Parcial | Outbox de comandos com retry (DT-13, #37); resiliência do firmware (US-25) é S3 |
 | RNF04 | Interface simples, acessível ao público idoso | Parcial | Fonte 2x sem estouro e rótulos acessíveis (US-27, #43); telas de admin com acessibilidade são US-31 (S3) |
 | RNF05 | Modularidade e separação de responsabilidades | Atendido | Clean Architecture com regra de camadas verificada no lint (`backend/src/{domain,application,infrastructure,main}`) |
@@ -67,7 +67,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 3. **RF02**: cadastro de local não existe em API nem tela.
 4. **RF10/RF11/RF14**: NFC e GPS do terminal (US-23/24, S3).
 5. **RF17**: registrar tentativa NFC depende de US-23.
-6. **RNF02**: TLS no firmware (DT-06) para falar com o broker de produção.
+6. **RNF02**: o TLS do firmware (DT-06) está implementado; falta a conexão real ao HiveMQ no hardware ou no Wokwi, com o teste negativo de certificado ([`evidencias/dt-06.md`](evidencias/dt-06.md)).
 7. **RNF07**: estratégia e orçamento documentados em [`evidencias/dt-22.md`](evidencias/dt-22.md); falta medir corrente no hardware (US-34).
 8. **RF03**: confirmar com o professor/PO se "horário inicial/final" exige janela diária dentro do período — hoje é um intervalo contínuo.
 

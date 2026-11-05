@@ -30,7 +30,7 @@ flowchart LR
 **Ambientes**:
 
 - **Dev**: broker Mosquitto local (porta `1884` no host, `1883` interna do container; sem TLS) e Postgres do compose — ver [`../guides/como-rodar.md`](../guides/como-rodar.md).
-- **Prod**: HiveMQ Cloud (MQTT sobre TLS, com credenciais), Postgres no Neon, API no Vercel e processo MQTT no Render (mergeado, deploy não observado).
+- **Prod**: HiveMQ Cloud (MQTT sobre TLS, com credenciais), Postgres no Neon, API no Vercel e processo MQTT no Render (mergeado, deploy não observado). O terminal ESP32 fala TLS com o broker quando compilado com `MQTT_USE_TLS 1` (DT-06); a conexão com o HiveMQ real ainda não foi observada ([`evidencias/dt-06.md`](../entrega/evidencias/dt-06.md)).
 
 ## Fluxo de acesso via QR
 
