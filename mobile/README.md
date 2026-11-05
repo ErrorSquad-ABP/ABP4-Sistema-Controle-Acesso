@@ -38,7 +38,7 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000   # backend local no
 
 Sem `API_BASE_URL`, o app usa o backend de produção (`https://abp-4-sistema-controle-acesso.vercel.app`). No emulador Android, `10.0.2.2` é o `localhost` da máquina; num aparelho físico use `adb reverse tcp:3000 tcp:3000` e `http://localhost:3000`. O `http` em texto claro só é liberado no build de debug (`android/app/src/debug/AndroidManifest.xml`). Para entrar no backend local use as contas da seed de demonstração ([`docs/guides/como-rodar.md`](../docs/guides/como-rodar.md)).
 
-`flutter run -d chrome` abre a tela, mas o login falha no navegador: o backend ainda não responde CORS. O alvo do app é Android.
+`flutter run -d chrome` precisa que o backend libere a origem do navegador (CORS, DT-08). Com o backend local rodando com `CORS_ALLOWED_ORIGINS=http://localhost:5000`, use `flutter run -d chrome --web-port 5000 --dart-define=API_BASE_URL=http://localhost:3000`. O backend de produção só aceita as origens da allowlist dele. O alvo do app é Android, onde CORS não se aplica ([`docs/api/README.md`](../docs/api/README.md#cors)).
 
 | Comando | O que faz |
 |---|---|

@@ -30,7 +30,7 @@ Ninguém precisa colar credenciais no repositório nem no chat. Cada item abaixo
 ### 2) Vercel
 
 1. **New Project** → importe o repositório → **Root Directory: `backend`** → **Application Preset: Express** (não use "Container").
-2. Em **Settings → Environment Variables** (ambiente **Production**): `DATABASE_URL` (a string do Neon), `JWT_SECRET` (32+ caracteres aleatórios), `QR_TOKEN_SECRET` (saída de `openssl rand -hex 32`), `TRUST_PROXY=1`, `NODE_ENV=production` e `LOG_LEVEL=info`.
+2. Em **Settings → Environment Variables** (ambiente **Production**): `DATABASE_URL` (a string do Neon), `JWT_SECRET` (32+ caracteres aleatórios), `QR_TOKEN_SECRET` (saída de `openssl rand -hex 32`), `TRUST_PROXY=1`, `NODE_ENV=production` e `LOG_LEVEL=info`. Para o app web chamar a API de outra origem, acrescente `CORS_ALLOWED_ORIGINS` (origens exatas separadas por vírgula, ex.: `https://<demo-web>.vercel.app`); sem ela o CORS fica desligado, e o app Android não precisa dela. Detalhes em [`docs/api/README.md`](../api/README.md#cors).
    Configure o mesmo `QR_TOKEN_SECRET` no serviço MQTT/worker: ambos precisam assinar e validar com a mesma chave. Não use um valor de exemplo nem compartilhe a chave em logs.
 3. Em **Settings → Git**, desconecte o repositório (ou desligue os deploys automáticos): o CD é o `cd-backend.yml`.
 4. Anote o **Project ID** (Settings → General) e o **Team/Org ID** (Settings do time).

@@ -79,6 +79,7 @@ Validadas em [`src/main/config/env.ts`](src/main/config/env.ts); modelo em [`.en
 | `RELAY_WINDOW_START` | `18:45` | inicio da janela (`HH:mm`) |
 | `RELAY_WINDOW_END` | `23:05` | fim da janela (`HH:mm`, exclusivo) |
 | `RELAY_WINDOW_TZ` | `America/Sao_Paulo` | fuso em que a janela e avaliada |
+| `CORS_ALLOWED_ORIGINS` | vazio | origens que o navegador pode usar para chamar a API (DT-08), separadas por vírgula; vazio = CORS desligado. Origem exata (`https://app.exemplo.com`), sem `*`, barra final nem caminho; `http://` só em localhost. Ver [`docs/api/README.md`](../docs/api/README.md#cors) |
 
 ## Endpoints
 
