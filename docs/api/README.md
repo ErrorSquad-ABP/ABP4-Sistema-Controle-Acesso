@@ -45,6 +45,26 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 - **Acesso negado não é erro HTTP**: `POST /access-events/qr` responde `200` com `decision: DENIED` e o `reason` (ex.: `OUT_OF_RANGE`, `AUTHORIZATION_EXPIRED`), porque toda tentativa é registrada como evento.
 - **Perfis**: `ADMIN` (administrador), `RESIDENT` (condômino), `VISITOR` (visitante).
 
+## CORS
+
+O app web (Flutter Web) chama a API de outra origem, e o navegador só deixa o app ler a resposta se a API a autorizar (DT-08). A API responde CORS por **allowlist exata**, configurada em `CORS_ALLOWED_ORIGINS` (lista separada por vírgula, validada no boot):
+
+| Origem | Quando |
+|---|---|
+| `http://localhost:5000` | desenvolvimento: `flutter run -d chrome --web-port 5000` contra a API local (`CORS_ALLOWED_ORIGINS=http://localhost:5000`) |
+| `https://<demo-web>.vercel.app` | demo web da US-38; o domínio entra aqui e na variável da Vercel quando for definido |
+| _(nenhuma)_ | app Android (não envia `Origin`) e o Swagger em `/docs` (mesma origem) não precisam de CORS |
+
+Regras:
+
+- **Padrão vazio = CORS desligado.** Em produção a variável fica na Vercel (Settings → Environment Variables, ambiente Production), não no GitHub.
+- Cada item é **exatamente uma origem** (`esquema://host[:porta]`): sem `*`, sem regex, sem barra final nem caminho, sem `null`. `http://` só vale para `localhost`, `127.0.0.1` e `[::1]`; as demais exigem `https://`. Valor inválido derruba o boot citando a variável.
+- **Preflight** (`OPTIONS` com `Origin` e `Access-Control-Request-Method`) de origem permitida: `204` com `Access-Control-Allow-Origin` igual à origem que chamou (nunca `*` nem a lista), `Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS`, `Allow-Headers: Authorization, Content-Type` e `Max-Age: 600`. De origem fora da lista: `204` sem nenhum cabeçalho de permissão, e o navegador bloqueia.
+- O cabeçalho `Access-Control-Allow-Origin` vai em **toda** resposta à origem permitida, inclusive `4xx`, `429` e `5xx`, para o app conseguir ler o erro. `Vary: Origin` acompanha qualquer resposta a uma requisição com `Origin`.
+- Sem `Allow-Credentials`: a autenticação é `Authorization: Bearer`, não cookie. O preflight não conta no limite de login.
+- **Valor inválido derruba o boot, inclusive na Vercel**, onde isso deixa a API inteira fora do ar. Confira a lista antes de salvar a variável; o comando está em [`deploy.md`](../guides/deploy.md#2-vercel).
+- **CORS não é autenticação.** Ele só controla o que o navegador deixa o app ler: uma origem fora da lista ainda consegue enviar a requisição ao servidor. A proteção real continua sendo o JWT, o perfil e o rate limit.
+
 ## Como o contrato é mantido
 
 O YAML **é gerado, não editado à mão**. A fonte única são os schemas Zod e a lista de operações em [`backend/src/main/http/contract/`](../../backend/src/main/http/contract/): deles saem as rotas stub, o `/openapi.json` e este arquivo.
