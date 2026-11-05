@@ -54,7 +54,7 @@ Cards puxados na Planning 2. Pontos ficam "—" enquanto a estimativa colaborati
 | US-26 | Comando de abertura do servo via MQTT | João | — | Concluído (herdado da US-08) |
 | US-27 | Login real + sessão | Felipe | — | Concluído (#43) |
 | US-28 | Minhas autorizações no app | — | — | Pendente |
-| US-29 | Scanner QR + resultado no app | — | — | Pendente |
+| US-29 | Scanner QR + resultado no app | — | — | Concluída em 05/11/2026, depois do fechamento da S2 (evidência [`us-29.md`](../../entrega/evidencias/us-29.md)); câmera e GPS em aparelho real pendentes (US-34) |
 | US-37 | Worker MQTT persistente no Render | João | — | Concluído (#26) |
 
 **US-20 (fora da tabela porque não foi puxada na Planning 2)**: antecipada e concluída em 28/10 pelo PR #42 — `/access-events/qr` decide, aplica o geofence de 100 m e registra o evento.
