@@ -199,7 +199,8 @@ void begin() {
   // Arduino-ESP32 2.x: setTimeout recebe segundos e tambem limita connect().
   transport.setTimeout(MQTT_TCP_TIMEOUT_SECONDS);
 #if MQTT_USE_TLS
-  // O CA vale para toda conexao (inclusive reconexoes); nunca usar setInsecure().
+  // O CA vale para toda conexao (inclusive reconexoes); a validacao nunca e desligada
+  // (o CI proibe o metodo que aceita qualquer certificado).
   transport.setCACert(mqtt_ca::kRootPem);
   transport.setHandshakeTimeout(MQTT_HANDSHAKE_TIMEOUT_SECONDS);
 #endif
