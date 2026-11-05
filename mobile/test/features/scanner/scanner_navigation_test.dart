@@ -58,6 +58,43 @@ void main() {
     expect(find.text('Acesso liberado'), findsNothing);
   });
 
+  // O controller é global e guarda o último estado: o primeiro quadro do
+  // scanner reaberto não pode mostrar a decisão da leitura anterior (um leitor
+  // de tela chegou a poder anunciá-la). `pumpAndSettle` esconde o problema,
+  // por isso olhamos só o primeiro quadro.
+  for (final (nome, result, titulo) in [
+    ('liberado', null, 'Acesso liberado'),
+    ('negado', DenialReason.outOfRange, 'Acesso negado'),
+  ]) {
+    testWidgets('reabrir o scanner depois de "$nome" não mostra o resultado '
+        'anterior no primeiro quadro', (tester) async {
+      if (result != null) access.result = deniedResult(result);
+      await pumpApp(tester);
+      await tester.tap(find.text('Escanear QR'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('simular leitura'));
+      await tester.pumpAndSettle();
+      expect(find.text(titulo), findsOneWidget);
+      await tester.tap(
+        find.text(result == null ? 'Concluir' : 'Voltar ao início'),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Início'), findsOneWidget);
+
+      await tester.tap(find.text('Escanear QR'));
+      await tester.pump();
+
+      expect(find.text(titulo), findsNothing);
+      expect(
+        find.text('Solicitando permissão de localização…'),
+        findsOneWidget,
+      );
+
+      await tester.pumpAndSettle();
+      expect(find.text('Aponte a câmera para o QR'), findsOneWidget);
+    });
+  }
+
   testWidgets('acesso negado: volta ao início ou escaneia de novo', (
     tester,
   ) async {

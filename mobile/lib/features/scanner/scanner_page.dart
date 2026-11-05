@@ -18,18 +18,28 @@ class ScannerPage extends ConsumerStatefulWidget {
 }
 
 class _ScannerPageState extends ConsumerState<ScannerPage> {
+  /// O controller é global e guarda o último estado (um resultado, um erro).
+  /// Até a página reiniciá-lo, no primeiro quadro, ela mostra "pedindo
+  /// permissão" em vez do estado da leitura anterior.
+  bool _started = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Reinicia o estado de forma síncrona e só então libera a tela.
       ref.read(scannerControllerProvider.notifier).requestPermission();
+      setState(() => _started = true);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(scannerControllerProvider);
+    final current = ref.watch(scannerControllerProvider);
+    final ScannerState state = _started
+        ? current
+        : const ScannerRequestingPermission();
     final text = Theme.of(context).textTheme;
 
     // Resultado em tela cheia (Figma), sem a barra de título do scanner.
