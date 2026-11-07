@@ -5,6 +5,7 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 | Evidência | Card | Conteúdo | PR |
 |---|---|---|---|
 | [`dt-01-02-03.md`](evidencias/dt-01-02-03.md) | DT-01 · DT-02 · DT-03 | decisão real no worker, dedup persistente e mapeamento terminal→local, integrados sobre a `main` | #32 (origem no #31) |
+| [`dt-06.md`](evidencias/dt-06.md) | DT-06 | TLS no firmware com CA embutido e validação de certificado; validado no ESP32 real contra o EMQX | — |
 | [`dt-10-build-android-ci.md`](evidencias/dt-10-build-android-ci.md) | DT-10 | APK Android gerado, conferido e instalado no CI mobile | #35 |
 | [`dt-13.md`](evidencias/dt-13.md) | DT-13 | outbox de comando (`publishedAt`) com relay independente do terminal | #37 |
 | [`dt-14.md`](evidencias/dt-14.md) | DT-14 | orçamento de conexões por pool e medição da rajada concorrente | #44 |

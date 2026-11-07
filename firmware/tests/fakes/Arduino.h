@@ -11,6 +11,12 @@ inline uint32_t esp_random() {
   return counter;
 }
 
+// Usado so pelo log de heap do TLS; o teste que o exercita define `ESP`.
+struct TestEsp {
+  uint32_t getFreeHeap() { return 200000; }
+};
+extern TestEsp ESP;
+
 struct TestSerial {
   void println(const char*) {}
   template <typename... Args>

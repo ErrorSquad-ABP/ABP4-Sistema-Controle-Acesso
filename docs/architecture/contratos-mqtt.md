@@ -157,5 +157,8 @@ A `v` só sobe em mudança incompatível (campo removido ou com outro significad
 
 | | Dev | Prod |
 |---|---|---|
-| Broker | Mosquitto do compose, `mqtt://localhost:1884`, sem TLS e sem credenciais | HiveMQ Cloud, `mqtts://…:8883`, usuário e senha |
+| Broker | Mosquitto do compose, `mqtt://localhost:1884`, sem TLS e sem credenciais | EMQX Cloud Serverless, `mqtts://…:8883` (só TLS), usuário e senha |
 | Variáveis | `MQTT_URL` (default já aponta para o dev) | `MQTT_URL`, `MQTT_USERNAME`, `MQTT_PASSWORD` |
+| Terminal (firmware) | `MQTT_USE_TLS 0`, texto claro | `MQTT_USE_TLS 1` (DT-06): `WiFiClientSecure` com o CA de `firmware/include/mqtt_ca.h`, validando cadeia, validade e hostname; só conecta com hora UTC confiável; certificado recusado = sem conexão, sem inscrição, porta fechada |
+
+O TLS do terminal não altera tópicos, payloads, QoS nem `v`: é só o transporte. Detalhes e diagnóstico em [`firmware/README.md`](../../firmware/README.md).
