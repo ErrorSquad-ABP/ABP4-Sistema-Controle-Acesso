@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events';
 import type pg from 'pg';
 import { describe, expect, it, vi } from 'vitest';
+import { DeduplicationBusyError } from '../../src/domain/ports/event-deduplicator.js';
 import {
   DEFAULT_DEDUP_TIMEOUTS,
   PostgresEventDeduplicator,
@@ -81,9 +82,10 @@ describe('PostgresEventDeduplicator: prazos da reserva (DT-16)', () => {
     const work = vi.fn();
     const { dedup, query, release } = setup(LOCK, false, Object.assign(new Error('canceling statement'), { code }));
 
-    const error = (await dedup.run(UUID_A, work).catch((err: unknown) => err)) as Error;
+    const error = (await dedup.run(UUID_A, work).catch((err: unknown) => err)) as DeduplicationBusyError;
+    expect(error).toBeInstanceOf(DeduplicationBusyError);
     expect(error.message).toBe('reserva da deduplicacao excedeu o prazo');
-    expect((error.cause as { code: string }).code).toBe(code);
+    expect(error.postgresCode).toBe(code);
     expect(work).not.toHaveBeenCalled();
     expect(sqls(query)).not.toContain(INSERT);
     expect(query).toHaveBeenCalledWith('ROLLBACK');

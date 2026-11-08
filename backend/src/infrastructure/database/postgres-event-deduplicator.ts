@@ -1,9 +1,10 @@
 import type pg from 'pg';
-import type {
-  Deduplicated,
-  EventDeduplicator,
-  ProcessedMessageRetention,
-  ProcessedMessageStats,
+import {
+  DeduplicationBusyError,
+  type Deduplicated,
+  type EventDeduplicator,
+  type ProcessedMessageRetention,
+  type ProcessedMessageStats,
 } from '../../domain/ports/event-deduplicator.js';
 
 /** Prazos da reserva, aplicados no servidor e so dentro da transacao (DT-16). */
@@ -78,7 +79,9 @@ export class PostgresEventDeduplicator implements EventDeduplicator, ProcessedMe
           discardConnection = true;
         }
       }
-      if (isServerTimeout(error)) throw new Error('reserva da deduplicacao excedeu o prazo', { cause: error });
+      if (isServerTimeout(error)) {
+        throw new DeduplicationBusyError((error as { code?: string }).code);
+      }
       throw error;
     } finally {
       client.off('error', onClientError);
@@ -117,7 +120,11 @@ function isServerTimeout(error: unknown): boolean {
   return SERVER_TIMEOUT_CODES.has((error as { code?: string } | null)?.code ?? '');
 }
 
-/** `query_timeout` do `pg`: o cliente desistiu, mas a consulta segue no servidor. */
+/**
+ * `query_timeout` do `pg`: o cliente desistiu, mas a consulta segue no servidor.
+ * O `pg` 8.23.1 (versao fixada no package.json) emite exatamente esta mensagem
+ * em `lib/client.js`; um upgrade que a mude deve atualizar este predicado.
+ */
 function isClientTimeout(error: unknown): boolean {
   return error instanceof Error && error.message === 'Query read timeout';
 }
