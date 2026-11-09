@@ -27,7 +27,7 @@ Stories do backlog com **Sprint alvo S2** no [`product-backlog.md`](../product-b
 | US-29 | Scanner QR + resultado no app | E4 | S2 |
 | US-37 | Worker MQTT persistente no Render | E1 | S2 |
 
-**US-21 (S2/S3)** entrou fatiada: a fatia de consulta foi entregue no PR #26; a gravação de novas tentativas segue na Sprint 3.
+**US-21 (S2/S3)** entrou fatiada: a consulta foi entregue no PR #26; hoje a decisão também grava QR e NFC simulado. O leitor/publicação NFC do ESP32 continua pendente na US-23.
 
 **US-20 (antecipada na S2)**: a decisão de acesso QR estava prevista para a S3, mas o endpoint deixou de ser stub junto com o fluxo QR real (DT-01/02/03) e a story fechou no PR #42, com a evidência de geofence de 100 m em [`us-20.md`](../../entrega/evidencias/us-20.md). `POST /access-events/qr` decide e registra o evento; não responde mais `501`.
 
@@ -49,19 +49,21 @@ Cards puxados na Planning 2. Pontos ficam "—" enquanto a estimativa colaborati
 | US-17 | Consultar/cancelar autorização admin | Caio | — | Concluído (#36) |
 | US-18 | Minhas autorizações usuário | — | — | Concluído (#33) |
 | US-19 | Credencial QR rotativa + validação 10s | Caio | — | Concluído (#27) |
-| US-21 | Eventos de acesso + histórico com filtros | João | — | Concluído na fatia de consulta (#26); restante na S3 |
-| US-22 | Display: render do QR + status | João | — | Concluído (#26) |
+| US-21 | Eventos de acesso + histórico com filtros | João | — | Concluído na fatia de consulta (#26); integração com leitor NFC pendente em US-23 |
+| US-22 | Display: render do QR + status | João | — | Concluído no Trello (#26); código presente, demonstração visual pendente |
 | US-26 | Comando de abertura do servo via MQTT | João | — | Concluído (herdado da US-08) |
 | US-27 | Login real + sessão | Felipe | — | Concluído (#43) |
 | US-28 | Minhas autorizações no app | — | — | Pendente |
 | US-29 | Scanner QR + resultado no app | — | — | Concluída em 05/11/2026, depois do fechamento da S2 (evidência [`us-29.md`](../../entrega/evidencias/us-29.md)); câmera e GPS em aparelho real pendentes (US-34) |
-| US-37 | Worker MQTT persistente no Render | João | — | Concluído (#26) |
+| US-37 | Worker MQTT persistente no Render | João | — | Concluído no Trello (#26); implementação presente, deploy não comprovado |
 
-**US-20 (fora da tabela porque não foi puxada na Planning 2)**: antecipada e concluída em 28/10 pelo PR #42 — `/access-events/qr` decide, aplica o geofence de 100 m e registra o evento.
+**US-20 (fora da tabela porque não foi puxada na Planning 2)**: antecipada e declarada concluída em 28/10 pelo PR #42 — `/access-events/qr` decide e registra o evento. A configuração testada usa 100 m; a política não impõe esse teto para raios maiores (ressalva da auditoria de 02/11).
 
-**Fechamento da S2 em 29/10/2026**: das 13 stories puxadas, 10 estão concluídas por inteiro, a US-21 fechou só a fatia de consulta e **US-28** e **US-29** continuam abertas.
+**Snapshot em 02/11/2026, board reconferido em 08/11/2026 — sprint ainda em curso:** das 13 stories da tabela, 11 estão em Concluído no Trello, incluindo o corte de consulta da US-21; **US-28** e **US-29** continuam abertas. Não chamar de fechamento nem contar US-22/37 como aceites integralmente comprovados: faltam demonstração visual/deploy. US-14 tem corte de refresh/logout refletido na descrição desde 08/11. A auditoria também encontrou ausência de teto absoluto de 100 m na US-20, rastreada na DT-23.
 
-**Corte da US-21 nesta sprint**: entrou só a fatia de **consulta** (`GET /me/access-events` e `GET /access-events`), entregue no PR #26. A gravação de novas tentativas ficou com US-20/US-23 porque depende do mapeamento terminal→local (DT-03) e da representação de evento sem local no contrato (DT-04). A US-20 fechou depois (#42) e cobre a gravação do fluxo QR; o restante (NFC) volta na Sprint 3.
+Em 08/11, a lista **Sprint 2** do Trello tem **US-24**; **US-23, US-25, US-29, DT-06 e DT-08** estão em Em andamento; US-28 está no Product Backlog. US-20 e US-32 foram antecipadas do plano S3. Isso descreve o quadro, sem inventar nova Planning, compromisso ou transferência de US-28/29 para S3. O planejamento detalhado de donos/pontos acima não foi revalidado. Conferência em [`../../entrega/auditoria-estado-atual.md`](../../entrega/auditoria-estado-atual.md).
+
+**Corte da US-21 nesta sprint**: entrou só a fatia de **consulta** (`GET /me/access-events` e `GET /access-events`), entregue no PR #26. DT-03/04 e US-20 acrescentaram mapeamento, representação sem local e decisão/gravação. O backend já cobre NFC em simulação; a integração com o leitor real segue na US-23, hoje em Em andamento.
 
 **US-26**: os critérios já eram cobertos pelo firmware entregue na US-08 (comando v1 com prazo, dedup, ACK e servo); o card fecha com a evidência de `test_mqtt_command` e da simulação Wokwi.
 

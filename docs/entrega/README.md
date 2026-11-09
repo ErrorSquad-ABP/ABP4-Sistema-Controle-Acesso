@@ -2,6 +2,10 @@
 
 Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como reproduzir e os PRs/commits envolvidos. Nome no formato `dt-XX.md` ou `us-XX-slug.md`. O documento da Review 1 está em [`review-1.md`](review-1.md).
 
+## Estado atual e conferência do Trello
+
+[`auditoria-estado-atual.md`](auditoria-estado-atual.md) registra o recorte de **02/11/2026** (`66fe44a`), reconferido no board em **08/11/2026** e com a **DT-16 mergeada em 09/11**, os **44 cards em Concluído**, evidência por card e divergências de aceite. Em particular: DT-11 não atende a pinagem completa/Dependabot (rastreada na DT-24); US-37 não tem deploy comprovado; US-10/22 têm validações reais pendentes; o geofence não impõe teto absoluto de 100 m (rastreado na DT-23). Evidências anteriores abaixo mantêm a data e os limites originais, não representam reteste atual.
+
 | Evidência | Card | Conteúdo | PR |
 |---|---|---|---|
 | [`dt-01-02-03.md`](evidencias/dt-01-02-03.md) | DT-01 · DT-02 · DT-03 | decisão real no worker, dedup persistente e mapeamento terminal→local, integrados sobre a `main` | #32 (origem no #31) |
@@ -9,6 +13,7 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 | [`dt-13.md`](evidencias/dt-13.md) | DT-13 | outbox de comando (`publishedAt`) com relay independente do terminal | #37 |
 | [`dt-14.md`](evidencias/dt-14.md) | DT-14 | orçamento de conexões por pool e medição da rajada concorrente | #44 |
 | [`dt-15.md`](evidencias/dt-15.md) | DT-15 | retenção de 24 h da deduplicação com expurgo em lotes e resultado no `/healthz` | #48 |
+| [`dt-16.md`](evidencias/dt-16.md) | DT-16 | prazos da reserva de deduplicação no servidor e falhas das pools no log sem segredos | #51 |
 | [`dt-17.md`](evidencias/dt-17.md) | DT-17 | candidatas de autorização restritas na consulta e no lock | #41 |
 | [`dt-18.md`](evidencias/dt-18.md) | DT-18 | retenção de `TerminalCommand` com expurgo em lotes | #40 |
 | [`dt-19.md`](evidencias/dt-19.md) | DT-19 | limite do token QR no firmware alinhado ao backend | #39 |

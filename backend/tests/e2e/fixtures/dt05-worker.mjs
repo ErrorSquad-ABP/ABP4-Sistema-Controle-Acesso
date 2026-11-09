@@ -17,8 +17,8 @@ const access = buildAccessRuntime(env, {
   clock,
   ids: new CryptoIdGenerator(),
   qr: new ValidateQrCredentialUseCase(clock, new HmacQrTokenSigner(env.QR_TOKEN_SECRET)),
-}, WORKER_CONNECTIONS.access);
-const dedup = buildEventDeduplication(env, WORKER_CONNECTIONS.events);
+}, WORKER_CONNECTIONS.access, logger);
+const dedup = buildEventDeduplication(env, WORKER_CONNECTIONS.events, logger);
 if (!access || !dedup) throw new Error('DT-05 exige banco real');
 await access.repository.ready();
 await dedup.events.ready();

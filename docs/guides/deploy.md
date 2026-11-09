@@ -89,9 +89,9 @@ Os limites ficam em [`connection-budget.ts`](../../backend/src/main/config/conne
 
 A deduplicação MQTT existe só no worker: a API não recebe mensagens do broker e não cria essa pool.
 
-**Clientes abertos:** `7 × instâncias da API + 7 × réplicas do worker + 1 (migration do CD, conexão direta sem pooler)`. Hoje o worker roda em uma réplica, então o total é `7N + 8`.
+**Clientes abertos:** `7 × instâncias da API + 7 × réplicas do worker + 1 (migration do CD, conexão direta sem pooler)`. Assumindo uma réplica do worker, o total é `7N + 8`; a quantidade efetiva no Render não foi verificada.
 
-Esse número é um orçamento **por instância/réplica**, não um teto global: cada instância fria da API que a Vercel sobe abre outros 7, e não há limite configurado no código para o total. O teto global de conexões ao Postgres é o `max_connections` do compute; o `default_pool_size` do pooler limita cada par usuário/banco, na tabela abaixo.
+Esse número é um orçamento **por instância/réplica**, não um teto global: cada instância fria da API que a Vercel sobe abre outros 7, e não há limite configurado no código para o total. O teto global de conexões ao Postgres é o `max_connections` do compute; o `default_pool_size` do pooler limita cada par usuário/banco, na tabela abaixo. Uma réplica do worker é premissa do dimensionamento, não observação do serviço no Render, cujo deploy continua não comprovado.
 
 ### Onde os 7 + 7 param (o teto real)
 
@@ -129,7 +129,7 @@ O que é estimativa nesta seção: o `default_pool_size` como teto do nosso par,
 
 - até 3 decisões QR e 3 consultas Prisma ao mesmo tempo;
 - o excedente espera uma conexão livre por até 5 s (`POOL_CONNECTION_TIMEOUT_MS`) e depois falha;
-- uma consulta já enviada tem teto de 4 s no cliente (`POOL_QUERY_TIMEOUT_MS`, `query_timeout` do `pg`), inclusive nas consultas do Prisma via driver adapter. O teto é **por consulta**, não por pedido: um pedido que espera até 5 s por uma conexão livre e encadeia várias consultas soma esses tempos e pode passar de 4 s. Esse teto libera quem espera, mas **não cancela a consulta no servidor**: ela pode continuar na fila do pooler até o `query_wait_timeout` de 120 s. Não usamos `statement_timeout` no startup porque o pooler do Neon recusa parâmetros de startup fora da lista permitida (`client_encoding`, `datestyle`, `timezone`, `standard_conforming_strings`, `application_name`) — ver [Connection errors](https://neon.com/docs/connect/connection-errors). Para um teto no servidor seria preciso `ALTER ROLE ... SET statement_timeout`, que vale para todos os clientes (inclusive migrations) e não foi aplicado;
+- uma consulta já enviada tem teto de 4 s no cliente (`POOL_QUERY_TIMEOUT_MS`, `query_timeout` do `pg`), inclusive nas consultas do Prisma via driver adapter. O teto é **por consulta**, não por pedido: um pedido que espera até 5 s por uma conexão livre e encadeia várias consultas soma esses tempos e pode passar de 4 s. Esse teto libera quem espera, mas **não cancela a consulta no servidor**: ela pode continuar na fila do pooler até o `query_wait_timeout` de 120 s. Não usamos `statement_timeout` no startup porque o pooler do Neon recusa parâmetros de startup fora da lista permitida (`client_encoding`, `datestyle`, `timezone`, `standard_conforming_strings`, `application_name`) — ver [Connection errors](https://neon.com/docs/connect/connection-errors). Para um teto no servidor seria preciso `ALTER ROLE ... SET statement_timeout`, que vale para todos os clientes (inclusive migrations) e não foi aplicado. A exceção é a reserva da deduplicação: ela fixa `lock_timeout` 3 s, `statement_timeout` 3,5 s e `idle_in_transaction_session_timeout` 20 s dentro da própria transação (DT-16, [contratos MQTT](../architecture/contratos-mqtt.md));
 - mais tráfego simultâneo escala em instâncias novas da Vercel, cada uma somando mais 7 conexões clientes.
 
 O worker decide até 2 NFC em paralelo, limitado pela pool da deduplicação, e não disputa conexões com a API.
@@ -146,7 +146,8 @@ A janela não afeta a publicação imediata de um comando (a API publica na hora
 
 - **Neon real:** nenhuma medição no projeto de produção. Os números de compute, `max_connections` e pooler acima vêm da documentação do Neon e de contas, não de observação; a conferência abaixo precisa ser feita com o deploy no ar.
 - **Múltiplas instâncias da Vercel:** o E2E roda uma única instância da API e um único worker. A multiplicação por instâncias frias é comportamento esperado da plataforma, não medido.
-- **Teto no servidor:** o `query_timeout` é do cliente; o cancelamento server-side (`statement_timeout` por role) não está configurado nem testado.
+- **Teto no servidor:** fora da reserva da deduplicação, o `query_timeout` é do cliente; o cancelamento server-side (`statement_timeout` por role) não está configurado nem testado. Os prazos da reserva (DT-16) foram testados em PostgreSQL local, não no pooler do Neon.
+- **Falhas das pools:** conexão ociosa que cai gera `falha em conexao ociosa do postgres` com `pool` (o `application_name`), `code` e a mensagem sem a URL do banco (DT-16).
 
 Para conferir em produção:
 
@@ -166,9 +167,9 @@ No painel da Vercel use **Instant Rollback** no deploy anterior, ou reverta o co
 A API é serverless e não mantém conexão MQTT aberta; quem assina os tópicos do terminal é um **web service** no Render (`backend/src/main/worker.ts`), com URL própria e o mesmo broker MQTT. No modo real (`ACCESS_MODE=real`) o worker também acessa o Neon: decide os acessos NFC, deduplica as mensagens e correlaciona os ACKs. As conexões que ele usa estão em [Orçamento de conexões](#orçamento-de-conexões-dt-14).
 
 1. No Render: **New → Blueprint** e aponte para o repositório (o `render.yaml` é lido da raiz). O serviço `abp4-mqtt-worker` usa `rootDir: backend`, build `npm ci && npm run build` e start `node dist/main/worker.js`.
-2. Em **Environment**, preencha `MQTT_URL` (`mqtts://<host>:8883` do HiveMQ), `MQTT_USERNAME` e `MQTT_PASSWORD`. O `PORT` é injetado pelo Render.
+2. Em **Environment**, preencha `MQTT_URL` (`mqtts://<host>:8883` do HiveMQ), `MQTT_USERNAME`, `MQTT_PASSWORD`, `DATABASE_URL` (Neon com schema migrado) e `QR_TOKEN_SECRET` (**a mesma chave da API**). Configure também `JWT_SECRET` seguro por consistência entre ambientes; o runtime MQTT não emite sessões, mas carrega o schema compartilhado de env. Mantenha `ACCESS_MODE=real` e `NODE_ENV=production`. O `PORT` é injetado pelo Render. O blueprint atual não declara banco nem chaves QR/JWT: importar `render.yaml` sem completar o painel não prova inicialização funcional; não incluir os valores no Git/chat.
 3. Copie a URL pública do serviço (ex.: `https://abp4-mqtt-worker.onrender.com`) para `RENDER_EXTERNAL_URL`. É ela que liga o **self-ping a cada 10 min** em `/healthz`, evitando o spin-down de 15 min do plano free.
-4. Confira em **Logs** a linha `mqtt conectado` e, no HiveMQ, o cliente `abp4-consumer-<pid>`.
+4. Confira em **Logs** a inicialização do decisor/schema e a linha `mqtt conectado`; no HiveMQ, confira o cliente `abp4-consumer-<pid>`. `/healthz` sobe antes do runtime: `200` isolado não comprova conexão MQTT. Para observar QR periódico, é preciso status `online` do terminal; o firmware atual não o publica (US-24). Status sintético deve ser identificado como simulação.
 5. Em `ACCESS_MODE=real`, `GET /healthz` devolve `{ "status": "ok", "dedupPurge": { "at", "status", "removed", "rows", "bytes" } }` com o último expurgo da deduplicação (DT-15; roda no boot e a cada 24 h). `dedupPurge` é `null` no modo demo ou nos primeiros segundos após o boot, e traz `status: "error"` com a mensagem se o expurgo falhou. O valor vem da memória do processo: o self-ping não consulta o banco. A mesma informação aparece no log `expurgo da deduplicacao concluido`.
 
 O worker **não** roda migrations nem a seed: migrations rodam no `cd-backend.yml` e a seed é só de desenvolvimento, nunca em produção. Se o processo cair, o Render reinicia e o `mqtt.js` reconecta sozinho. Em `ACCESS_MODE=real`, o decisor é o `DatabaseAccessDecider` sobre o `DecideAccessUseCase` ([`access-composition-root.ts`](../../backend/src/main/access-composition-root.ts)) e os comandos pendentes ficam em `TerminalCommand`, não em memória ([`worker-runtime.ts`](../../backend/src/main/mqtt/worker-runtime.ts)); só o modo demo mantém o adapter volátil. O que ainda **não** foi observado é o deploy efetivo no Render: o código e o `render.yaml` estão na `main`, mas não há evidência de serviço no ar — o passo a passo acima é o que falta validar.

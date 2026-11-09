@@ -8,6 +8,7 @@ import type { AccessDecider } from '../../src/domain/ports/access-decider.js';
 import type { AccessEventMessage, AckMessage } from '../../src/domain/terminal/messages.js';
 import { QR_TTL_MS } from '../../src/domain/terminal/messages.js';
 import { parsePayload } from '../../src/infrastructure/mqtt/payload-parser.js';
+import { DeduplicationBusyError } from '../../src/domain/ports/event-deduplicator.js';
 import { PendingCommands } from '../../src/domain/terminal/pending-commands.js';
 import { SeenMessages } from '../../src/domain/terminal/seen-messages.js';
 import {
@@ -164,6 +165,27 @@ describe('terminal use cases', () => {
 
       expect(second).toEqual({ status: 'duplicate' });
       expect(bus.published).toHaveLength(1);
+    });
+
+    it('trata reserva ocupada como contencao normal, sem decidir nem publicar', async () => {
+      const logger = { ...silentLogger, warn: vi.fn() };
+      const decide = vi.fn();
+      const contended = {
+        async run<T>(_id: string, _work: () => Promise<T>): Promise<never> {
+          throw new DeduplicationBusyError('55P03');
+        },
+      };
+      const useCase = new HandleAccessEventUseCase(
+        { decide }, bus, clock, new SequentialIds(), contended, pending, logger,
+      );
+
+      expect(await useCase.execute(event)).toEqual({ status: 'busy' });
+      expect(decide).not.toHaveBeenCalled();
+      expect(bus.published).toHaveLength(0);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'reserva de deduplicacao ocupada; tentativa descartada',
+        expect.objectContaining({ messageId: UUID_A, postgresCode: '55P03' }),
+      );
     });
   });
 

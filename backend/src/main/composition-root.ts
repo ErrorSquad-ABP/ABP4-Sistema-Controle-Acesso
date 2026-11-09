@@ -125,7 +125,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
     (prisma ? new PrismaAccessEventRepository(prisma) : undefined);
   const ids = new CryptoIdGenerator();
   // Sem a deduplicacao MQTT: a API nao recebe mensagens do broker (DT-14).
-  const access = buildAccessRuntime(env, { clock, qr: validateQrCredential, ids }, API_CONNECTIONS.access);
+  const access = buildAccessRuntime(env, { clock, qr: validateQrCredential, ids }, API_CONNECTIONS.access, logger);
   // A API so conecta no broker quando precisa publicar: boot sem MQTT continua possivel.
   const accessBus = access
     ? new LazyMqttMessageBus(
