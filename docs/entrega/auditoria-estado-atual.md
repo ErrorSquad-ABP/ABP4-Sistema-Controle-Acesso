@@ -1,4 +1,4 @@
-# Estado atual e auditoria Trello × projeto — 02/11/2026 · board reconferido em 08/11/2026
+# Estado atual e auditoria Trello × projeto — 02/11/2026 · board reconferido em 08/11/2026 · DT-16 mergeada em 09/11/2026
 
 ## Recorte e método
 
@@ -6,26 +6,26 @@
 - Conferência remota posterior, ainda em 02/11/2026: branch local `main`; após `git fetch origin`, `HEAD` e `origin/main` apontavam para `66fe44a`, com **0 commits à frente e 0 atrás** (`git rev-list --left-right --count HEAD...origin/main`). Não foi feito pull antes da auditoria; a conferência posterior confirmou que o código auditado coincidia com a `main` remota naquele momento. A documentação resultante foi separada na branch `fix/auditoria-documentacao`, sem incluir os arquivos locais anteriores à auditoria; nenhum push foi realizado nesta etapa.
 - Fonte viva: [ERRORSQUAD ABP 4DSM](https://trello.com/b/AxZZyPyN/errorsquad-abp-4dsm), consultado autenticado em 02/11/2026 e reconferido em 08/11/2026. Foram lidos listas, descrições e checklists dos cards abertos, além dos comentários de US-14/21/22/32/37 e DT-10 para distinguir o escopo original do entregue.
 - Cruzamento com rotas, casos de uso, schema/migrations, app, firmware, workflows, testes e evidências versionadas. Durante a auditoria original nenhum card foi movido, editado ou comentado.
-- Reconferência de 08/11/2026: o board foi recontado (63 abertos, 43 concluídos), os cards **DT-23** e **DT-24** foram criados para rastrear as pendências de US-20/RF13 e DT-11, US-20/DT-11 receberam comentário e a descrição da DT-22 foi sincronizada. A auditoria de código continua no recorte de 02/11 (`66fe44a`).
+- Reconferência de 08/11/2026: o board foi recontado (63 abertos, 43 concluídos), os cards **DT-23** e **DT-24** foram criados para rastrear as pendências de US-20/RF13 e DT-11, US-20/DT-11 receberam comentário e a descrição da DT-22 foi sincronizada. Em 09/11 a **DT-16 foi mergeada no PR #51**, levando o quadro a **44 concluídos e 19 abertos**. A auditoria de código continua no recorte de 02/11 (`66fe44a`).
 - **Implementado** abaixo significa que há código e testes correspondentes no repositório; não certifica todos os itens da DoD (review de colega, configuração de secrets/proteção de branch e demonstração). Evidência histórica não é uma execução nova. Não foram acessados os painéis de GitHub, Neon ou Render nem repetidas as demonstrações Wokwi/Figma.
 
 ## Resumo
 
 O projeto tem API com autenticação, usuários, autorizações, decisão QR, histórico, outbox e processamento MQTT; app com login/sessão e scanner local; firmware com display QR, servo e feedback. **Ainda não é um sistema completo demonstrado com app e terminal reais**: faltam envio QR pelo app, NFC/GPS no firmware, TLS no terminal e validação física.
 
-| Lista no Trello | Cards (08/11/2026) |
+| Lista no Trello | Cards (09/11/2026, pós-merge #51) |
 |---|---:|
 | Sprint 1 | 0 |
 | Product Backlog | 9 |
 | Sprint 2 | 1 |
 | Dívida Técnica | 3 |
-| Em review | 1 |
+| Em review | 0 |
 | Em andamento | 5 |
-| Concluído | **43 (26 US + 17 DT)** |
+| Concluído | **44 (26 US + 18 DT)** |
 | Bloqueado | 1 |
 | **Total de cards abertos (não arquivados)** | **63 (39 US + 24 DT)** |
 
-Esses 43 são o status declarado no quadro, **não 43 aceites integralmente comprovados**. Em 02/11 a distribuição era Sprint 2 = 4, Product Backlog = 11, Dívida Técnica = 1 e Em andamento = 0; os totais 61/43 bateram até a reconferência de 08/11, quando DT-23/DT-24 entraram (63/43). A Sprint 2 ainda está em curso (Review em 11/11); não há decisão observada que autorize declarar US-28/29 transferidas para S3.
+Esses 44 são o status declarado no quadro, **não 44 aceites integralmente comprovados**. Em 02/11 a distribuição era Sprint 2 = 4, Product Backlog = 11, Dívida Técnica = 1 e Em andamento = 0, com 61/43; em 08/11, com DT-23/DT-24, ficou 63/43; em 09/11, com a DT-16 mergeada no #51, ficou 63/44 (26 US + 18 DT). A Sprint 2 ainda está em curso (Review em 11/11); não há decisão observada que autorize declarar US-28/29 transferidas para S3.
 
 ## Divergências e ações recomendadas
 
@@ -46,7 +46,7 @@ Esses 43 são o status declarado no quadro, **não 43 aceites integralmente comp
 - `render.yaml` não declara `DATABASE_URL`, `QR_TOKEN_SECRET` nem `JWT_SECRET`. Configurá-los no painel é necessário: QR secret é obrigatório no carregamento de env; o modo real exige banco/schema; o worker e a API devem compartilhar a chave QR. O blueprint isolado não comprova um serviço funcional.
 - `/healthz` sobe antes de inicializar o runtime e responde `status: ok`; um `200` isolado não prova assinatura MQTT nem publicação QR. Conferir também logs de inicialização/conexão e tráfego do terminal.
 - A janela DT-21 limita **polling de recuperação**, não toda consulta ao Neon: boot, expurgos e tráfego normal ainda acessam o banco. Os custos documentados são estimativas, não medição de produção.
-- DT-16 está em review no PR #51. O PR implementa prazos server-side (lock 3 s, statement 3,5 s, idle 20 s), descarte de conexão em timeout do cliente e listener de `'error'` nas pools; a contenção é classificada como `busy` (warn), não erro. Continuam pendentes a validação no pooler do Neon e o cenário de callback travado dentro da transação de acesso. Não promover antes de validar esses dois limites.
+- DT-16 foi mergeada no PR #51 em 09/11. O PR implementa prazos server-side (lock 3 s, statement 3,5 s, idle 20 s), descarte de conexão em timeout do cliente e listener de `'error'` nas pools; a contenção é classificada como `busy` (warn), não erro. Continuam como limites documentados a validação no pooler do Neon e o cenário de callback travado dentro da transação de acesso.
 - Dependências: `npm audit --json` reportou **11 entradas moderadas** na cadeia ESLint/TypeScript-ESLint, propagadas de `minimatch` ([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)). São entradas no relatório, não 11 falhas independentes. `npm audit --omit=dev --json` retornou **zero alertas**. Tratar na US-33; nenhum `audit fix`, downgrade sugerido ou atualização de manifesto/lockfile foi aplicado.
 
 ## Conferência de todos os cards em “Concluído”
@@ -85,7 +85,7 @@ Os caminhos nesta tabela são relativos à raiz do repositório. A coluna de con
 | DT-02 | `TerminalCommand`, `postgres-command-store.ts`, testes de ACK/restart/E2E | Registro persistente compartilhado implementado |
 | DT-03 | `Terminal`, resolução do local e testes de terminal desconhecido/inativo | Mapeamento implementado; não é CRUD admin de locais (US-39) |
 | DT-04 | Schema de evento com local nulo, contrato REST e teste de histórico | Implementado |
-| DT-05 | `postgres-event-deduplicator.ts`, frescor no parser/decisão e testes E2E | Dedup persistente/rollback/replay implementados; espera limitada tratada no PR #51 (DT-16 em review) |
+| DT-05 | `postgres-event-deduplicator.ts`, frescor no parser/decisão e testes E2E | Dedup persistente/rollback/replay implementados; espera limitada tratada na DT-16 (#51) |
 | DT-07 | `backend/prisma/{seed,provision,provision-admin}.ts`, `tests/unit/seed-guard.test.ts`, CI | Proteções de seed/provisionamento implementadas |
 | DT-09 | Etapa `db:migrate:deploy` antes do deploy em `cd-backend.yml`, rollback em `deploy.md` | Gate de migrations implementado; produção não migrada por esta auditoria |
 | DT-10 | Build/artefato/install em `ci-mobile.yml`, scripts host e `evidencias/dt-10-build-android-ci.md` | Empacotamento/emulador com evidência histórica; câmera/GPS/aparelho físico não cobertos |
@@ -93,6 +93,7 @@ Os caminhos nesta tabela são relativos à raiz do repositório. A coluna de con
 | DT-13 | Outbox `publishedAt`, relay, testes de falha/restart e `evidencias/dt-13.md` | Recuperação implementada; respeita validade original e janela DT-21 |
 | DT-14 | `config/connection-budget.ts`, composição separada e teste de rajada E2E | Orçamento por instância implementado/documentado; não é teto global nem medição no Neon |
 | DT-15 | Expurgo de `ProcessedAccessMessage`, índice, agendamento, métricas no health e testes | Retenção implementada; execução real no Render não observada |
+| DT-16 | Prazos server-side da reserva, descarte de conexão, listener de erro e classificação `busy`; testes de contenção em `tests/integration/postgres-event-deduplicator.test.ts` e `tests/unit/terminal-use-cases.test.ts`; evidência `dt-16.md` | Implementado no #51; coberto no CI com Postgres efêmero; pooler do Neon não observado |
 | DT-17 | Consulta/lock de candidatas em `postgres-access-repository.ts`, testes e `evidencias/dt-17.md` | Implementado; plano/massa histórica registrados como evidência anterior |
 | DT-18 | Expurgo de `TerminalCommand`, testes de retenção/ACK tardio e `evidencias/dt-18.md` | Implementado |
 | DT-19 | Limite QR, `firmware/tests/test_{qr_token,display_qr}.cpp`, evidência | Capacidade implementada/testável no host; não equivale a câmera lendo TFT real |
@@ -107,8 +108,9 @@ Os caminhos nesta tabela são relativos à raiz do repositório. A coluna de con
 | Product Backlog | **US-28** (sem tela de autorizações), **US-30/31** (sem admin/histórico completos no app), **US-33/34/35/36/38/39** (segurança final, hardware, diagramas finais, relatório, distribuição web e cadastro de locais) |
 | Dívida Técnica | **DT-22** (estratégia documentada; sem medição de corrente/continuidade), **DT-23** (teto de 100 m na geofence), **DT-24** (pins por SHA + Dependabot) |
 | Em andamento | **US-23** (leitor NFC vazio no firmware), **US-25** (retry básico, sem persistência local completa), **US-29** (scanner não chama o backend), **DT-06** (`WiFiClient`, sem TLS), **DT-08** (sem allowlist CORS no app Express) |
-| Em review | **DT-16**: PR #51 com prazos server-side, descarte e listener de erro; validar no pooler do Neon |
 | Bloqueado | **DT-12**: câmera/GPS/aparelho reais não comprovados; o build Android no emulador não remove o bloqueio físico |
+
+**DT-16 mergeada em 09/11 (#51):** os prazos da reserva e o tratamento de contenção estão implementados e cobertos no CI; a validação no pooler do Neon e o callback travado dentro da transação de acesso seguem como limites documentados em [`evidencias/dt-16.md`](evidencias/dt-16.md).
 
 ## Verificações desta auditoria
 
@@ -135,7 +137,7 @@ URL: <https://abp-4-sistema-controle-acesso.vercel.app/health>. A causa da prime
 - `npm run test:e2e`: **build aprovado e 29/29 cenários E2E passando**, com PostgreSQL temporário, broker MQTT e processos API/worker locais separados (172,59 s). O diretório temporário foi direcionado para a pasta local de temporários. O E2E não usa o Flutter/ESP32 físicos nem comprova deploy no Render; não substitui todas as suítes de integração ignoradas acima.
 - Firmware: PlatformIO/compilador host não localizados nos caminhos consultados. Build, testes C++ e Wokwi não repetidos; evidências anteriores mantidas como históricas.
 - Prova isolada da regra de geofence executada com Node, importando `backend/src/domain/access/access-policy.ts`: contexto válido, local em `(-23, -45)`, `radiusMeters=200`, posição `(-22.998652, -45)` → `action: open`, `distanceMeters: 149.89076111687928`. Nenhum banco/terminal real foi usado ou alterado.
-- Documentação: links locais dos 11 Markdown alterados/criados conferidos (nenhum destino ausente); tabela auditada contém exatamente 43 cards únicos. `git diff --check` sem problemas de whitespace.
+- Documentação: links locais dos 11 Markdown alterados/criados conferidos (nenhum destino ausente); tabela auditada contém exatamente 44 cards únicos após a DT-16. `git diff --check` sem problemas de whitespace.
 
 ### Reprodução da divergência de 100 m
 

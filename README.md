@@ -12,9 +12,9 @@ Sistema integrado de baixo custo para controle de acesso em edifícios, com arqu
 - **App:** login real/sessão e leitura QR + posição implementados; o scanner **ainda não envia o pedido de acesso** (US-29). Minhas autorizações e admin ainda não têm telas funcionais completas.
 - **Terminal:** código de display QR, servo e feedback presente; NFC/GPS são esqueletos, status/heartbeat e TLS estão pendentes. Demonstração visual do QR atual e validação física não estão comprovadas.
 - **Operação:** API pública respondeu em 02/11 com `version: 6b6aa26`, `database: ok`, após uma primeira resposta 503; worker no Render continua sem deploy comprovado.
-- **Trello:** 43 cards em “Concluído”, com ressalvas de aceite e escopo — especialmente DT-11 (correção na DT-24), US-37 (deploy) e US-10/22 (demonstração real). O board foi reconferido em 08/11: os 43 concluídos seguem iguais, mas a distribuição por lista mudou e DT-23/DT-24 entraram.
+- **Trello:** 44 cards em “Concluído”, com ressalvas de aceite e escopo — especialmente DT-11 (correção na DT-24), US-37 (deploy) e US-10/22 (demonstração real). O board foi reconferido em 08/11 e a DT-16 foi mergeada em 09/11: são 44 concluídos e 19 abertos; DT-23/DT-24 entraram como dívida técnica.
 
-Conferência dos **43 cards**, evidências, testes e pendências em [`docs/entrega/auditoria-estado-atual.md`](docs/entrega/auditoria-estado-atual.md). Código integrado, simulação e operação real são tratados separadamente; o fluxo completo app → terminal real ainda não foi demonstrado.
+Conferência dos **44 cards**, evidências, testes e pendências em [`docs/entrega/auditoria-estado-atual.md`](docs/entrega/auditoria-estado-atual.md). Código integrado, simulação e operação real são tratados separadamente; o fluxo completo app → terminal real ainda não foi demonstrado.
 
 ## Arquitetura
 

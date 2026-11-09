@@ -273,13 +273,13 @@ Plano original, não uma lista de stories ainda abertas. Títulos, épico e spri
 
 ## Estado observado em 02/11/2026 · board reconferido em 08/11/2026
 
-Código local auditado: `66fe44a`; API pública observada em `6b6aa26`, com banco ok (uma primeira consulta retornou 503). Trello reconferido em 08/11: **63 cards não arquivados**, sendo **43 em Concluído (26 US + 17 DT)** e 20 nas demais listas. A contagem é declarada no quadro, não certificação de todos os aceites; a [auditoria por card](../entrega/auditoria-estado-atual.md) registra diferenças.
+Código local auditado: `66fe44a`; API pública observada em `6b6aa26`, com banco ok (uma primeira consulta retornou 503). Trello reconferido em 08/11 e com a DT-16 mergeada em 09/11: **63 cards não arquivados**, sendo **44 em Concluído (26 US + 18 DT)** e 19 nas demais listas. A contagem é declarada no quadro, não certificação de todos os aceites; a [auditoria por card](../entrega/auditoria-estado-atual.md) registra diferenças.
 
 **Entregas integradas:** US-14/21/22/37 (#26), US-19 (#27), US-15/18 (#33), US-16/17 (#36), US-27 (#43), US-26 herdada da US-08 ([evidência](../entrega/evidencias/us-26-mqtt-servo.md)), US-20 (#42) e US-32 (E2E antecipado, #32). US-21 foi fechada pela fatia de consulta; o backend atual também grava decisões QR/NFC simulado, mas falta o leitor NFC do terminal (US-23). US-37 tem implementação, não deploy validado; US-22 tem código de renderização, não demonstração visual atual comprovada. A descrição da US-14 foi alinhada em 08/11: sem refresh/logout no servidor, logout local no app.
 
-**Listas abertas no Trello (08/11):** Sprint 2 = US-24; Product Backlog = US-28/30/31/33/34/35/36/38/39; Dívida Técnica = DT-22/DT-23/DT-24; Em review = DT-16 (PR #51); Em andamento = DT-06, DT-08, US-23, US-25 e US-29; Bloqueado = DT-12. US-28/29 continuam abertas e a S2 ainda não terminou; não há transferência para S3 confirmada por esta auditoria.
+**Listas abertas no Trello (09/11, pós-merge #51):** Sprint 2 = US-24; Product Backlog = US-28/30/31/33/34/35/36/38/39; Dívida Técnica = DT-22/DT-23/DT-24; Em andamento = DT-06, DT-08, US-23, US-25 e US-29; Bloqueado = DT-12. US-28/29 continuam abertas e a S2 ainda não terminou; não há transferência para S3 confirmada por esta auditoria.
 
-**Dívidas declaradas concluídas:** DT-01/02/03/04/05/07/09/10/11/13/14/15/17/18/19/20/21. A **DT-11 não atende ao aceite atual**: várias Actions continuam por tags e não há Dependabot; o escopo restante está na **DT-24**. US-20 valida o raio configurado por local, default 100 m, mas não impõe teto absoluto de 100 m — divergência reproduzida na auditoria e rastreada na **DT-23**.
+**Dívidas declaradas concluídas:** DT-01/02/03/04/05/07/09/10/11/13/14/15/16/17/18/19/20/21. A **DT-11 não atende ao aceite atual**: várias Actions continuam por tags e não há Dependabot; o escopo restante está na **DT-24**. US-20 valida o raio configurado por local, default 100 m, mas não impõe teto absoluto de 100 m — divergência reproduzida na auditoria e rastreada na **DT-23**. A **DT-16** foi mergeada no #51; os limites (pooler do Neon e callback dentro da transação de acesso) estão documentados na evidência.
 
 ### US-39 · Cadastro de locais de acesso (RF02) — descoberta em 29/10
 
