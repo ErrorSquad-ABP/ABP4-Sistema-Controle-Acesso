@@ -1,51 +1,52 @@
-# Estado atual e auditoria Trello × projeto — 02/11/2026
+# Estado atual e auditoria Trello × projeto — 02/11/2026 · board reconferido em 08/11/2026
 
 ## Recorte e método
 
 - Código local versionado: `66fe44a` (HEAD no início da auditoria). Os arquivos locais não rastreados não contam como entrega integrada.
 - Conferência remota posterior, ainda em 02/11/2026: branch local `main`; após `git fetch origin`, `HEAD` e `origin/main` apontavam para `66fe44a`, com **0 commits à frente e 0 atrás** (`git rev-list --left-right --count HEAD...origin/main`). Não foi feito pull antes da auditoria; a conferência posterior confirmou que o código auditado coincidia com a `main` remota naquele momento. A documentação resultante foi separada na branch `fix/auditoria-documentacao`, sem incluir os arquivos locais anteriores à auditoria; nenhum push foi realizado nesta etapa.
-- Fonte viva: [ERRORSQUAD ABP 4DSM](https://trello.com/b/AxZZyPyN/errorsquad-abp-4dsm), consultado autenticado em 02/11/2026. Foram lidos listas, descrições e checklists dos cards abertos, além dos comentários de US-14/21/22/32/37 e DT-10 para distinguir o escopo original do entregue.
-- Cruzamento com rotas, casos de uso, schema/migrations, app, firmware, workflows, testes e evidências versionadas. Nenhum card foi movido, editado ou comentado.
+- Fonte viva: [ERRORSQUAD ABP 4DSM](https://trello.com/b/AxZZyPyN/errorsquad-abp-4dsm), consultado autenticado em 02/11/2026 e reconferido em 08/11/2026. Foram lidos listas, descrições e checklists dos cards abertos, além dos comentários de US-14/21/22/32/37 e DT-10 para distinguir o escopo original do entregue.
+- Cruzamento com rotas, casos de uso, schema/migrations, app, firmware, workflows, testes e evidências versionadas. Durante a auditoria original nenhum card foi movido, editado ou comentado.
+- Reconferência de 08/11/2026: o board foi recontado (63 abertos, 43 concluídos), os cards **DT-23** e **DT-24** foram criados para rastrear as pendências de US-20/RF13 e DT-11, US-20/DT-11 receberam comentário e a descrição da DT-22 foi sincronizada. A auditoria de código continua no recorte de 02/11 (`66fe44a`).
 - **Implementado** abaixo significa que há código e testes correspondentes no repositório; não certifica todos os itens da DoD (review de colega, configuração de secrets/proteção de branch e demonstração). Evidência histórica não é uma execução nova. Não foram acessados os painéis de GitHub, Neon ou Render nem repetidas as demonstrações Wokwi/Figma.
 
 ## Resumo
 
 O projeto tem API com autenticação, usuários, autorizações, decisão QR, histórico, outbox e processamento MQTT; app com login/sessão e scanner local; firmware com display QR, servo e feedback. **Ainda não é um sistema completo demonstrado com app e terminal reais**: faltam envio QR pelo app, NFC/GPS no firmware, TLS no terminal e validação física.
 
-| Lista no Trello | Cards |
+| Lista no Trello | Cards (08/11/2026) |
 |---|---:|
 | Sprint 1 | 0 |
-| Product Backlog | 11 |
-| Sprint 2 | 4 |
-| Dívida Técnica | 1 |
+| Product Backlog | 9 |
+| Sprint 2 | 1 |
+| Dívida Técnica | 3 |
 | Em review | 1 |
-| Em andamento | 0 |
+| Em andamento | 5 |
 | Concluído | **43 (26 US + 17 DT)** |
 | Bloqueado | 1 |
-| **Total de cards abertos (não arquivados)** | **61 (39 US + 22 DT)** |
+| **Total de cards abertos (não arquivados)** | **63 (39 US + 24 DT)** |
 
-Esses 43 são o status declarado no quadro, **não 43 aceites integralmente comprovados**. A Sprint 2 ainda está em curso (Review em 11/11); não há decisão observada que autorize declarar US-28/29 transferidas para S3.
+Esses 43 são o status declarado no quadro, **não 43 aceites integralmente comprovados**. Em 02/11 a distribuição era Sprint 2 = 4, Product Backlog = 11, Dívida Técnica = 1 e Em andamento = 0; os totais 61/43 bateram até a reconferência de 08/11, quando DT-23/DT-24 entraram (63/43). A Sprint 2 ainda está em curso (Review em 11/11); não há decisão observada que autorize declarar US-28/29 transferidas para S3.
 
 ## Divergências e ações recomendadas
 
 | Card / assunto | Constatação | Ação recomendada ao time |
 |---|---|---|
-| [DT-11](https://trello.com/c/NPjUiiVS) | Concluído, mas `ci-backend`, `cd-backend`, `ci-firmware` e parte de `ci-mobile` usam tags mutáveis (`actions/checkout@v7`, `actions/setup-node@v7`, `subosito/flutter-action@v2` etc.). Não há configuração Dependabot versionada. Só parte das Actions do mobile está por SHA | Reabrir ou registrar explicitamente o escopo restante; o aceite “pinar SHAs revisados + Dependabot” não está atendido |
-| [US-37](https://trello.com/c/AY5WYJa8) | Concluído, mas o próprio comentário de 27/10 diz que falta criar o serviço Render. Existem entry point, keep-alive e blueprint, não prova de MQTT persistente em produção | Separar “implementado” de “deploy validado”; anexar URL/health e log de conexão ao broker antes de aceitar a operação no Render |
-| [US-10](https://trello.com/c/wlc92VBv) | Checklist “Scanner QR lendo código real” completo; `evidencias/us-10-scanner.md` diz que câmera real não foi validada e DT-12 está bloqueada | Manter a entrega do esqueleto, mas corrigir/qualificar o aceite físico e vinculá-lo à DT-12 |
-| [US-22](https://trello.com/c/nsDhMYsD) | Renderização existe; comentário de 27/10 ainda registra demonstração visual Wokwi/hardware pendente. O worker só envia QR para terminais vistos `online`, e o firmware atual não publica status/heartbeat | Anexar demonstração do token real legível e renovando; para simulação, declarar publicação sintética de status. Resolver a presença do terminal com US-24, sem apresentar o E2E Node como prova do display |
-| [US-14](https://trello.com/c/Azo9dR08) | Descrição menciona login, refresh e logout. Comentário de 26/10 exclui refresh/logout do contrato v1; código oferece `POST /auth/login` e `GET /auth/me`. Logout no app apaga a sessão local, não revoga JWT no servidor | Alinhar a descrição ao corte documentado. Não é necessário inventar endpoints nem reabrir o login entregue, mas refresh/revogação não devem ser anunciados |
-| [US-21](https://trello.com/c/0DggOIne) | Descrição promete todas as tentativas; comentários fecham somente consulta. Hoje o backend também decide/registra QR e NFC simulado, mas o leitor NFC do ESP32 é vazio | Explicitar o corte de consulta e a integração NFC pendente em US-23; não confundir falta de leitor com falta do caso de uso NFC no backend |
+| [DT-11](https://trello.com/c/NPjUiiVS) | Concluído, mas `ci-backend`, `cd-backend`, `ci-firmware` e parte de `ci-mobile` usam tags mutáveis (`actions/checkout@v7`, `actions/setup-node@v7`, `subosito/flutter-action@v2` etc.). Não há configuração Dependabot versionada. Só parte das Actions do mobile está por SHA | Escopo restante rastreado na [DT-24](https://trello.com/c/pFJlVpZ0); o aceite “pinar SHAs revisados + Dependabot” não está atendido |
+| [US-37](https://trello.com/c/AY5WYJa8) | Concluído, mas o próprio comentário de 27/10 diz que falta criar o serviço Render. Existem entry point, keep-alive e blueprint, não prova de MQTT persistente em produção | Separação “implementado × deploy validado” registrada em comentário de 08/11; URL/health e log de conexão ao broker continuam pendentes |
+| [US-10](https://trello.com/c/wlc92VBv) | Checklist “Scanner QR lendo código real” completo; `evidencias/us-10-scanner.md` diz que câmera real não foi validada e DT-12 está bloqueada | Aceite físico vinculado à DT-12 em comentário de 08/11; o esqueleto entregue permanece válido |
+| [US-22](https://trello.com/c/nsDhMYsD) | Renderização existe; comentário de 27/10 ainda registra demonstração visual Wokwi/hardware pendente. O worker só envia QR para terminais vistos `online`, e o firmware atual não publica status/heartbeat | Demonstração visual continua pendente; presença/status do terminal é a US-24. Registrado em comentário de 08/11, sem apresentar o E2E Node como prova do display |
+| [US-14](https://trello.com/c/Azo9dR08) | Descrição mencionava login, refresh e logout. Comentário de 26/10 exclui refresh/logout do contrato v1; código oferece `POST /auth/login` e `GET /auth/me`. Logout no app apaga a sessão local, não revoga JWT no servidor | Descrição alinhada em 08/11: sem refresh/logout no servidor; logout local e expiração exigem novo login |
+| [US-21](https://trello.com/c/0DggOIne) | Descrição prometia todas as tentativas; comentários fecham somente consulta. Hoje o backend também decide/registra QR e NFC simulado, mas o leitor NFC do ESP32 é vazio | Descrição alinhada em 08/11: consulta de histórico; leitura/publicação NFC física segue na US-23 |
 | [US-16](https://trello.com/c/AaVJ4uOQ) / RF03 | `startsAt`/`endsAt` formam intervalo contínuo; não existe janela diária independente. Situação é calculada | Confirmar com PO/professor se o intervalo satisfaz “datas/horários”; registrar decisão, sem anunciar janela diária implementada |
-| [US-20](https://trello.com/c/fUsL5phE) / RF13 | Geofence funciona com raio do local, default 100, **sem teto absoluto de 100 m**. Prova local: com `radiusMeters: 200`, uma posição a ~149,89 m foi autorizada pela política. A descrição `OUT_OF_RANGE` no schema REST ainda diz “mais de 100 m”, divergindo da configuração admitida pela regra | Corrigir/limitar o raio ou obter aceite explícito de outra regra. O título “≤100m” não é uma garantia para toda configuração; US-39 já pede que o cadastro não amplie esse limite |
-| DT-22 | Ainda em Dívida Técnica; descrição diz que não há estratégia e RNF07 é “Não comprovado”, mas `evidencias/dt-22.md` já registra decisão, estimativa e procedimento | Atualizar a descrição para documentação entregue/medição pendente. Não declarar consumo ou continuidade medidos |
+| [US-20](https://trello.com/c/fUsL5phE) / RF13 | Geofence funciona com raio do local, default 100, **sem teto absoluto de 100 m**. Prova local: com `radiusMeters: 200`, uma posição a ~149,89 m foi autorizada pela política. A descrição `OUT_OF_RANGE` no schema REST ainda diz “mais de 100 m”, divergindo da configuração admitida pela regra | Correção rastreada na [DT-23](https://trello.com/c/FLCzZ6TX): limitar o raio a 100 m ou obter aceite explícito de outra regra. O título “≤100m” não é uma garantia para toda configuração; US-39 já pede que o cadastro não amplie esse limite |
+| DT-22 | Ainda em Dívida Técnica; descrição dizia que não havia estratégia, mas `evidencias/dt-22.md` já registra decisão, estimativa e procedimento | Descrição sincronizada em 08/11/2026: estratégia documentada, medição de corrente/continuidade pendente (US-34). Não declarar consumo medido |
 
 ### Riscos operacionais associados
 
 - `render.yaml` não declara `DATABASE_URL`, `QR_TOKEN_SECRET` nem `JWT_SECRET`. Configurá-los no painel é necessário: QR secret é obrigatório no carregamento de env; o modo real exige banco/schema; o worker e a API devem compartilhar a chave QR. O blueprint isolado não comprova um serviço funcional.
 - `/healthz` sobe antes de inicializar o runtime e responde `status: ok`; um `200` isolado não prova assinatura MQTT nem publicação QR. Conferir também logs de inicialização/conexão e tráfego do terminal.
 - A janela DT-21 limita **polling de recuperação**, não toda consulta ao Neon: boot, expurgos e tráfego normal ainda acessam o banco. Os custos documentados são estimativas, não medição de produção.
-- DT-16 está em review, não concluída. Há `query_timeout` no cliente e descarte em falha de rollback, mas não um teto server-side de lock/statement; os listeners de erro das pools ainda estão vazios. Não promover o card só pela existência do timeout do `pg`.
+- DT-16 está em review no PR #51. O PR implementa prazos server-side (lock 3 s, statement 3,5 s, idle 20 s), descarte de conexão em timeout do cliente e listener de `'error'` nas pools; a contenção é classificada como `busy` (warn), não erro. Continuam pendentes a validação no pooler do Neon e o cenário de callback travado dentro da transação de acesso. Não promover antes de validar esses dois limites.
 - Dependências: `npm audit --json` reportou **11 entradas moderadas** na cadeia ESLint/TypeScript-ESLint, propagadas de `minimatch` ([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)). São entradas no relatório, não 11 falhas independentes. `npm audit --omit=dev --json` retornou **zero alertas**. Tratar na US-33; nenhum `audit fix`, downgrade sugerido ou atualização de manifesto/lockfile foi aplicado.
 
 ## Conferência de todos os cards em “Concluído”
@@ -73,7 +74,7 @@ Os caminhos nesta tabela são relativos à raiz do repositório. A coluna de con
 | US-17 | Mesmas rotas/testes de autorizações, filtros e cancelamento | Implementado na API, não na interface admin do app |
 | US-18 | `GET /me/authorizations`, `tests/unit/list-my-authorizations.test.ts` | Implementado na API; tela continua US-28 |
 | US-19 | `qr-credential.use-cases.ts`, `hmac-qr-token-signer.ts`, `tests/integration/credentials.test.ts` | Assinatura/validação e TTL de 10 s implementados |
-| US-20 | `access-policy.ts`, `decide-access.use-case.ts`, testes de política/QR e `evidencias/us-20.md` | Decisão QR implementada; limite depende do raio cadastrado, sem teto absoluto (divergência acima) |
+| US-20 | `access-policy.ts`, `decide-access.use-case.ts`, testes de política/QR e `evidencias/us-20.md` | Decisão QR implementada; limite depende do raio cadastrado, sem teto absoluto (correção na DT-23) |
 | US-21 | `access-events.routes.ts`, repositórios e caso de uso de decisão | Consulta implementada; gravação QR/NFC no backend, integração com leitor físico ainda pendente |
 | US-22 | `firmware/src/modules/display.cpp`, `include/display_layout.h`, testes QR/display; `worker-runtime.ts` | Código de display implementado; demonstração visual e presença/status pendentes |
 | US-26 | `firmware/tests/test_mqtt_command.cpp`, `door.cpp`, `evidencias/us-26-mqtt-servo.md` | Comando/expiração/dedup/servo implementados; herança da US-08 documentada |
@@ -84,11 +85,11 @@ Os caminhos nesta tabela são relativos à raiz do repositório. A coluna de con
 | DT-02 | `TerminalCommand`, `postgres-command-store.ts`, testes de ACK/restart/E2E | Registro persistente compartilhado implementado |
 | DT-03 | `Terminal`, resolução do local e testes de terminal desconhecido/inativo | Mapeamento implementado; não é CRUD admin de locais (US-39) |
 | DT-04 | Schema de evento com local nulo, contrato REST e teste de histórico | Implementado |
-| DT-05 | `postgres-event-deduplicator.ts`, frescor no parser/decisão e testes E2E | Dedup persistente/rollback/replay implementados; espera limitada permanece DT-16 |
+| DT-05 | `postgres-event-deduplicator.ts`, frescor no parser/decisão e testes E2E | Dedup persistente/rollback/replay implementados; espera limitada tratada no PR #51 (DT-16 em review) |
 | DT-07 | `backend/prisma/{seed,provision,provision-admin}.ts`, `tests/unit/seed-guard.test.ts`, CI | Proteções de seed/provisionamento implementadas |
 | DT-09 | Etapa `db:migrate:deploy` antes do deploy em `cd-backend.yml`, rollback em `deploy.md` | Gate de migrations implementado; produção não migrada por esta auditoria |
 | DT-10 | Build/artefato/install em `ci-mobile.yml`, scripts host e `evidencias/dt-10-build-android-ci.md` | Empacotamento/emulador com evidência histórica; câmera/GPS/aparelho físico não cobertos |
-| DT-11 | `uses:` nos workflows e ausência de `.github/dependabot.*` | **Aceite não atendido**: pinagem apenas parcial, Dependabot ausente |
+| DT-11 | `uses:` nos workflows e ausência de `.github/dependabot.*` | **Aceite não atendido**: pinagem apenas parcial, Dependabot ausente (correção na DT-24) |
 | DT-13 | Outbox `publishedAt`, relay, testes de falha/restart e `evidencias/dt-13.md` | Recuperação implementada; respeita validade original e janela DT-21 |
 | DT-14 | `config/connection-budget.ts`, composição separada e teste de rajada E2E | Orçamento por instância implementado/documentado; não é teto global nem medição no Neon |
 | DT-15 | Expurgo de `ProcessedAccessMessage`, índice, agendamento, métricas no health e testes | Retenção implementada; execução real no Render não observada |
@@ -102,10 +103,11 @@ Os caminhos nesta tabela são relativos à raiz do repositório. A coluna de con
 
 | Lista | Cards e situação verificada |
 |---|---|
-| Sprint 2 | **US-23** (leitor NFC vazio no firmware), **DT-06** (`WiFiClient`, sem TLS), **DT-08** (sem allowlist CORS no app Express), **US-29** (scanner não chama o backend) |
-| Product Backlog | **US-24** (GPS vazio/heartbeat pendente), **US-25** (há retry básico, não persistência local completa), **US-28** (sem tela de autorizações), **US-30/31** (sem admin/histórico completos no app), **US-33/34/35/36/38/39** (segurança final, hardware, diagramas finais, relatório, distribuição web e cadastro de locais) |
-| Dívida Técnica | **DT-22**: decisão/estimativa/procedimento presentes; sem medição de corrente ou continuidade |
-| Em review | **DT-16**: não tratar como concluída; validar contenção/timeout e observabilidade das pools |
+| Sprint 2 | **US-24** (GPS vazio/heartbeat pendente) |
+| Product Backlog | **US-28** (sem tela de autorizações), **US-30/31** (sem admin/histórico completos no app), **US-33/34/35/36/38/39** (segurança final, hardware, diagramas finais, relatório, distribuição web e cadastro de locais) |
+| Dívida Técnica | **DT-22** (estratégia documentada; sem medição de corrente/continuidade), **DT-23** (teto de 100 m na geofence), **DT-24** (pins por SHA + Dependabot) |
+| Em andamento | **US-23** (leitor NFC vazio no firmware), **US-25** (retry básico, sem persistência local completa), **US-29** (scanner não chama o backend), **DT-06** (`WiFiClient`, sem TLS), **DT-08** (sem allowlist CORS no app Express) |
+| Em review | **DT-16**: PR #51 com prazos server-side, descarte e listener de erro; validar no pooler do Neon |
 | Bloqueado | **DT-12**: câmera/GPS/aparelho reais não comprovados; o build Android no emulador não remove o bloqueio físico |
 
 ## Verificações desta auditoria
@@ -130,7 +132,7 @@ URL: <https://abp-4-sistema-controle-acesso.vercel.app/health>. A causa da prime
 - Preparação concluída: `npm ci` (450 pacotes) e `npm run db:generate` (Prisma Client 7.10.1). Manifestos/lockfile não foram alterados.
 - Backend após preparação: `npm test -- --maxWorkers=1` → **357 passando, 31 ignorados; 41 arquivos passando e 8 ignorados**. As suítes condicionadas a `DATABASE_URL` não foram executadas nessa rodada; não contar os ignorados como aprovação.
 - `npm run lint` e `npm run typecheck`: **aprovados** após preparação. Os erros iniciais de dependências/cliente gerado não se repetiram.
-- `npm run test:e2e`: **build aprovado e 29/29 cenários E2E passando**, com PostgreSQL temporário, broker MQTT e processos API/worker locais separados (172,59 s). O diretório temporário foi direcionado a `C:\Users\arthu\AppData\Local\Temp\opencode`. O E2E não usa o Flutter/ESP32 físicos nem comprova deploy no Render; não substitui todas as suítes de integração ignoradas acima.
+- `npm run test:e2e`: **build aprovado e 29/29 cenários E2E passando**, com PostgreSQL temporário, broker MQTT e processos API/worker locais separados (172,59 s). O diretório temporário foi direcionado para a pasta local de temporários. O E2E não usa o Flutter/ESP32 físicos nem comprova deploy no Render; não substitui todas as suítes de integração ignoradas acima.
 - Firmware: PlatformIO/compilador host não localizados nos caminhos consultados. Build, testes C++ e Wokwi não repetidos; evidências anteriores mantidas como históricas.
 - Prova isolada da regra de geofence executada com Node, importando `backend/src/domain/access/access-policy.ts`: contexto válido, local em `(-23, -45)`, `radiusMeters=200`, posição `(-22.998652, -45)` → `action: open`, `distanceMeters: 149.89076111687928`. Nenhum banco/terminal real foi usado ou alterado.
 - Documentação: links locais dos 11 Markdown alterados/criados conferidos (nenhum destino ausente); tabela auditada contém exatamente 43 cards únicos. `git diff --check` sem problemas de whitespace.
@@ -159,7 +161,7 @@ console.log(decideAccess({
 
 ## Próximos passos para aceite real
 
-1. Resolver DT-11 e a garantia de raio máximo da US-20; alinhar descrições de US-14/21 e o aceite físico de US-10.
+1. Executar DT-24 (pins/Dependabot) e DT-23 (teto de 100 m); alinhar descrições de US-14/21 e o aceite físico de US-10.
 2. Fechar envio QR pelo app (US-29), TLS (DT-06) e presença/status do terminal; demonstrar QR renovando no TFT (US-22).
 3. Validar deploy Render com banco/schema e secrets configurados, conexão MQTT e ACK correlacionado (US-37).
 4. Implementar NFC/GPS e concluir DT-12/US-34 com aparelho e terminal reais; coletar medidas DT-22.

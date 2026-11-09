@@ -22,7 +22,7 @@ Duas superfícies, dois papéis: o **Trello** (board `ERRORSQUAD ABP 4DSM`) é a
 - **Dono**: a distribuição final da S1 está em [`sprints/sprint-1.md`](sprints/sprint-1.md); a partir da S2, cada um puxa o seu card na Planning.
 - **Formato do card no Trello**: título `US-XX · Título`; descrição com a narrativa ("Como… quero… para…"), critérios de aceite em **checklist**, pontos e épico `(E1…E6)` no sufixo do título. Modelo completo na US-04.
 - **Rastreio**: `US-XX` no card → título da branch → linha `Card: US-XX` do PR → execução.
-- **Sprint 4** = janela de entrega final (26/11 → data oficial da apresentação); a Sprint 3 termina na Review 3.
+- **Entrega final** = janela após a Review 3 (26/11 → data oficial da apresentação). O projeto tem **três sprints** (S1–S3); a entrega final não é uma quarta sprint.
 - **Cortes de segurança** da Sprint 1: o corte chegou a ser aplicado em 21/10, mas US-08 e US-10 foram concluídas no mesmo dia. **Nenhum carry-over** para a S2.
 
 ---
@@ -256,7 +256,7 @@ Plano original, não uma lista de stories ainda abertas. Títulos, épico e spri
 | US-33 | Revisão de segurança | E5 | S3 |
 | US-34 | Teste em hardware real | E5 | S3 |
 | US-35 | Diagramas e docs de arquitetura finais | E6 | S3 |
-| US-36 | Relatório ABNT e apresentação final | E6 | S4 |
+| US-36 | Relatório ABNT e apresentação final | E6 | S3 (entrega final) |
 | US-37 | Worker MQTT persistente no Render | E1 | S2 |
 | US-38 | Demo web + identidade de distribuição na Vercel | E6 | S3 |
 
@@ -271,15 +271,15 @@ Plano original, não uma lista de stories ainda abertas. Títulos, épico e spri
 - [`definition-of-done.md`](definition-of-done.md) — o que significa "pronto" para um card.
 - `sprints/` e `templates/` completam a pasta (US-11).
 
-## Estado observado em 02/11/2026
+## Estado observado em 02/11/2026 · board reconferido em 08/11/2026
 
-Código local auditado: `66fe44a`; API pública observada em `6b6aa26`, com banco ok (uma primeira consulta retornou 503). Trello: **61 cards não arquivados**, sendo **43 em Concluído (26 US + 17 DT)** e 18 nas demais listas. A contagem é declarada no quadro, não certificação de todos os aceites; a [auditoria por card](../entrega/auditoria-estado-atual.md) registra diferenças.
+Código local auditado: `66fe44a`; API pública observada em `6b6aa26`, com banco ok (uma primeira consulta retornou 503). Trello reconferido em 08/11: **63 cards não arquivados**, sendo **43 em Concluído (26 US + 17 DT)** e 20 nas demais listas. A contagem é declarada no quadro, não certificação de todos os aceites; a [auditoria por card](../entrega/auditoria-estado-atual.md) registra diferenças.
 
-**Entregas integradas:** US-14/21/22/37 (#26), US-19 (#27), US-15/18 (#33), US-16/17 (#36), US-27 (#43), US-26 herdada da US-08 ([evidência](../entrega/evidencias/us-26-mqtt-servo.md)), US-20 (#42) e US-32 (E2E antecipado, #32). US-21 foi fechada pela fatia de consulta; o backend atual também grava decisões QR/NFC simulado, mas falta o leitor NFC do terminal (US-23). US-37 tem implementação, não deploy validado; US-22 tem código de renderização, não demonstração visual atual comprovada. US-14 excluiu refresh/logout no comentário do card, ainda não refletido em sua descrição.
+**Entregas integradas:** US-14/21/22/37 (#26), US-19 (#27), US-15/18 (#33), US-16/17 (#36), US-27 (#43), US-26 herdada da US-08 ([evidência](../entrega/evidencias/us-26-mqtt-servo.md)), US-20 (#42) e US-32 (E2E antecipado, #32). US-21 foi fechada pela fatia de consulta; o backend atual também grava decisões QR/NFC simulado, mas falta o leitor NFC do terminal (US-23). US-37 tem implementação, não deploy validado; US-22 tem código de renderização, não demonstração visual atual comprovada. A descrição da US-14 foi alinhada em 08/11: sem refresh/logout no servidor, logout local no app.
 
-**Listas abertas no Trello:** Sprint 2 = US-23, DT-06, DT-08 e US-29; Product Backlog = US-24/25/28/30/31/33/34/35/36/38/39; Dívida Técnica = DT-22; Em review = DT-16; Bloqueado = DT-12. US-28/29 continuam abertas e a S2 ainda não terminou; não há transferência para S3 confirmada por esta auditoria.
+**Listas abertas no Trello (08/11):** Sprint 2 = US-24; Product Backlog = US-28/30/31/33/34/35/36/38/39; Dívida Técnica = DT-22/DT-23/DT-24; Em review = DT-16 (PR #51); Em andamento = DT-06, DT-08, US-23, US-25 e US-29; Bloqueado = DT-12. US-28/29 continuam abertas e a S2 ainda não terminou; não há transferência para S3 confirmada por esta auditoria.
 
-**Dívidas declaradas concluídas:** DT-01/02/03/04/05/07/09/10/11/13/14/15/17/18/19/20/21. A **DT-11 não atende ao aceite atual**: várias Actions continuam por tags e não há Dependabot. US-20 valida o raio configurado por local, default 100 m, mas não impõe teto absoluto de 100 m — divergência reproduzida na auditoria.
+**Dívidas declaradas concluídas:** DT-01/02/03/04/05/07/09/10/11/13/14/15/17/18/19/20/21. A **DT-11 não atende ao aceite atual**: várias Actions continuam por tags e não há Dependabot; o escopo restante está na **DT-24**. US-20 valida o raio configurado por local, default 100 m, mas não impõe teto absoluto de 100 m — divergência reproduzida na auditoria e rastreada na **DT-23**.
 
 ### US-39 · Cadastro de locais de acesso (RF02) — descoberta em 29/10
 
@@ -288,6 +288,6 @@ Código local auditado: `66fe44a`; API pública observada em `6b6aa26`, com banc
 - `AccessLocation`/seed/mapeamento existem, mas **não há endpoint nem tela funcional** de cadastro; os PNGs claro/escuro são design, não implementação.
 - A distribuição histórica acima soma as 38 stories originais; a US-39 é adicional e sua classificação definitiva depende de refinamento.
 
-**DT-22 (RNF07):** decisão, estimativas e procedimento de medição já estão em [`../entrega/evidencias/dt-22.md`](../entrega/evidencias/dt-22.md); consumo e continuidade não foram medidos. A descrição no Trello ainda diz que não existe estratégia e precisa ser sincronizada pelo time.
+**DT-22 (RNF07):** decisão, estimativas e procedimento de medição já estão em [`../entrega/evidencias/dt-22.md`](../entrega/evidencias/dt-22.md); consumo e continuidade não foram medidos. A descrição no Trello foi sincronizada em 08/11: estratégia documentada, medição de corrente/continuidade pendente (US-34).
 
 Detalhe da sprint em [`sprints/sprint-2.md`](sprints/sprint-2.md). A API na Vercel não comprova a operação do worker no Render nem o fluxo físico completo.

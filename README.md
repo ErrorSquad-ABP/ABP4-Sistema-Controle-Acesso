@@ -6,13 +6,13 @@
 
 Sistema integrado de baixo custo para controle de acesso em edifícios, com arquitetura prevista de terminal ESP32 (QR rotativo + NFC), app Flutter e backend Node/TypeScript por REST e MQTT. Este monorepo reúne backend, mobile, firmware, infraestrutura e documentação do projeto.
 
-## Estado atual — 02/11/2026
+## Estado atual — 02/11/2026 · board reconferido em 08/11/2026
 
-- **Backend:** login JWT/RBAC, usuários, autorizações, QR assinado de 10 s, decisão de acesso, histórico, outbox e processamento MQTT implementados. Autorizações usam intervalo contínuo; a geofence usa o raio do local (default 100 m), **sem impor teto absoluto de 100 m**.
+- **Backend:** login JWT/RBAC, usuários, autorizações, QR assinado de 10 s, decisão de acesso, histórico, outbox e processamento MQTT implementados. Autorizações usam intervalo contínuo; a geofence usa o raio do local (default 100 m), **sem impor teto absoluto de 100 m** (correção na DT-23).
 - **App:** login real/sessão e leitura QR + posição implementados; o scanner **ainda não envia o pedido de acesso** (US-29). Minhas autorizações e admin ainda não têm telas funcionais completas.
 - **Terminal:** código de display QR, servo e feedback presente; NFC/GPS são esqueletos, status/heartbeat e TLS estão pendentes. Demonstração visual do QR atual e validação física não estão comprovadas.
 - **Operação:** API pública respondeu em 02/11 com `version: 6b6aa26`, `database: ok`, após uma primeira resposta 503; worker no Render continua sem deploy comprovado.
-- **Trello:** 43 cards em “Concluído”, com ressalvas de aceite e escopo — especialmente DT-11 (Actions ainda por tags e sem Dependabot), US-37 (deploy) e US-10/22 (demonstração real).
+- **Trello:** 43 cards em “Concluído”, com ressalvas de aceite e escopo — especialmente DT-11 (correção na DT-24), US-37 (deploy) e US-10/22 (demonstração real). O board foi reconferido em 08/11: os 43 concluídos seguem iguais, mas a distribuição por lista mudou e DT-23/DT-24 entraram.
 
 Conferência dos **43 cards**, evidências, testes e pendências em [`docs/entrega/auditoria-estado-atual.md`](docs/entrega/auditoria-estado-atual.md). Código integrado, simulação e operação real são tratados separadamente; o fluxo completo app → terminal real ainda não foi demonstrado.
 
