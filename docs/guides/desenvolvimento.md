@@ -35,7 +35,7 @@ Cada stack tem seu workflow. **Em PR os três rodam sempre** (são os checks obr
 
 - O `ci-firmware-build` sempre exige os testes host e o build; ausência de `firmware/platformio.ini` ou do exemplo de configuração falha o check, sem skip.
 - Os checks `ci-backend-check`, `ci-backend-docker`, `ci-mobile-check`, `ci-mobile-build-android`, `ci-mobile-install-android` e `ci-firmware-build` são obrigatórios na `main`, além de 1 aprovação. Merge com check vermelho ou pendente não passa.
-- O pinning de Actions por SHA é **parcial** (DT-11): só as Actions novas do CI Android estão em SHA — `setup-java` (`b843ebf`), `upload-artifact` (`cf430e0`), `download-artifact` (`9000827`) e `android-emulator-runner` (`a421e43`), todas em [`ci-mobile.yml`](../../.github/workflows/ci-mobile.yml). `ci-backend.yml`, `ci-firmware.yml`, `cd-backend.yml` e as Actions antigas do mobile seguem por tag (`@v7`, `@v6`, `@v4`, `@v2`).
+- **Toda** Action remota é referenciada por SHA completo, com a versão no comentário (`# vX.Y.Z`). O `.github/dependabot.yml` propõe atualizações semanais para `github-actions`, `npm` (backend) e `pub` (mobile), agrupando `minor`/`patch`; `major` vem em PR separado. Atualização de Action é revisão de código como qualquer outra, sem auto-merge. Correção local da DT-24; o CI remoto ainda não rodou nessa branch.
 - Os badges no `README.md` raiz mostram o estado da `main`.
 - Antes de abrir PR, rode localmente o mesmo que o CI roda: no backend, `npm run lint && npm run typecheck && npm test && npm run build`.
 - Para alterações no acesso, rode também `npm run test:e2e`: PostgreSQL temporário e broker MQTT próprios, sem Docker ou administrador. O CI backend executa esse cenário depois do build.

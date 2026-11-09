@@ -279,7 +279,7 @@ Código local auditado: `66fe44a`; API pública observada em `6b6aa26`, com banc
 
 **Listas abertas no Trello (09/11, pós-merge #51):** Sprint 2 = US-24; Product Backlog = US-28/30/31/33/34/35/36/38/39; Dívida Técnica = DT-22/DT-23/DT-24; Em andamento = DT-06, DT-08, US-23, US-25 e US-29; Bloqueado = DT-12. US-28/29 continuam abertas e a S2 ainda não terminou; não há transferência para S3 confirmada por esta auditoria.
 
-**Dívidas declaradas concluídas:** DT-01/02/03/04/05/07/09/10/11/13/14/15/16/17/18/19/20/21. A **DT-11 não atende ao aceite atual**: várias Actions continuam por tags e não há Dependabot; o escopo restante está na **DT-24**. US-20 valida o raio configurado por local, default 100 m, mas não impõe teto absoluto de 100 m — divergência reproduzida na auditoria e rastreada na **DT-23**. A **DT-16** foi mergeada no #51; os limites (pooler do Neon e callback dentro da transação de acesso) estão documentados na evidência.
+**Dívidas declaradas concluídas:** DT-01/02/03/04/05/07/09/10/11/13/14/15/16/17/18/19/20/21. A **DT-11 não atende ao aceite atual**: várias Actions continuam por tags e não há Dependabot; o escopo restante está na **DT-24**, com correção local ainda não integrada. US-20 valida o raio configurado por local, default 100 m, mas não impõe teto absoluto de 100 m — divergência reproduzida na auditoria e corrigida localmente na **DT-23**, também não integrada. A **DT-16** foi mergeada no #51; os limites (pooler do Neon e callback dentro da transação de acesso) estão documentados na evidência.
 
 ### US-39 · Cadastro de locais de acesso (RF02) — descoberta em 29/10
 

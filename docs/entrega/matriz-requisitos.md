@@ -72,7 +72,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 8. **RF03**: confirmar com o professor/PO se "horário inicial/final" exige janela diária dentro do período — hoje é um intervalo contínuo.
 9. **RF13**: teto de 100 m implementado e testado localmente na DT-23; antes da implantação, conferir cadastros legados inválidos e aplicar a migration conforme a evidência. Nenhum banco remoto foi alterado.
 
-Pendências transversais: DT-11 em Concluído sem pinagem completa por SHA/Dependabot (correção na DT-24); deploy Render da US-37 não comprovado; demonstração visual do QR da US-22 e câmera real da US-10/DT-12 ainda pendentes. API respondeu com banco ok em 02/11 (versão `6b6aa26`), após uma primeira resposta 503; não é prova de operação contínua nem de fluxo físico completo.
+Pendências transversais: DT-11 em Concluído sem pinagem completa por SHA/Dependabot — correção local na DT-24 ([evidência](evidencias/dt-24.md)), CI remoto e merge pendentes; deploy Render da US-37 não comprovado; demonstração visual do QR da US-22 e câmera real da US-10/DT-12 ainda pendentes. API respondeu com banco ok em 02/11 (versão `6b6aa26`), após uma primeira resposta 503; não é prova de operação contínua nem de fluxo físico completo.
 
 ## Leitura do edital sobre "admin"
 

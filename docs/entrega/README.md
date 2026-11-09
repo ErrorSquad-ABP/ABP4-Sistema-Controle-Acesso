@@ -4,11 +4,12 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 
 ## Estado atual e conferência do Trello
 
-[`auditoria-estado-atual.md`](auditoria-estado-atual.md) registra o recorte de **02/11/2026** (`66fe44a`), reconferido no board em **08/11/2026** e com a **DT-16 mergeada em 09/11**, os **44 cards em Concluído**, evidência por card e divergências de aceite. Em particular: DT-11 não atende a pinagem completa/Dependabot (rastreada na DT-24); US-37 não tem deploy comprovado; US-10/22 têm validações reais pendentes; o geofence não impõe teto absoluto de 100 m (rastreado na DT-23). Evidências anteriores abaixo mantêm a data e os limites originais, não representam reteste atual.
+[`auditoria-estado-atual.md`](auditoria-estado-atual.md) registra o recorte de **02/11/2026** (`66fe44a`), reconferido no board em **08/11/2026** e com a **DT-16 mergeada em 09/11**, os **44 cards em Concluído**, evidência por card e divergências de aceite. Em particular: DT-11 não atende a pinagem completa/Dependabot (correção local na DT-24); US-37 não tem deploy comprovado; US-10/22 têm validações reais pendentes; o geofence não impõe teto absoluto de 100 m (correção local na DT-23). As correções locais ainda não foram mergeadas nem executadas no CI remoto. Evidências anteriores abaixo mantêm a data e os limites originais, não representam reteste atual.
 
 | Evidência | Card | Conteúdo | PR |
 |---|---|---|---|
 | [`dt-23.md`](evidencias/dt-23.md) | DT-23 | teto QR de 100 m e CHECK do raio no banco; validação local, sem deploy | — |
+| [`dt-24.md`](evidencias/dt-24.md) | DT-24 | Actions por SHA oficial e Dependabot semanal; validação local, sem CI remoto | — |
 | [`dt-01-02-03.md`](evidencias/dt-01-02-03.md) | DT-01 · DT-02 · DT-03 | decisão real no worker, dedup persistente e mapeamento terminal→local, integrados sobre a `main` | #32 (origem no #31) |
 | [`dt-10-build-android-ci.md`](evidencias/dt-10-build-android-ci.md) | DT-10 | APK Android gerado, conferido e instalado no CI mobile | #35 |
 | [`dt-13.md`](evidencias/dt-13.md) | DT-13 | outbox de comando (`publishedAt`) com relay independente do terminal | #37 |

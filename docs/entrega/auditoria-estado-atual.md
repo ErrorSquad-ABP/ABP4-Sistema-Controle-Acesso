@@ -11,7 +11,7 @@
 
 ## Resumo
 
-Atualização posterior ao recorte: a [DT-23](evidencias/dt-23.md) corrige localmente o teto da geofence. O diagnóstico abaixo permanece histórico; não descreve essa alteração como já implantada.
+Atualização posterior ao recorte: a [DT-23](evidencias/dt-23.md) corrige localmente o teto da geofence e a [DT-24](evidencias/dt-24.md) corrige localmente a pinagem/Dependabot. O diagnóstico abaixo permanece histórico; não descreve essas alterações como já implantadas.
 
 O projeto tem API com autenticação, usuários, autorizações, decisão QR, histórico, outbox e processamento MQTT; app com login/sessão e scanner local; firmware com display QR, servo e feedback. **Ainda não é um sistema completo demonstrado com app e terminal reais**: faltam envio QR pelo app, NFC/GPS no firmware, TLS no terminal e validação física.
 
@@ -33,7 +33,7 @@ Esses 44 são o status declarado no quadro, **não 44 aceites integralmente comp
 
 | Card / assunto | Constatação | Ação recomendada ao time |
 |---|---|---|
-| [DT-11](https://trello.com/c/NPjUiiVS) | Concluído, mas `ci-backend`, `cd-backend`, `ci-firmware` e parte de `ci-mobile` usam tags mutáveis (`actions/checkout@v7`, `actions/setup-node@v7`, `subosito/flutter-action@v2` etc.). Não há configuração Dependabot versionada. Só parte das Actions do mobile está por SHA | Escopo restante rastreado na [DT-24](https://trello.com/c/pFJlVpZ0); o aceite “pinar SHAs revisados + Dependabot” não está atendido |
+| [DT-11](https://trello.com/c/NPjUiiVS) | Concluído, mas `ci-backend`, `cd-backend`, `ci-firmware` e parte de `ci-mobile` usam tags mutáveis (`actions/checkout@v7`, `actions/setup-node@v7`, `subosito/flutter-action@v2` etc.). Não há configuração Dependabot versionada. Só parte das Actions do mobile está por SHA | Escopo restante rastreado na [DT-24](https://trello.com/c/pFJlVpZ0); o aceite “pinar SHAs revisados + Dependabot” não está atendido no recorte. Correção local registrada em [dt-24](evidencias/dt-24.md); CI remoto e merge pendentes |
 | [US-37](https://trello.com/c/AY5WYJa8) | Concluído, mas o próprio comentário de 27/10 diz que falta criar o serviço Render. Existem entry point, keep-alive e blueprint, não prova de MQTT persistente em produção | Separação “implementado × deploy validado” registrada em comentário de 08/11; URL/health e log de conexão ao broker continuam pendentes |
 | [US-10](https://trello.com/c/wlc92VBv) | Checklist “Scanner QR lendo código real” completo; `evidencias/us-10-scanner.md` diz que câmera real não foi validada e DT-12 está bloqueada | Aceite físico vinculado à DT-12 em comentário de 08/11; o esqueleto entregue permanece válido |
 | [US-22](https://trello.com/c/nsDhMYsD) | Renderização existe; comentário de 27/10 ainda registra demonstração visual Wokwi/hardware pendente. O worker só envia QR para terminais vistos `online`, e o firmware atual não publica status/heartbeat | Demonstração visual continua pendente; presença/status do terminal é a US-24. Registrado em comentário de 08/11, sem apresentar o E2E Node como prova do display |
