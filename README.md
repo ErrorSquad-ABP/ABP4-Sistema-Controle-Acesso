@@ -8,7 +8,7 @@ Sistema integrado de baixo custo para controle de acesso em edifícios, com arqu
 
 ## Estado atual — 02/11/2026 · board reconferido em 08/11/2026
 
-- **Backend:** login JWT/RBAC, usuários, autorizações, QR assinado de 10 s, decisão de acesso, histórico, outbox e processamento MQTT implementados. Autorizações usam intervalo contínuo; a geofence usa o raio do local (default 100 m), **sem impor teto absoluto de 100 m** (correção na DT-23).
+- **Backend:** login JWT/RBAC, usuários, autorizações, QR assinado de 10 s, decisão de acesso, histórico, outbox e processamento MQTT implementados. Autorizações usam intervalo contínuo; a DT-23 limita o QR ao menor valor entre o raio do local e 100 m, com restrição de cadastro no banco. A correção ainda depende de merge/deploy.
 - **App:** login real/sessão e leitura QR + posição implementados; o scanner **ainda não envia o pedido de acesso** (US-29). Minhas autorizações e admin ainda não têm telas funcionais completas.
 - **Terminal:** código de display QR, servo e feedback presente; NFC/GPS são esqueletos, status/heartbeat e TLS estão pendentes. Demonstração visual do QR atual e validação física não estão comprovadas.
 - **Operação:** API pública respondeu em 02/11 com `version: 6b6aa26`, `database: ok`, após uma primeira resposta 503; worker no Render continua sem deploy comprovado.

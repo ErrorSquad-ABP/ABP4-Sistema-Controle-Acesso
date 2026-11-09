@@ -11,6 +11,8 @@
 
 ## Resumo
 
+Atualização posterior ao recorte: a [DT-23](evidencias/dt-23.md) corrige localmente o teto da geofence. O diagnóstico abaixo permanece histórico; não descreve essa alteração como já implantada.
+
 O projeto tem API com autenticação, usuários, autorizações, decisão QR, histórico, outbox e processamento MQTT; app com login/sessão e scanner local; firmware com display QR, servo e feedback. **Ainda não é um sistema completo demonstrado com app e terminal reais**: faltam envio QR pelo app, NFC/GPS no firmware, TLS no terminal e validação física.
 
 | Lista no Trello | Cards (09/11/2026, pós-merge #51) |
