@@ -2,6 +2,8 @@
 
 O sistema controla o acesso de pessoas a um edifício em três frentes que conversam por rede: o **Terminal de Acesso** (ESP32) exibe um QR Code rotativo e lê tags NFC, publicando e recebendo comandos por MQTT; o **app móvel** (Flutter) autentica o usuário, escaneia o QR Code e envia a geolocalização; e o **backend** (Node + Express + TypeScript) concentra as regras de acesso, persiste os eventos em PostgreSQL e é a única fonte de decisão — o terminal nunca decide sozinho. Em desenvolvimento o broker é o Mosquitto do `infra/docker-compose.dev.yml` e o banco é o Postgres do mesmo compose; em produção a API roda no Vercel, o worker MQTT no Render, o banco no Neon e o broker é o HiveMQ Cloud com TLS (ver [`adr/001-provisionamento-vercel-neon.md`](adr/001-provisionamento-vercel-neon.md)).
 
+Esse é o **desenho alvo**, não a declaração de que todo o fluxo está operacional. Em **02/11/2026**, NFC/GPS do firmware são esqueletos; o terminal não publica heartbeat/status e usa MQTT sem TLS; o app lê QR/posição mas não solicita acesso ao backend (US-29). A decisão NFC no backend existe e é exercitada por terminal simulado. O worker Render não tem deploy comprovado. Conferência em [`../entrega/auditoria-estado-atual.md`](../entrega/auditoria-estado-atual.md).
+
 ## Diagrama
 
 O modelo relacional persistido pelo backend está em [`modelo-dados.md`](modelo-dados.md).
@@ -19,11 +21,11 @@ flowchart LR
   M -. prod .- MP[HiveMQ Cloud · MQTT TLS]
 ```
 
-**Transporte**: app ↔ API por **HTTPS REST**; terminal ↔ backend por **MQTT bidirecional**. Na S1 o processo MQTT do backend roda localmente (US-04); na S2 o mesmo processo foi para o Render (US-37, PR #26). A Vercel hospeda só a API.
+**Transporte**: app ↔ API por **HTTPS REST**; terminal ↔ backend por **MQTT bidirecional**. Na S1 o processo MQTT do backend roda localmente (US-04); na S2 o mesmo processo foi preparado para o Render (US-37, PR #26), sem operação remota comprovada. A Vercel hospeda só a API.
 
-**O que está mergeado ≠ o que foi observado em deploy** (29/10/2026):
+**O que está mergeado ≠ o que foi observado em deploy** (02/11/2026):
 
-- **API na Vercel**: no ar. O `/health` público respondeu `version: 6b6aa26` (o commit da `main` no momento da verificação) e `database: ok`.
+- **API na Vercel**: `/health` público respondeu `version: 6b6aa26`, `database: ok` às 19:02:27 UTC, após uma primeira resposta 503. O HEAD local auditado é `66fe44a`; não é a versão publicada. A resposta comprova conectividade naquele instante, não disponibilidade contínua.
 - **Worker no Render**: código (`backend/src/main/worker.ts`) e `render.yaml` na `main`, mas **o deploy efetivo não foi observado** — nenhuma evidência de serviço em execução.
 - **Relay da outbox**: roda só entre **18:45 e 23:05** em `America/Sao_Paulo` (DT-21, PR #45); fora da janela o polling não consulta o banco.
 
@@ -34,16 +36,20 @@ flowchart LR
 
 ## Fluxo de acesso via QR
 
+Fluxo alvo: os passos de envio pelo app ainda dependem da US-29. O worker só publica QR para terminais vistos online, mas o firmware não envia esse status; a simulação precisa declarar o status sintético. Renderização visual do QR atual ainda carece de demonstração registrada (US-22).
+
 1. O processo MQTT do backend publica um QR Code rotativo (validade de 10 s) no tópico do terminal.
 2. O terminal exibe o QR Code no display.
 3. O usuário escaneia o QR Code com o app.
 4. O app envia o token lido do QR (com o identificador do terminal), a credencial do usuário e a geolocalização à API (HTTPS REST).
-5. A API valida o token do QR (formato, terminal e expiração de 10 s), a credencial do usuário, a janela de uso, o número de usos, o local e a distância (≤ 100 m).
+5. A API valida o token do QR (formato, terminal e expiração de 10 s), a credencial do usuário, o intervalo contínuo de validade, o número de usos, o local e a distância. Hoje compara com `location.radiusMeters` (default 100), sem teto absoluto de 100 m; a auditoria reproduziu autorização a ~150 m com raio 200. Não anunciar conformidade incondicional com RF13 antes de corrigir esse limite.
 6. O caso de uso grava a decisão e o consumo da autorização na mesma transação, persiste o comando no registro compartilhado e publica a abertura no tópico do terminal (pela API na requisição do app; pelo processo MQTT nos fluxos do terminal).
 7. O terminal abre a porta, sinaliza o resultado (LED/buzzer) e publica o ACK de execução.
 8. O worker correlaciona o ACK no mesmo PostgreSQL usado pela API, mesmo após reinício. A decisão `GRANTED` é autorização; confirmação física depende do status do ACK.
 
 ## Fluxo de acesso via NFC
+
+O backend implementa este processamento para mensagens simuladas; leitura/publicação pelo ESP32 ainda depende da US-23. NFC não exige GPS do celular: a geofence é aplicada ao método QR.
 
 1. O terminal lê a tag NFC e publica o UID no tópico MQTT de eventos.
 2. O processo MQTT do backend recebe o UID e chama o caso de uso, que valida a credencial, a janela de uso, o número de usos, o local e a distância quando aplicável.

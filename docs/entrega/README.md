@@ -2,6 +2,10 @@
 
 Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como reproduzir e os PRs/commits envolvidos. Nome no formato `dt-XX.md` ou `us-XX-slug.md`. O documento da Review 1 está em [`review-1.md`](review-1.md).
 
+## Estado atual e conferência do Trello
+
+[`auditoria-estado-atual.md`](auditoria-estado-atual.md) registra o recorte de **02/11/2026** (`66fe44a`), reconferido no board em **08/11/2026** e com a **DT-16 mergeada em 09/11**, os **44 cards em Concluído**, evidência por card e divergências de aceite. Em particular: DT-11 não atende a pinagem completa/Dependabot (rastreada na DT-24); US-37 não tem deploy comprovado; US-10/22 têm validações reais pendentes; o geofence não impõe teto absoluto de 100 m (rastreado na DT-23). Evidências anteriores abaixo mantêm a data e os limites originais, não representam reteste atual.
+
 | Evidência | Card | Conteúdo | PR |
 |---|---|---|---|
 | [`dt-01-02-03.md`](evidencias/dt-01-02-03.md) | DT-01 · DT-02 · DT-03 | decisão real no worker, dedup persistente e mapeamento terminal→local, integrados sobre a `main` | #32 (origem no #31) |
