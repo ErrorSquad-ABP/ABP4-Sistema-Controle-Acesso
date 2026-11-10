@@ -1,3 +1,8 @@
+// TFT ILI9341 (padrao). Com TERMINAL_DISPLAY_OLED 1 vale o display_oled.cpp.
+#include "terminal_settings.h"
+
+#if !TERMINAL_DISPLAY_OLED
+
 #include "display.h"
 
 #include <Adafruit_GFX.h>
@@ -185,3 +190,5 @@ void update() {
 
 }  // namespace terminal_display
 
+
+#endif  // !TERMINAL_DISPLAY_OLED

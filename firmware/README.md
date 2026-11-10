@@ -44,12 +44,17 @@ Valores em `include/config.example.h` (nada secreto ali; segredos ficam no
 
 | Função | Pino/valor | Comportamento |
 |---|---|---|
-| Servo (rotação contínua) | 14 | 180 abre, 90 para, 0 fecha; 1800 ms de movimento e 3000 ms aberto |
+| Servo (rotação contínua) | 14 | 180 abre, 90 para, 0 fecha; 1800 ms de movimento e 3000 ms aberto. Pulso em 1000–2000 µs (90 = 1500 µs, o neutro); parado, o pino fica sem pulso para o servo não arrastar |
 | LED vermelho | 5 | ânodo comum: LOW acende |
 | LED verde | 18 | ânodo comum: LOW acende |
 | Buzzer | 19 | 440/659 Hz no liberado; 220 Hz no negado |
 | TFT CS / DC / RST | 27 / 26 / 25 | ILI9341 240x320 por SPI por software |
 | TFT MOSI / SCK | 32 / 33 | dados e clock do SPI por software |
+| OLED SDA / SCL (opcional) | 21 / 22 | SSD1306 128x64 em `0x3C`, ligado com `TERMINAL_DISPLAY_OLED 1`; mostra só o QR, na maior escala inteira que cabe |
+
+Com o OLED, a serial aceita teclas de bancada para achar a leitura mais fácil
+no celular: `i` inverte as cores, `c` alterna o brilho e `s` alterna entre a
+escala máxima e a escala 1 com margem completa de 4 módulos.
 
 ## Fluxo do comando
 
