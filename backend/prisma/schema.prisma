@@ -52,6 +52,7 @@ model AccessLocation {
   description   String?
   latitude      Decimal  @db.Decimal(9, 6)
   longitude     Decimal  @db.Decimal(9, 6)
+  /// Intervalo 1..100 imposto por AccessLocation_radiusMeters_check (migration DT-23).
   radiusMeters  Int      @default(100)
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
