@@ -22,10 +22,17 @@ enum LocationFailureReason { serviceDisabled, denied, timeout, unknown }
 
 @immutable
 class GeoCoordinate {
-  const GeoCoordinate({required this.latitude, required this.longitude});
+  const GeoCoordinate({
+    required this.latitude,
+    required this.longitude,
+    this.accuracyMeters,
+  });
 
   final double latitude;
   final double longitude;
+
+  /// Precisão informada pelo GPS, quando disponível (`GeoPoint.accuracyMeters`).
+  final double? accuracyMeters;
 }
 
 class LocationFailure implements Exception {

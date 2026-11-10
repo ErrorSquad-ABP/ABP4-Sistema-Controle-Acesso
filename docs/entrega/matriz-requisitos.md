@@ -16,7 +16,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | RF06 | Histórico de acessos | Parcial | Leitura em `GET /access-events` e `GET /me/access-events` (#26); gravação do fluxo QR (#42). Telas de histórico no app são US-31 (S3) |
 | RF07 | Autenticação do usuário no app | Atendido | `POST /auth/login` (US-14, #26) + sessão persistida no app (US-27, #43) |
 | RF08 | Usuário vê suas autorizações no app | Parcial | API `GET /me/authorizations` pronta (US-18, #33); tela é a **US-28**, sem PR |
-| RF09 | Leitura de QR Code pelo app | Parcial | Scanner pronto (US-10, #20); o app **não envia** a leitura ao backend (US-29, sem PR) |
+| RF09 | Leitura de QR Code pelo app | Parcial | Scanner (US-10, #20) e envio da leitura com posição e `requestId` ao backend, com tela de resultado liberado/negado (US-29, [`us-29.md`](evidencias/us-29.md)); testado no `flutter test` e contra o backend real. **Leitura com câmera e GPS de aparelho real não foi executada** (US-34) |
 | RF10 | Leitura de NFC pelo terminal | **Não atendido** | `firmware/src/modules/nfc.cpp` é esqueleto ("leitura desabilitada"); US-23 está em Em andamento (plano original S3) |
 | RF11 | Terminal com processamento, rede, tela, NFC, sinalização, GPS e abertura | Parcial | Tela, servo, LED, buzzer e MQTT (US-07/08/22); `gps.cpp` e `nfc.cpp` são esqueletos; GPS é US-24 (S3) |
 | RF12 | QR gerado no backend e trocado a cada 10 s | Atendido | Backend gera e rotaciona a cada 10 s (US-19, #27) e o worker publica no timer (US-22, #26). A entrega/exibição no TFT depende de presença/status do terminal (US-24, RF11), que é outra lacuna |
@@ -62,7 +62,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 
 ## Lacunas por prioridade (Review 2 em 11/11)
 
-1. **RF09 + RF13 (app)**: o app lê o QR mas não pede acesso — US-29 não tem PR. É a demonstração ponta-a-ponta do QR pelo app.
+1. **RF09 + RF13 (app)**: o app já pede o acesso e mostra o resultado (US-29); falta validar câmera e GPS em aparelho real e a demonstração ponta-a-ponta com o terminal (US-34).
 2. **RF08**: tela "minhas autorizações" — US-28 sem PR.
 3. **RF02**: cadastro de local não existe em API nem tela.
 4. **RF10/RF11/RF14**: NFC e GPS do terminal (US-23 em Em andamento; US-24 na lista Sprint 2). Backend NFC já existe para simulação.

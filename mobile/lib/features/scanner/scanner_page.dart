@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/feedback_banner.dart';
+import 'access_result_view.dart';
 import 'scanner_controller.dart';
 import 'scanner_gateways.dart';
-
-final _coordinateFormat = NumberFormat('0.000000', 'pt_BR');
 
 class ScannerPage extends ConsumerStatefulWidget {
   const ScannerPage({super.key});
@@ -18,39 +18,69 @@ class ScannerPage extends ConsumerStatefulWidget {
 }
 
 class _ScannerPageState extends ConsumerState<ScannerPage> {
+  /// Não exibe resultado antes de iniciar a tentativa da página atual.
+  bool _started = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Reinicia o estado de forma síncrona e só então libera a tela.
       ref.read(scannerControllerProvider.notifier).requestPermission();
+      setState(() => _started = true);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(scannerControllerProvider);
+    final current = ref.watch(scannerControllerProvider);
+    final ScannerState state = _started
+        ? current
+        : const ScannerRequestingPermission();
     final text = Theme.of(context).textTheme;
+
+    // Resultado em tela cheia (Figma), sem a barra de título do scanner.
+    if (state case ScannerAccessResult(:final result)) {
+      return Scaffold(
+        body: AccessResultView(
+          result: result,
+          onDone: () => context.go(AppRoutes.home),
+          onScanAgain: ref.read(scannerControllerProvider.notifier).retry,
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Escanear QR')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.screen),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Nenhum acesso é liberado por esta leitura: o QR e a posição '
-                'são apenas exibidos.',
-                style: text.bodySmall,
+        // Com a fonte do sistema ampliada (RNF04), o texto e o aviso não cabem
+        // ao lado de uma câmera que ocupa a altura toda: a câmera ganha uma
+        // altura proporcional e o restante da tela rola.
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final previewHeight = (constraints.maxHeight * 0.5).clamp(
+              220.0,
+              480.0,
+            );
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.screen),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Aponte a câmera para o QR exibido no terminal. Sua posição '
+                    'é enviada para conferir que você está a até 100 m dele.',
+                    style: text.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(height: previewHeight, child: _previewArea(state)),
+                  const SizedBox(height: AppSpacing.sm),
+                  _status(state),
+                ],
               ),
-              const SizedBox(height: AppSpacing.sm),
-              Expanded(child: _previewArea(state)),
-              const SizedBox(height: AppSpacing.sm),
-              _status(state),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -59,7 +89,12 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
   Widget _previewArea(ScannerState state) {
     final palette = context.palette;
     final controller = ref.read(scannerControllerProvider.notifier);
-    final scanning = state is ScannerScanning || state is ScannerLocating;
+    // A câmera segue aberta enquanto a posição e o pedido andam; o controller
+    // ignora novas leituras fora do estado `Scanning`.
+    final scanning =
+        state is ScannerScanning ||
+        state is ScannerLocating ||
+        state is ScannerSending;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.card),
@@ -96,6 +131,7 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
         style: text.titleMedium,
       ),
       ScannerLocating() => const _Busy(label: 'Lendo posição…'),
+      ScannerSending() => const _Busy(label: 'Verificando seu acesso…'),
       ScannerPermissionDenied(:final message) => _Feedback(
         tone: FeedbackTone.error,
         message: message,
@@ -108,16 +144,14 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
         action: 'Tentar novamente',
         onAction: controller.retry,
       ),
-      ScannerResult(:final qrValue, :final latitude, :final longitude) =>
-        _Feedback(
-          tone: FeedbackTone.success,
-          message:
-              'QR lido: $qrValue\n'
-              'Latitude: ${_coordinateFormat.format(latitude)} · '
-              'Longitude: ${_coordinateFormat.format(longitude)}',
-          action: 'Escanear outro',
-          onAction: controller.retry,
-        ),
+      ScannerSendFailed(:final message, :final retryable) => _Feedback(
+        tone: FeedbackTone.error,
+        message: message,
+        action: retryable ? 'Tentar novamente' : 'Escanear de novo',
+        onAction: retryable ? controller.retrySend : controller.retry,
+      ),
+      // O resultado ocupa a tela inteira e é tratado no `build`.
+      ScannerAccessResult() => const SizedBox.shrink(),
     };
   }
 }

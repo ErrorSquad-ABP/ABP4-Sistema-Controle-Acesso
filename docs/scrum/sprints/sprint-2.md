@@ -55,7 +55,7 @@ Cards puxados na Planning 2. Pontos ficam "—" enquanto a estimativa colaborati
 | US-26 | Comando de abertura do servo via MQTT | João | — | Concluído (herdado da US-08) |
 | US-27 | Login real + sessão | Felipe | — | Concluído (#43) |
 | US-28 | Minhas autorizações no app | — | — | **Não entregue — S3** (API pronta desde a US-18) |
-| US-29 | Scanner QR + resultado no app | Leo | — | **Em review — S3** (PR #55 aberto, não integrado; falta câmera/GPS reais) |
+| US-29 | Scanner QR + resultado no app | Leo | — | **Em review — S3** (PR #55 aberto, não integrado; falta câmera/GPS reais; evidência [`us-29.md`](../../entrega/evidencias/us-29.md)) |
 | US-37 | Worker MQTT persistente no Render | João | — | Concluído no Trello (#26); implementação presente, deploy não comprovado |
 
 **US-20 (fora da tabela porque não foi puxada na Planning 2)**: antecipada e declarada concluída em 28/10 pelo PR #42 — `/access-events/qr` decide e registra o evento. O teto de 100 m passou a ser imposto pela DT-23, mergeada e implantada em 10/11 com CHECK de 1–100 m no banco.

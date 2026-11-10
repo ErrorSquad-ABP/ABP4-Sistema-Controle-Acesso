@@ -90,9 +90,12 @@ class GeolocatorLocationGateway implements LocationGateway {
           timeLimit: Duration(seconds: 10),
         ),
       );
+      // O contrato aceita só precisão finita e não negativa.
+      final accuracy = position.accuracy;
       return GeoCoordinate(
         latitude: position.latitude,
         longitude: position.longitude,
+        accuracyMeters: accuracy.isFinite && accuracy >= 0 ? accuracy : null,
       );
     } on TimeoutException {
       throw const LocationFailure(LocationFailureReason.timeout);
