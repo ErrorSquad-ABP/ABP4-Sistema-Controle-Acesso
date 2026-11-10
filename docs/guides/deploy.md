@@ -30,8 +30,16 @@ Ninguém precisa colar credenciais no repositório nem no chat. Cada item abaixo
 ### 2) Vercel
 
 1. **New Project** → importe o repositório → **Root Directory: `backend`** → **Application Preset: Express** (não use "Container").
-2. Em **Settings → Environment Variables** (ambiente **Production**): `DATABASE_URL` (a string do Neon), `JWT_SECRET` (32+ caracteres aleatórios), `QR_TOKEN_SECRET` (saída de `openssl rand -hex 32`), `TRUST_PROXY=1`, `NODE_ENV=production` e `LOG_LEVEL=info`.
+2. Em **Settings → Environment Variables** (ambiente **Production**): `DATABASE_URL` (a string do Neon), `JWT_SECRET` (32+ caracteres aleatórios), `QR_TOKEN_SECRET` (saída de `openssl rand -hex 32`), `TRUST_PROXY=1`, `NODE_ENV=production` e `LOG_LEVEL=info`. Para o app web chamar a API de outra origem, acrescente `CORS_ALLOWED_ORIGINS` (origens exatas separadas por vírgula, ex.: `https://<demo-web>.vercel.app`); sem ela o CORS fica desligado, e o app Android não precisa dela. Detalhes em [`docs/api/README.md`](../api/README.md#cors).
    Configure o mesmo `QR_TOKEN_SECRET` no serviço MQTT/worker: ambos precisam assinar e validar com a mesma chave. Não use um valor de exemplo nem compartilhe a chave em logs.
+
+   > **Um `CORS_ALLOWED_ORIGINS` inválido derruba a API inteira.** O boot da função falha se algum item estiver fora do formato (o erro mais comum é a barra final, `https://x.vercel.app/`): `/health`, o login e o app Android deixam de responder, e o smoke test do CD fica vermelho sem desfazer o deploy. Antes de salvar a variável na Vercel, valide a lista no `backend/` (sai `ok: …` com código 0, ou os itens recusados com código 1):
+   >
+   > ```bash
+   > CORS_ALLOWED_ORIGINS='https://<demo-web>.vercel.app' npx tsx -e "import('./src/main/config/cors-origins.ts').then(m => { const r = m.parseCorsOrigins(process.env.CORS_ALLOWED_ORIGINS ?? ''); console.log(r.errors.length ? r.errors.join('\n') : 'ok: ' + (r.origins.join(', ') || '(vazio: CORS desligado)')); process.exit(r.errors.length ? 1 : 0) })"
+   > ```
+   >
+   > Se um deploy já subiu com a variável errada, corrija-a e refaça o deploy, ou use o [Rollback](#rollback).
 3. Em **Settings → Git**, desconecte o repositório (ou desligue os deploys automáticos): o CD é o `cd-backend.yml`.
 4. Anote o **Project ID** (Settings → General) e o **Team/Org ID** (Settings do time).
 5. Gere um token em [vercel.com/account/tokens](https://vercel.com/account/tokens).

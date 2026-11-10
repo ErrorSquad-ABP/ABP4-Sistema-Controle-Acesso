@@ -10,6 +10,7 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 |---|---|---|---|
 | [`dt-01-02-03.md`](evidencias/dt-01-02-03.md) | DT-01 · DT-02 · DT-03 | decisão real no worker, dedup persistente e mapeamento terminal→local, integrados sobre a `main` | #32 (origem no #31) |
 | [`dt-10-build-android-ci.md`](evidencias/dt-10-build-android-ci.md) | DT-10 | APK Android gerado, conferido e instalado no CI mobile | #35 |
+| [`dt-08.md`](evidencias/dt-08.md) | DT-08 | CORS por allowlist exata (`CORS_ALLOWED_ORIGINS`), preflight `204` e origens documentadas; produção e navegador real pendentes | — |
 | [`dt-13.md`](evidencias/dt-13.md) | DT-13 | outbox de comando (`publishedAt`) com relay independente do terminal | #37 |
 | [`dt-14.md`](evidencias/dt-14.md) | DT-14 | orçamento de conexões por pool e medição da rajada concorrente | #44 |
 | [`dt-15.md`](evidencias/dt-15.md) | DT-15 | retenção de 24 h da deduplicação com expurgo em lotes e resultado no `/healthz` | #48 |
