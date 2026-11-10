@@ -32,7 +32,7 @@ flowchart LR
 **Ambientes**:
 
 - **Dev**: broker Mosquitto local (porta `1884` no host, `1883` interna do container; sem TLS) e Postgres do compose — ver [`../guides/como-rodar.md`](../guides/como-rodar.md).
-- **Prod**: EMQX Cloud Serverless (MQTT sobre TLS, com credenciais; substituiu o HiveMQ Cloud, encerrado), Postgres no Neon, API no Vercel e processo MQTT no Render (mergeado, deploy não observado). O terminal ESP32 fala TLS com o broker quando compilado com `MQTT_USE_TLS 1` (DT-06); o handshake com o broker real foi validado por um cliente Node, e a conexão do ESP32 ainda não foi observada ([`evidencias/dt-06.md`](../entrega/evidencias/dt-06.md)).
+- **Prod**: EMQX Cloud Serverless (MQTT sobre TLS, com credenciais; substituiu o HiveMQ Cloud, encerrado), Postgres no Neon, API no Vercel e processo MQTT no Render (mergeado, deploy não observado). O terminal ESP32 fala TLS com o broker quando compilado com `MQTT_USE_TLS 1` (DT-06); conexão e negativos de certificado foram observados no ESP32 em 06/11/2026, mas servo e ACK continuam pendentes. A reconexão só inicia com a porta em `idle` ([`evidencias/dt-06.md`](../entrega/evidencias/dt-06.md)).
 
 ## Fluxo de acesso via QR
 

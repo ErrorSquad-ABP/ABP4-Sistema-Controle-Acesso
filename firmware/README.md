@@ -178,9 +178,11 @@ Wokwi). Em produção o terminal fala TLS com o broker EMQX Cloud Serverless:
 5. Certificado recusado, hostname diferente ou handshake lento: a conexão falha, o
    transporte é liberado, a serial informa o motivo do TLS e a retentativa segue
    `MQTT_RETRY_MS`. Sem conexão não há inscrição: nenhum comando chega e a porta não abre.
-6. O handshake **bloqueia o `loop()`** (servo, display e feedback) até
-   `MQTT_HANDSHAKE_TIMEOUT_SECONDS` (5 s; no core 2.x o valor é em segundos). Ao
-   conectar, a serial mostra `[mqtt] tls ok em <N> ms, heap livre <M> B`.
+6. O handshake **bloqueia o `loop()`** até `MQTT_HANDSHAKE_TIMEOUT_SECONDS`
+   (5 s; no core 2.x o valor é em segundos), mas só inicia com a porta em `idle`.
+   A porta é atualizada antes da rede; abertura, espera aberta e fechamento adiam
+   a reconexão. Uma conexão viva continua atendida. Ao conectar, a serial mostra
+   `[mqtt] tls ok em <N> ms, heap livre <M> B`.
 
 A porta 8883 é convenção: a regra é "CA obrigatório". Com `MQTT_USE_TLS 1` e um
 `mqtt_ca.h` sem PEM, a compilação falha (`static_assert`).
@@ -191,8 +193,8 @@ A porta 8883 é convenção: a regra é "CA obrigatório". Com `MQTT_USE_TLS 1` 
 - MQTT falhando: confira Docker, porta `1884`, gateway e host. No hardware
   físico, use o IP local do computador, não `localhost` nem `host.wokwi.internal`.
 - TLS: `tls aguardando hora` = SNTP sem resposta; `estado=-2` com `tls=-9984 X509 -
-  Certificate verification failed` (código esperado do mbedTLS, ainda não observado no
-  hardware) = CA errado ou hostname diferente do certificado; `tls=-1`/timeout = rede ou handshake acima do teto.
+  Certificate verification failed` (observado no ESP32 em 06/11/2026) = CA errado
+  ou hostname diferente do certificado; `tls=-1`/timeout = rede ou handshake acima do teto.
 - ACK `rejected` com `clock_unsynced`: o SNTP não respondeu. O firmware **não
   abre** sem hora confiável; verifique a saída para a internet do simulador ou o
   servidor configurado em `NTP_SERVER_PRIMARY`.
@@ -220,6 +222,7 @@ Os testes host rodam sem Arduino, com tempo e periféricos simulados:
 | `test_mqtt` | módulo MQTT real com doubles: offline, retentativas, inscrição, reconexão |
 | `test_mqtt_command` | JSON v1 de ponta a ponta: ACK publicado, dedup, prazo, `deny`, recusas e QR |
 | `test_mqtt_tls` | TLS (DT-06): CA configurado, sem `setInsecure`, sem conexão sem hora confiável, certificado recusado libera o transporte e não inscreve (compilar com `-DMQTT_USE_TLS=1`) |
+| `test_mqtt_door_timing` | `main` + MQTT + porta reais; queda nas três fases não inicia reconexão antes da parada do servo (TLS desligado e ligado) |
 
 Linux/CI, a partir de `firmware/`:
 
@@ -240,6 +243,10 @@ JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
 g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt && /tmp/t-mqtt
 g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_command.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt-command && /tmp/t-mqtt-command
 g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=1 -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_tls.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt-tls && /tmp/t-mqtt-tls
+for tls in 0 1; do
+  g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=$tls -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_door_timing.cpp src/main.cpp src/modules/mqtt.cpp src/modules/door.cpp -o /tmp/t-mqtt-door
+  for phase in opening open closing; do /tmp/t-mqtt-door "$phase"; done
+done
 ```
 
 No Windows, um compilador C++ host instalado (g++/Clang) ou
@@ -261,8 +268,9 @@ conexão do simulador ao broker nem o movimento real do servo.
 
 ## Limites desta história
 
-- O TLS (DT-06) está coberto por teste host e build; a conexão real do ESP32 ao broker e o
-  teste de certificado inválido no hardware ou Wokwi estão pendentes
+- O TLS (DT-06) foi validado no ESP32 contra o EMQX em 06/11/2026 (conexão e
+  negativos de CA/hostname). O servo não girou nessa bancada e o ACK não foi
+  observado; a correção de timing da reconexão foi validada só em host/build
   ([`evidencias/dt-06.md`](../docs/entrega/evidencias/dt-06.md)). Sem mTLS nem
   rotação automática de CA.
 - Heartbeat/LWT (`terminals/{id}/status`) e eventos de acesso continuam

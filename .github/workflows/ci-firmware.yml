@@ -88,6 +88,16 @@ jobs:
           g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=1 -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_tls.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-tls"
           "$RUNNER_TEMP/abp4-test-mqtt-tls"
 
+      - name: Testes host (reconexao durante ciclo da porta)
+        run: |
+          JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
+          for tls in 0 1; do
+            g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=$tls -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_door_timing.cpp src/main.cpp src/modules/mqtt.cpp src/modules/door.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-door"
+            for phase in opening open closing; do
+              "$RUNNER_TEMP/abp4-test-mqtt-door" "$phase"
+            done
+          done
+
       # setInsecure() aceita qualquer certificado: nao pode existir no firmware.
       - name: Proibir setInsecure no firmware
         run: |

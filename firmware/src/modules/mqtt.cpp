@@ -213,7 +213,7 @@ void begin() {
   if (wifiRetry.ready(millis())) startWiFi();
 }
 
-void update() {
+void update(bool allowReconnect) {
   const uint32_t now = millis();
   if (WiFi.status() != WL_CONNECTED) {
     client.disconnect();
@@ -226,6 +226,7 @@ void update() {
   }
 
   if (!client.connected()) {
+    if (!allowReconnect) return;
 #if MQTT_USE_TLS
     // Sem hora UTC confiavel todo certificado parece vencido ou ainda invalido:
     // esperar o SNTP sem gastar tentativa nem segurar o loop num handshake inutil.
