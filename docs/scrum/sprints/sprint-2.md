@@ -2,6 +2,7 @@
 
 - **Planning 2**: início da sprint · **Review 2**: 11/11 19h30 · **Retro**: logo após a review (30 min)
 - **Foco macro**: fluxo QR real ponta-a-ponta + admin + deploy + design admin/terminal
+- **Fechamento do trabalho: 10/11/2026** · commit de referência `1afd624` · **11/13 histórias da S2** concluídas, com US-20/US-32/DT-23/DT-24 antecipadas da S3
 
 ## Escopo previsto
 
@@ -53,15 +54,15 @@ Cards puxados na Planning 2. Pontos ficam "—" enquanto a estimativa colaborati
 | US-22 | Display: render do QR + status | João | — | Concluído no Trello (#26); código presente, demonstração visual pendente |
 | US-26 | Comando de abertura do servo via MQTT | João | — | Concluído (herdado da US-08) |
 | US-27 | Login real + sessão | Felipe | — | Concluído (#43) |
-| US-28 | Minhas autorizações no app | — | — | Pendente |
-| US-29 | Scanner QR + resultado no app | — | — | Pendente |
+| US-28 | Minhas autorizações no app | — | — | **Não entregue — S3** (API pronta desde a US-18) |
+| US-29 | Scanner QR + resultado no app | Leo | — | **Em review — S3** (PR #55 aberto, não integrado; falta câmera/GPS reais) |
 | US-37 | Worker MQTT persistente no Render | João | — | Concluído no Trello (#26); implementação presente, deploy não comprovado |
 
-**US-20 (fora da tabela porque não foi puxada na Planning 2)**: antecipada e declarada concluída em 28/10 pelo PR #42 — `/access-events/qr` decide e registra o evento. A configuração testada usa 100 m; a política não impõe esse teto para raios maiores (ressalva da auditoria de 02/11).
+**US-20 (fora da tabela porque não foi puxada na Planning 2)**: antecipada e declarada concluída em 28/10 pelo PR #42 — `/access-events/qr` decide e registra o evento. O teto de 100 m passou a ser imposto pela DT-23, mergeada e implantada em 10/11 com CHECK de 1–100 m no banco.
 
-**Snapshot em 02/11/2026, board reconferido em 08/11/2026 — sprint ainda em curso:** das 13 stories da tabela, 11 estão em Concluído no Trello, incluindo o corte de consulta da US-21; **US-28** e **US-29** continuam abertas. Não chamar de fechamento nem contar US-22/37 como aceites integralmente comprovados: faltam demonstração visual/deploy. US-14 tem corte de refresh/logout refletido na descrição desde 08/11. A auditoria também encontrou ausência de teto absoluto de 100 m na US-20, rastreada na DT-23.
+**Fechamento em 10/11/2026 — sprint encerrada:** das 13 histórias da tabela, **11 estão concluídas**; **US-28** (não iniciada) e **US-29** (PR #55 aberto em review, sem validação de câmera/GPS) passam para a S3. O board tem **48 cards concluídos de 63** (26 US + 22 DT), 1 em review, 2 em andamento, 10 na Sprint 3 (Product Backlog vazio) e 2 bloqueados (DT-12 e DT-22). Não contar US-22/37 como aceites integralmente comprovados: faltam demonstração visual e deploy no Render. A sprint também absorveu **22 das 24 dívidas técnicas** e antecipou **US-20, US-32, DT-23 e DT-24**.
 
-Em 08/11, a lista **Sprint 2** do Trello tem **US-24**; **US-23, US-25, US-29, DT-06 e DT-08** estão em Em andamento; US-28 está no Product Backlog. US-20 e US-32 foram antecipadas do plano S3. Isso descreve o quadro, sem inventar nova Planning, compromisso ou transferência de US-28/29 para S3. O planejamento detalhado de donos/pontos acima não foi revalidado. Conferência em [`../../entrega/auditoria-estado-atual.md`](../../entrega/auditoria-estado-atual.md).
+**Board em 10/11:** a lista Sprint 2 está vazia (sprint encerrada); **US-29** está em Em review; **US-23** e **US-25** em Em andamento; **US-24, US-28, US-30, US-31, US-33, US-34, US-35, US-36, US-38 e US-39** na **Sprint 3**; **DT-12** e **DT-22** em Bloqueado. O Product Backlog está vazio. Isso descreve o quadro, sem inventar transferência de escopo: US-28/29 foram explicitamente declaradas carry-over para a S3. Conferência em [`../../entrega/review-2.md`](../../entrega/review-2.md).
 
 **Corte da US-21 nesta sprint**: entrou só a fatia de **consulta** (`GET /me/access-events` e `GET /access-events`), entregue no PR #26. DT-03/04 e US-20 acrescentaram mapeamento, representação sem local e decisão/gravação. O backend já cobre NFC em simulação; a integração com o leitor real segue na US-23, hoje em Em andamento.
 
@@ -69,8 +70,23 @@ Em 08/11, a lista **Sprint 2** do Trello tem **US-24**; **US-23, US-25, US-29, D
 
 ## Burndown simples
 
-Total definido na Planning 2; pontos restantes preenchidos durante a sprint.
+A S2 não teve estimativa por pontos registrada; o acompanhamento foi por aceite, status no board e evidência. Totais do fechamento em [`../../entrega/review-2.md`](../../entrega/review-2.md).
 
 | Dia | Pontos restantes |
 |---|---|
-| 22/10 → 11/11 | — (preencher por dia na sprint) |
+| 22/10 → 11/11 | — (sem estimativa por pontos) |
+
+## Fechamento
+
+| Indicador | Resultado em 10/11 |
+|---|---|
+| Histórias da S2 | 11/13 · US-28 e US-29 para a S3 |
+| Antecipações da S3 | US-20, US-32, DT-23, DT-24 |
+| Cards no board | 48/63 concluídos (26 US + 22 DT) |
+| PRs mergeados | 28 (#26–#65) |
+| Backend | 458 testes em 53 arquivos (PostgreSQL + seed) |
+| Mobile (`main`) | 93 testes (a US-29 leva a 215 no PR #55) |
+| Firmware | 12 executáveis host + 6 cenários de timing; builds padrão/TLS |
+| Produção | `/health` `2dd532b`, `database: ok`; CHECK de 1–100 m aplicada |
+
+Documento da cerimônia: [`sprint-2-review.md`](sprint-2-review.md) · retro: [`sprint-2-retro.md`](sprint-2-retro.md) · entrega: [`../../entrega/review-2.md`](../../entrega/review-2.md).
