@@ -11,7 +11,7 @@ using Actuator = terminal_command::Handler::Actuator;
 using Clock = uint64_t (*)();
 
 void begin();
-void update();
+void update(bool allowReconnect = true);
 bool connected();
 
 /** Ultimo QR valido recebido do backend (o display decide se ainda esta visivel). */

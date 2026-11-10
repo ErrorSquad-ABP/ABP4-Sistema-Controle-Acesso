@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TERMINAL_ID_PATTERN } from '../../shared/terminal-id.js';
 import { LOG_LEVELS } from '../../shared/logger.js';
+import { parseCorsOrigins } from './cors-origins.js';
 
 /** String opcional: vazia conta como ausente (`VAR=` no .env). */
 const optionalString = z
@@ -62,6 +63,19 @@ const envSchema = z.object({
    * confiar no X-Forwarded-For deixaria o cliente escolher a chave do rate limit.
    */
   TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
+  /**
+   * Origens que o navegador pode usar para chamar a API (DT-08), separadas por virgula.
+   * Vazio = CORS desligado. Cada item e uma origem exata (https://app.exemplo.com);
+   * http:// so em localhost. Nao e autenticacao: o JWT continua exigido.
+   */
+  CORS_ALLOWED_ORIGINS: z
+    .string()
+    .default('')
+    .transform((raw, ctx) => {
+      const { origins, errors } = parseCorsOrigins(raw);
+      for (const message of errors) ctx.addIssue({ code: 'custom', message });
+      return origins;
+    }),
   /**
    * Intervalo do relay da outbox de comandos (DT-13). A consulta e leve e o comando
    * vale 10 s: 5 s deixa duas tentativas dentro do prazo sem manter o Neon acordado

@@ -59,10 +59,44 @@ describe('DT-03: decisao pelo local resolvido do terminal', () => {
     expect(fora.distanceMeters).toBeGreaterThan(140);
     expect(fora.distanceMeters).toBeLessThan(160);
 
-    // Raio vem do local mapeado, nao de uma constante da politica.
     const raioMenor = { ...terminal, location: { ...terminal.location, radiusMeters: 40 } };
     expect(decideAccess({ ...context, terminal: raioMenor, method: 'QR', position: { latitude: -22.999551, longitude: -45 } }))
       .toMatchObject({ action: 'deny', reason: 'OUT_OF_RANGE' });
+  });
+
+  it.each([
+    [200, -22.998652, 'deny'],
+    [200, -22.999551, 'open'],
+    [40, -22.999551, 'deny'],
+    [0, -23, 'deny'],
+    [-1, -23, 'deny'],
+    [Number.NaN, -23, 'deny'],
+    [Number.POSITIVE_INFINITY, -23, 'deny'],
+  ] as const)('DT-23: raio %s com latitude %s resulta em %s', (radiusMeters, latitude, action) => {
+    const result = decideAccess({
+      ...context,
+      terminal: { ...terminal, location: { ...terminal.location, radiusMeters } },
+      method: 'QR',
+      position: { latitude, longitude: -45 },
+    });
+    expect(result).toMatchObject(action === 'open'
+      ? { action: 'open', authorizationId: authorization.id }
+      : { action: 'deny', reason: 'OUT_OF_RANGE', authorizationId: null });
+  });
+
+  it.each([
+    [0.0008992316737581388, 'open'],
+    [0.0008993216059187306, 'open'],
+    [0.0008994115380793226, 'deny'],
+  ] as const)('DT-23: borda de 100 m na latitude %s resulta em %s', (latitude, action) => {
+    const result = decideAccess({
+      ...context,
+      terminal: { ...terminal, location: { ...terminal.location, latitude: 0, longitude: 0 } },
+      method: 'QR',
+      position: { latitude, longitude: 0 },
+    });
+    expect(result.action).toBe(action);
+    if (action === 'deny') expect(result.reason).toBe('OUT_OF_RANGE');
   });
 
   it('prefere autorizacao utilizavel quando outra esta cancelada', () => {

@@ -27,6 +27,8 @@ export interface PolicyDecision {
   authorizationId: string | null; distanceMeters: number | null;
 }
 
+const MAX_QR_DISTANCE_METERS = 100;
+
 export function decideAccess(ctx: AccessPolicyContext): PolicyDecision {
   let distanceMeters: number | null = null;
   const deny = (reason: DenialReason): PolicyDecision => ({ action: 'deny', reason, authorizationId: null, distanceMeters });
@@ -37,14 +39,14 @@ export function decideAccess(ctx: AccessPolicyContext): PolicyDecision {
   if (!ctx.credentialValid || !ctx.user) return deny('INVALID_CREDENTIAL');
   if (!ctx.user.active) return deny('USER_INACTIVE');
   if (ctx.method === 'QR') {
-    if (!ctx.position) return deny('OUT_OF_RANGE');
+    if (!ctx.position || !Number.isFinite(location.radiusMeters) || location.radiusMeters <= 0) return deny('OUT_OF_RANGE');
     const rad = (v: number) => v * Math.PI / 180;
     const dLat = rad(ctx.position.latitude - location.latitude);
     const dLon = rad(ctx.position.longitude - location.longitude);
     const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(location.latitude)) *
       Math.cos(rad(ctx.position.latitude)) * Math.sin(dLon / 2) ** 2;
     distanceMeters = 6_371_000 * 2 * Math.asin(Math.sqrt(Math.min(1, a)));
-    if (distanceMeters > location.radiusMeters) return deny('OUT_OF_RANGE');
+    if (distanceMeters > Math.min(location.radiusMeters, MAX_QR_DISTANCE_METERS)) return deny('OUT_OF_RANGE');
   }
   const authorizations = ctx.authorizations.filter((a) => a.locationId === location.id && a.userId === ctx.user?.id);
   if (authorizations.length === 0) return deny('NO_AUTHORIZATION');

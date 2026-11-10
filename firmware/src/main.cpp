@@ -41,8 +41,8 @@ void setup() {
 }
 
 void loop() {
-  terminal_mqtt::update();
   terminal_door::update();
+  terminal_mqtt::update(terminal_door::state() == door_machine::State::idle);
   terminal_feedback::update();
   const uint64_t now = clock_time::nowEpoch();
   terminal_display::showQr(terminal_mqtt::qr(), now, clock_policy::reliable(now));

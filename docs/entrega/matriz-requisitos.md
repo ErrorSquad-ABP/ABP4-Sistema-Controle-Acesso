@@ -20,7 +20,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | RF10 | Leitura de NFC pelo terminal | **Não atendido** | `firmware/src/modules/nfc.cpp` é esqueleto ("leitura desabilitada"); US-23 está em Em andamento (plano original S3) |
 | RF11 | Terminal com processamento, rede, tela, NFC, sinalização, GPS e abertura | Parcial | Tela, servo, LED, buzzer e MQTT (US-07/08/22); `gps.cpp` e `nfc.cpp` são esqueletos; GPS é US-24 (S3) |
 | RF12 | QR gerado no backend e trocado a cada 10 s | Atendido | Backend gera e rotaciona a cada 10 s (US-19, #27) e o worker publica no timer (US-22, #26). A entrega/exibição no TFT depende de presença/status do terminal (US-24, RF11), que é outra lacuna |
-| RF13 | Validação QR: autenticidade, validade, local, situação, usos e geofence de 100 m | Parcial | Decisão implementada (DT-01/02/03 #32; US-20 #42), mas usa `location.radiusMeters`, default 100, **sem teto absoluto**: auditoria autorizou ~149,89 m com raio 200 (correção na DT-23). O app já chama o endpoint (US-29), com resultado liberado/negado por motivo, conferido contra o backend real (liberado, fora do alcance, QR vencido, assinatura falsa, terminal desconhecido); a abertura física pelo terminal depende do hardware (US-34) |
+| RF13 | Validação QR: autenticidade, validade, local, situação, usos e geofence de 100 m | Parcial | Decisão implementada (DT-01/02/03 #32; US-20 #42); DT-23 impõe teto de 100 m na política e CHECK de 1–100 m no banco, **implantada em 10/11** ([evidência](evidencias/dt-23.md)). Falta o app enviar a leitura (RF09/US-29) |
 | RF14 | Validação NFC pelo backend | Parcial | `DecideAccessUseCase` resolve UID/local, valida credencial/autorização e registra decisão; cenário NFC no E2E simulado. Falta o leitor/publicação real do terminal (US-23); não é ausência de regra NFC no backend |
 | RF15 | Liberação do acesso (mecanismo físico ou simulado) | Atendido | Comando `open` via MQTT aciona o servo (US-08 #19, US-26) |
 | RF16 | Negação com indicação visual/sonora | Atendido | Feedback `deny` no firmware (LED/buzzer/LCD) |
@@ -31,7 +31,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | ID | Requisito | Status | Evidência / lacuna |
 |---|---|---|---|
 | RNF01 | Dispositivo IoT + backend Node/TS + API REST + app móvel | Atendido | Monorepo `firmware/`, `backend/`, `mobile/` |
-| RNF02 | Autenticação, proteção de dados e comunicação segura | Parcial | JWT, rate limit, HTTPS na Vercel, Keystore no app, broker de produção com TLS; **firmware sem TLS** (DT-06) |
+| RNF02 | Autenticação, proteção de dados e comunicação segura | Parcial | JWT, rate limit, HTTPS na Vercel, Keystore no app, broker de produção com TLS; firmware com TLS e validação de certificado (DT-06, `MQTT_USE_TLS 1`), comprovado em teste host, build e no ESP32 real contra o EMQX (conexão, CA errado e host por IP recusados, 06/11/2026) ([`dt-06.md`](evidencias/dt-06.md)) |
 | RNF03 | Funcionamento com retry/persistência sob falha de conexão | Parcial | Outbox de comandos com retry (DT-13, #37); resiliência do firmware (US-25, alvo S3) em andamento |
 | RNF04 | Interface simples, acessível ao público idoso | Parcial | Fonte 2x sem estouro e rótulos acessíveis (US-27, #43); telas de admin com acessibilidade são US-31 (S3) |
 | RNF05 | Modularidade e separação de responsabilidades | Atendido | Clean Architecture com regra de camadas verificada no lint (`backend/src/{domain,application,infrastructure,main}`) |
@@ -67,12 +67,12 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 3. **RF02**: cadastro de local não existe em API nem tela.
 4. **RF10/RF11/RF14**: NFC e GPS do terminal (US-23 em Em andamento; US-24 na lista Sprint 2). Backend NFC já existe para simulação.
 5. **RF17**: registrar tentativa NFC depende de US-23.
-6. **RNF02**: TLS no firmware (DT-06) para falar com o broker de produção.
+6. **RNF02**: o TLS do firmware (DT-06) foi validado no ESP32 real contra o EMQX, com os testes negativos de certificado; pendentes o servo (`LEDC is not initialized`) e a observação do ACK ([`evidencias/dt-06.md`](evidencias/dt-06.md)).
 7. **RNF07**: estratégia e orçamento documentados em [`evidencias/dt-22.md`](evidencias/dt-22.md); falta medir corrente no hardware (US-34).
 8. **RF03**: confirmar com o professor/PO se "horário inicial/final" exige janela diária dentro do período — hoje é um intervalo contínuo.
-9. **RF13**: impor teto de 100 m na regra/configuração; o default no schema não impede autorização além do limite quando o raio é maior. Correção rastreada na DT-23.
+9. **RF13**: teto de 100 m implantado em produção em 10/11 (#56): migration aplicada, CHECK de 1–100 m confirmada e pré-check sem cadastros inválidos. Falta a US-39 validar o intervalo no cadastro.
 
-Pendências transversais: DT-11 em Concluído sem pinagem completa por SHA/Dependabot (correção na DT-24); deploy Render da US-37 não comprovado; demonstração visual do QR da US-22 e câmera real da US-10/DT-12 ainda pendentes. API respondeu com banco ok em 02/11 (versão `6b6aa26`), após uma primeira resposta 503; não é prova de operação contínua nem de fluxo físico completo.
+Pendências transversais: DT-11 fechada pela DT-24, com pinagem por SHA e Dependabot integrados em 10/11 (#56) ([evidência](evidencias/dt-24.md)); deploy Render da US-37 não comprovado; demonstração visual do QR da US-22 e câmera real da US-10/DT-12 ainda pendentes. API respondeu com banco ok em 02/11 (versão `6b6aa26`), após uma primeira resposta 503; não é prova de operação contínua nem de fluxo físico completo.
 
 ## Leitura do edital sobre "admin"
 

@@ -1044,7 +1044,7 @@ components:
         - OUT_OF_RANGE
         - UNKNOWN_TERMINAL
         - TERMINAL_INACTIVE
-      description: "Motivo da negativa. CREDENTIAL_EXPIRED: QR fora da validade de 10 s · OUT_OF_RANGE: mais de 100 m do terminal"
+      description: "Motivo da negativa. CREDENTIAL_EXPIRED: QR fora da validade de 10 s · OUT_OF_RANGE: fora do raio do local (no maximo 100 m)"
     ErrorBody:
       type: object
       properties:
