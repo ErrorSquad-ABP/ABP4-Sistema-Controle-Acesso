@@ -261,6 +261,33 @@ Descobertas por sprint. Títulos, épico e sprint alvo conforme previsto; o refi
 **US-37**: publica no Render o processo MQTT local da US-04, sem recriar a integração.
 **US-38**: além do build web, troca os ícones padrão do Flutter (web e Android) por uma identidade única, com o nome público "Controle de Acesso".
 
+### US-23 · NFC RC522 + feedback de decisão — refinamento S3
+
+**Épico**: E3 · **Sprint alvo**: S3 · **Pontos**: a estimar pelo time.
+
+**Narrativa**: Como usuário do terminal, quero aproximar minha tag NFC e receber
+feedback visual e sonoro da decisão do backend, para saber se meu acesso foi
+liberado ou negado sem que o terminal autorize uma tag por conta própria.
+
+**Critérios de aceite** (negação/liberação reais registradas nas evidências;
+checklist final depende da revisão e do aceite do time):
+
+- [ ] RC522 lê UID de 4/7/10 bytes na pinagem da montagem de 07/11/2026.
+- [ ] Tentativa v1 chega ao backend via MQTT QoS 1, sem retain, com UUID e UTC
+      confiável; não há publicação offline com timestamp inventado.
+- [ ] Mesma apresentação não gera avalanche; remoção por 500 ms rearma a tag.
+- [ ] Credencial autorizada recebe feedback verde/agudo e desconhecida/revogada
+      recebe vermelho/grave, somente após comando válido do backend.
+- [ ] Falta de leitor/rede/hora não concede acesso; comandos duplicados ou
+      vencidos não repetem atuação.
+- [ ] Builds dos perfis físico e TFT legado e testes automatizados passam.
+- [ ] Execução em hardware registrada no [roteiro US-23](../entrega/evidencias/us-23-nfc-rc522.md),
+      sem confundir build/simulação com prova física. Buzzer e servo só são
+      habilitados depois de confirmar compatibilidade e alimentação.
+
+O perfil físico usa OLED/LCD para status NFC, sem QR ilegível/truncado; a
+renderização QR da US-22 permanece no perfil TFT exclusivo do Wokwi.
+
 **Distribuição por épico** (cada story conta **uma vez**, pelo épico primário): E1 com 4 (3 na Sprint 1 + US-37) · E2 com 11 · E3 com 7 · E4 com 7 · E5 com 4 · E6 com 5 **(US-12 = E4/E6 compartilhada; contada em E6)** — **38 stories no total**, sendo 13 detalhadas na Sprint 1 e 25 futuras.
 
 ## Índice
