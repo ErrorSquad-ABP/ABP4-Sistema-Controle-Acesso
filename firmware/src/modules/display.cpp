@@ -1,4 +1,7 @@
 #include "display.h"
+#include "terminal_settings.h"
+
+#if TERMINAL_LEGACY_TFT
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
@@ -184,4 +187,4 @@ void update() {
 }
 
 }  // namespace terminal_display
-
+#endif

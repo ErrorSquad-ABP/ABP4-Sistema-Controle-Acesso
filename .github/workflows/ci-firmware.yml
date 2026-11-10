@@ -71,6 +71,15 @@ jobs:
           "$RUNNER_TEMP/abp4-test-display-qr"
           g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_clock_policy.cpp -o "$RUNNER_TEMP/abp4-test-clock"
           "$RUNNER_TEMP/abp4-test-clock"
+          g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_nfc_scan.cpp -o "$RUNNER_TEMP/abp4-test-nfc"
+          "$RUNNER_TEMP/abp4-test-nfc"
+          g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src tests/test_nfc.cpp src/modules/nfc.cpp -o "$RUNNER_TEMP/abp4-test-nfc-module"
+          "$RUNNER_TEMP/abp4-test-nfc-module"
+          "$RUNNER_TEMP/abp4-test-nfc-module" missing-reader
+          g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src tests/test_feedback_io.cpp src/modules/feedback.cpp -o "$RUNNER_TEMP/abp4-test-feedback-physical"
+          "$RUNNER_TEMP/abp4-test-feedback-physical"
+          g++ -std=c++11 -Wall -Wextra -Werror -D TERMINAL_LEGACY_TFT=1 -I tests/fakes -I include -I src tests/test_feedback_io.cpp src/modules/feedback.cpp -o "$RUNNER_TEMP/abp4-test-feedback-wokwi"
+          "$RUNNER_TEMP/abp4-test-feedback-wokwi"
 
       - name: Testes host (modulo MQTT com broker simulado)
         run: |
@@ -79,10 +88,12 @@ jobs:
           "$RUNNER_TEMP/abp4-test-mqtt"
           g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_command.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-command"
           "$RUNNER_TEMP/abp4-test-mqtt-command"
+          g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_nfc.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-nfc"
+          "$RUNNER_TEMP/abp4-test-mqtt-nfc"
 
       # config.h tem segredos (WiFi/broker) e nao e versionado; no CI compila com o exemplo.
       - name: Preparar config.h a partir do exemplo
         run: cp include/config.example.h include/config.h
 
       - name: Build
-        run: pio run
+        run: pio run -e esp32dev -e esp32dev-wokwi

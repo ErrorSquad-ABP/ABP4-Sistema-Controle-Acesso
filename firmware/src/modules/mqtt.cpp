@@ -2,18 +2,19 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <PubSubClient.h>
+#include <MQTTClient.h>
 #include <WiFi.h>
 
 #include "clock_policy.h"
 #include "iso8601.h"
+#include "nfc_scan.h"
 #include "retry_interval.h"
 #include "terminal_settings.h"
 
 namespace {
 
 WiFiClient transport;
-PubSubClient client(transport);
+MQTTClient client(512);
 RetryInterval wifiRetry(WIFI_RETRY_MS);
 RetryInterval mqttRetry(MQTT_RETRY_MS);
 
@@ -21,6 +22,13 @@ terminal_command::Handler handler;
 terminal_mqtt::Actuator actuator = nullptr;
 terminal_mqtt::Clock clockSource = nullptr;
 qr_token::State qrState;
+
+// Nao publicar QoS 1 de dentro do callback: a espera pelo PUBACK pode
+// reentrar no cliente. Guardar comandos e processar fora de client.loop().
+char commandQueue[8][513] = {};
+unsigned int commandLengths[8] = {};
+uint8_t queueHead = 0;
+uint8_t queueCount = 0;
 
 // Antes disto o SNTP nao respondeu: sem hora confiavel nao da para aprovar um
 // prazo, entao o comando e recusado (fail-closed) em vez de aberto.
@@ -83,8 +91,8 @@ void publishAck(const terminal_command::Ack& ack) {
     Serial.println("[mqtt] ack excedeu o buffer; descartado");
     return;
   }
-  if (!client.publish(terminal_settings::acksTopic, reinterpret_cast<const uint8_t*>(payload),
-                      static_cast<unsigned int>(length), false)) {
+  if (!client.publish(terminal_settings::acksTopic, payload,
+                      static_cast<int>(length), false, 1)) {
     Serial.println("[mqtt] falha ao publicar ack");
   }
 }
@@ -156,12 +164,21 @@ void readQr(const uint8_t* payload, unsigned int length) {
                 static_cast<unsigned long long>(expiresAt));
 }
 
-void onMessage(char* topic, uint8_t* payload, unsigned int length) {
+void onMessage(MQTTClient*, char* topic, char* payload, int length) {
+  if (length <= 0 || length > static_cast<int>(kPayloadCapacity)) return;
   if (strcmp(topic, terminal_settings::commandsTopic) == 0) {
-    readCommand(payload, length);
+    if (queueCount == 8) {
+      Serial.println("[mqtt] fila de comandos cheia; comando descartado");
+      return;
+    }
+    const uint8_t slot = (queueHead + queueCount) % 8;
+    memcpy(commandQueue[slot], payload, length);
+    commandLengths[slot] = static_cast<unsigned int>(length);
+    ++queueCount;
     return;
   }
-  if (strcmp(topic, terminal_settings::qrTopic) == 0) readQr(payload, length);
+  if (strcmp(topic, terminal_settings::qrTopic) == 0)
+    readQr(reinterpret_cast<const uint8_t*>(payload), static_cast<unsigned int>(length));
 }
 
 void startWiFi() {
@@ -186,10 +203,9 @@ void begin() {
   WiFi.setAutoReconnect(false);  // Uma unica politica de retentativas, abaixo.
   // Arduino-ESP32 2.x: setTimeout recebe segundos e tambem limita connect().
   transport.setTimeout(MQTT_TCP_TIMEOUT_SECONDS);
-  client.setServer(MQTT_HOST, MQTT_PORT);
-  client.setSocketTimeout(MQTT_SOCKET_TIMEOUT_SECONDS);
-  client.setBufferSize(kPayloadCapacity);
-  client.setCallback(onMessage);
+  client.begin(MQTT_HOST, MQTT_PORT, transport);
+  client.setTimeout(MQTT_SOCKET_TIMEOUT_SECONDS * 1000);
+  client.onMessageAdvanced(onMessage);
   handler.configure(terminal_settings::id, actuator);
   if (wifiRetry.ready(millis())) startWiFi();
 }
@@ -215,7 +231,7 @@ void update() {
         : client.connect(terminal_settings::id, MQTT_USERNAME, MQTT_PASSWORD);
     if (!established) {
       Serial.printf("[mqtt] conexao falhou (estado=%d); nova tentativa depois\n",
-                    client.state());
+                    static_cast<int>(client.lastError()));
       return;
     }
     if (!client.subscribe(terminal_settings::commandsTopic, 1) ||
@@ -225,10 +241,19 @@ void update() {
       transport.stop();
       return;
     }
-    // subscribe() confirma o envio; o broker dev precisa aceitar a inscricao.
+    // MQTTClient espera SUBACK; so anunciamos conectado apos as inscricoes.
     Serial.println("[mqtt] conectado e inscrito nos comandos");
   }
   client.loop();
+  if (queueCount != 0) {
+    // Retirar antes de publicar ACK: publicacoes podem receber novos comandos.
+    char payload[513];
+    const unsigned int length = commandLengths[queueHead];
+    memcpy(payload, commandQueue[queueHead], length);
+    queueHead = (queueHead + 1) % 8;
+    --queueCount;
+    readCommand(reinterpret_cast<const uint8_t*>(payload), length);
+  }
 }
 
 bool connected() {
@@ -236,5 +261,27 @@ bool connected() {
 }
 
 qr_token::State qr() { return qrState; }
+
+bool publishNfc(const char* uid) {
+  const uint64_t now = clockNow();
+  if (!connected() || !clock_policy::reliable(now) || !nfc_scan::validUid(uid)) return false;
+  char messageId[37];
+  char timestamp[32] = {};
+  makeMessageId(messageId, sizeof messageId);
+  iso8601::fromEpoch(now, timestamp, sizeof timestamp);
+  JsonDocument document;
+  document["v"] = 1;
+  document["messageId"] = messageId;
+  document["terminalId"] = terminal_settings::id;
+  document["timestamp"] = timestamp;
+  document["type"] = "nfc_read";
+  document["uid"] = uid;
+  char payload[320];
+  const size_t length = serializeJson(document, payload, sizeof payload);
+  if (length == 0 || length >= sizeof payload) return false;
+  // Sem retain, sem fila offline ou renovacao artificial do timestamp (US-25).
+  return client.publish(terminal_settings::accessEventsTopic, payload,
+                        static_cast<int>(length), false, 1);
+}
 
 }  // namespace terminal_mqtt

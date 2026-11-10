@@ -13,6 +13,8 @@ using Clock = uint64_t (*)();
 void begin();
 void update();
 bool connected();
+// Confirma PUBACK (QoS 1); nunca decide acesso nem publica sem UTC confiavel.
+bool publishNfc(const char* uid);
 
 /** Ultimo QR valido recebido do backend (o display decide se ainda esta visivel). */
 qr_token::State qr();

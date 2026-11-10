@@ -4,6 +4,7 @@
 
 #include "WiFi.h"
 
+class MQTTClient;
 struct TestBroker {
   bool connectResult = false;
   bool subscribeResult = true;
@@ -19,19 +20,19 @@ struct TestBroker {
   const char* publishedTopic = "";
   char publishedPayload[512] = {0};
   bool publishedRetained = true;
+  int publishedQos = -1;
   unsigned int qos = 0;
   unsigned int bufferSize = 256;
-  void (*callback)(char*, uint8_t*, unsigned int) = nullptr;
+  void (*callback)(MQTTClient*, char*, char*, int) = nullptr;
 };
 extern TestBroker broker;
 
-class PubSubClient {
+class MQTTClient {
  public:
-  explicit PubSubClient(WiFiClient&) {}
-  void setServer(const char*, uint16_t) {}
-  void setSocketTimeout(uint16_t) {}
-  void setBufferSize(unsigned int size) { broker.bufferSize = size; }
-  void setCallback(void (*callback)(char*, uint8_t*, unsigned int)) {
+  explicit MQTTClient(int size) : size_(size) {}
+  void begin(const char*, int, WiFiClient&) { broker.bufferSize = size_; }
+  void setTimeout(int) {}
+  void onMessageAdvanced(void (*callback)(MQTTClient*, char*, char*, int)) {
     broker.callback = callback;
   }
   bool connected() { return broker.online; }
@@ -51,18 +52,21 @@ class PubSubClient {
     ++broker.subscriptions;
     return broker.subscribeResult;
   }
-  bool publish(const char* topic, const uint8_t* payload, unsigned int length, bool retained) {
+  bool publish(const char* topic, const char* payload, int length, bool retained, int qos) {
     broker.publishedTopic = topic;
-    const unsigned int copied = length < sizeof broker.publishedPayload - 1
-        ? length
+    const unsigned int copied = static_cast<unsigned int>(length) < sizeof broker.publishedPayload - 1
+        ? static_cast<unsigned int>(length)
         : static_cast<unsigned int>(sizeof broker.publishedPayload - 1);
     memcpy(broker.publishedPayload, payload, copied);
     broker.publishedPayload[copied] = '\0';
     broker.publishedRetained = retained;
+    broker.publishedQos = qos;
     ++broker.publishCalls;
     return broker.publishResult;
   }
   void disconnect() { broker.online = false; }
   bool loop() { ++broker.loopCalls; return broker.online; }
-  int state() { return -2; }
+  int lastError() { return -2; }
+ private:
+  unsigned int size_;
 };

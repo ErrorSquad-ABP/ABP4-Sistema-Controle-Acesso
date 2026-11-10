@@ -30,19 +30,25 @@ void apply(door_machine::State state) {
 namespace terminal_door {
 
 void begin() {
+#if DOOR_ENABLED
   servo.setPeriodHertz(50);
   servo.attach(DOOR_SERVO_PIN, 500, 2400);
   machine.reset(millis());
   apply(machine.state());
+#else
+  Serial.println("[door] servo desabilitado: somente feedback de decisao");
+#endif
 }
 
 bool requestOpen() {
+  if (!DOOR_ENABLED) return false;
   if (!machine.requestOpen(millis())) return false;
   apply(machine.state());
   return true;
 }
 
 void update() {
+  if (!DOOR_ENABLED) return;
   if (machine.update(millis())) apply(machine.state());
 }
 

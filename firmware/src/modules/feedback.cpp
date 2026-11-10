@@ -26,13 +26,18 @@ void applyLed(uint8_t pin, bool lit, bool& applied) {
 namespace terminal_feedback {
 
 void begin() {
-  setToneChannel(FEEDBACK_TONE_CHANNEL);
-  pinMode(FEEDBACK_RED_LED_PIN, OUTPUT);
-  pinMode(FEEDBACK_GREEN_LED_PIN, OUTPUT);
-  pinMode(FEEDBACK_BUZZER_PIN, OUTPUT);
+  if (FEEDBACK_BUZZER_ENABLED) setToneChannel(FEEDBACK_TONE_CHANNEL);
+  // Precarregar o nivel apagado antes de habilitar saida (anodo comum).
   digitalWrite(FEEDBACK_RED_LED_PIN, kLedOffLevel);
   digitalWrite(FEEDBACK_GREEN_LED_PIN, kLedOffLevel);
-  noTone(FEEDBACK_BUZZER_PIN);
+  pinMode(FEEDBACK_RED_LED_PIN, OUTPUT);
+  pinMode(FEEDBACK_GREEN_LED_PIN, OUTPUT);
+  if (FEEDBACK_BUZZER_ENABLED) {
+    // O core 2.x ainda nao inicializou LEDC antes do primeiro tone().
+    // noTone() aqui tenta usar o canal inexistente; manter o piezo em LOW.
+    digitalWrite(FEEDBACK_BUZZER_PIN, LOW);
+    pinMode(FEEDBACK_BUZZER_PIN, OUTPUT);
+  }
 }
 
 void playGranted() { runner.start(feedback_pattern::Effect::granted, millis()); }
@@ -45,6 +50,7 @@ void update() {
   applyLed(FEEDBACK_RED_LED_PIN, runner.red(), redLit);
 
   const uint16_t frequency = runner.toneHz();
+  if (!FEEDBACK_BUZZER_ENABLED) return;
   if (frequency == buzzerHz) return;
   if (frequency == 0) {
     noTone(FEEDBACK_BUZZER_PIN);

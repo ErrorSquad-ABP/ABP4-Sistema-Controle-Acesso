@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "Arduino.h"
-#include "PubSubClient.h"
+#include "MQTTClient.h"
 #include "modules/mqtt.h"
 
 uint32_t testNow = 0;
