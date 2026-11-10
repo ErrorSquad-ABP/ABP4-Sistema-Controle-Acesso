@@ -64,6 +64,7 @@ int main(int argc, char** argv) {
   loop();
   assert(broker.loopCalls > loops);
   assert(testServo.value == 180);
+  assert(testServo.attached);
 
   const bool dropOpening = strcmp(argv[1], "opening") == 0;
   const bool dropOpen = strcmp(argv[1], "open") == 0;
@@ -106,6 +107,7 @@ int main(int argc, char** argv) {
   loop();
   assert(terminal_door::state() == door_machine::State::idle);
   assert(testServo.value == 90 && testServo.writtenAt == 16600);
+  assert(!testServo.attached);  // parado: sem pulso, o servo continuo nao arrasta
   assert(broker.connectCalls == connects + 1);
   assert(terminal_mqtt::connected());
   printf("mqtt door timing: queda em %s, parada antes de reconectar OK\n", argv[1]);
