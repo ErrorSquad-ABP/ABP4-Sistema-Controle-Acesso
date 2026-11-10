@@ -271,9 +271,12 @@ void main() {
     access.script.add(AccessFailureReason.unavailable);
     await pumpScanner(tester);
 
-    await scan(tester);
+    await tester.ensureVisible(find.text('simular leitura'));
+    await tester.tap(find.text('simular leitura'));
+    await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+    expect(find.text('Tentar novamente'), findsOneWidget);
   });
 }
 
