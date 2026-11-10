@@ -1,10 +1,10 @@
 # Entrega — índice das evidências
 
-Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como reproduzir e os PRs/commits envolvidos. Nome no formato `dt-XX.md` ou `us-XX-slug.md`. O documento da Review 1 está em [`review-1.md`](review-1.md).
+Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como reproduzir e os PRs/commits envolvidos. Nome no formato `dt-XX.md` ou `us-XX-slug.md`. Os documentos de Review estão em [`review-1.md`](review-1.md) e [`review-2.md`](review-2.md).
 
 ## Estado atual e conferência do Trello
 
-[`auditoria-estado-atual.md`](auditoria-estado-atual.md) registra o recorte de **02/11/2026** (`66fe44a`), reconferido no board em **08/11/2026** e atualizado pelos merges de **09–10/11**. Em particular: US-37 não tem deploy comprovado; US-10/22 têm validações reais pendentes. A DT-23 (teto de 100 m) e a DT-24 (Actions por SHA + Dependabot) foram mergeadas e implantadas em 10/11 (#56); a DT-11 ficou fechada pela DT-24. Evidências anteriores abaixo mantêm a data e os limites originais, não representam reteste atual.
+`auditoria-estado-atual.md` registra o recorte de **02/11/2026** (`66fe44a`). O fechamento da Sprint 2 está em [`review-2.md`](review-2.md), com 11/13 histórias da S2, 28 PRs e 48/63 cards concluídos em 10/11. A auditoria é histórica; o review é o retrato do fechamento.
 
 | Evidência | Card | Conteúdo | PR |
 |---|---|---|---|
