@@ -18,9 +18,7 @@ class ScannerPage extends ConsumerStatefulWidget {
 }
 
 class _ScannerPageState extends ConsumerState<ScannerPage> {
-  /// O controller é global e guarda o último estado (um resultado, um erro).
-  /// Até a página reiniciá-lo, no primeiro quadro, ela mostra "pedindo
-  /// permissão" em vez do estado da leitura anterior.
+  /// Não exibe resultado antes de iniciar a tentativa da página atual.
   bool _started = false;
 
   @override

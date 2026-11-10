@@ -16,6 +16,7 @@ void main() {
   late FakeAccessGateway access;
   late FakeRequestIds ids;
   late ProviderContainer container;
+  late ProviderSubscription<ScannerState> subscription;
 
   ScannerController controller() =>
       container.read(scannerControllerProvider.notifier);
@@ -37,9 +38,32 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
+    subscription = container.listen(scannerControllerProvider, (_, _) {});
+    addTearDown(subscription.close);
   });
 
   group('permissão e câmera', () {
+    test('ignora leitura tardia da câmera após descarte', () async {
+      await scanning();
+      final previous = controller();
+      subscription.close();
+      await container.pump();
+
+      await expectLater(previous.onQrDetected(validQr), completes);
+
+      expect(location.positionReads, 0);
+      expect(access.requests, isEmpty);
+    });
+
+    test('ignora erro tardio da câmera após descarte', () async {
+      await scanning();
+      final previous = controller();
+      subscription.close();
+      await container.pump();
+
+      expect(() => previous.onCameraError('Câmera fechada.'), returnsNormally);
+    });
+
     test('começa pedindo a permissão de localização', () {
       expect(state(), isA<ScannerRequestingPermission>());
     });

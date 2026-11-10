@@ -40,11 +40,31 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 - **Usuários**: e-mail normalizado para minúsculas e único (`409 CONFLICT` se já existir); senha guardada como hash scrypt com salt aleatório e nunca devolvida. `DELETE /users/{id}` é exclusão lógica (`active=false`): o histórico de acessos fica preservado.
 - **Minhas autorizações**: o `userId` vem do token, nunca da query. `status` filtra a situação calculada — `CANCELED` (cancelada), `SCHEDULED` (antes do início), `EXPIRED` (fim alcançado ou usos esgotados) e `ACTIVE`; `remainingUses = max(0, maxUses - usedCount)`; ordem `startsAt desc, id desc`.
 - **Listas**: `{ items, page, pageSize, total }`; `page` começa em 1, `pageSize` padrão 20 (máx. 100).
-- **Pedido de acesso QR**: o contrato exige `qrToken` (lido do QR), `terminalId`, `position` e, opcionalmente, `requestId`; o app atual ainda não faz esse envio (US-29). O usuário vem do JWT. O token é o assinado da US-19 (`v1.<terminal>.<iat>.<exp>.<hmac>`, validade de 10 s); divergência de terminal ou assinatura nega com `INVALID_CREDENTIAL`, e token vencido com `CREDENTIAL_EXPIRED`. Geofence usa as coordenadas e o raio do local mapeado (default 100 m), **sem teto absoluto de 100 m** — divergência RF13/US-20 registrada na [auditoria de 02/11](../entrega/auditoria-estado-atual.md).
+- **Pedido de acesso QR**: o contrato exige `qrToken` (lido do QR), `terminalId`, `position` e, opcionalmente, `requestId`; o app atual ainda não faz esse envio (US-29). O usuário vem do JWT. O token é o assinado da US-19 (`v1.<terminal>.<iat>.<exp>.<hmac>`, validade de 10 s); divergência de terminal ou assinatura nega com `INVALID_CREDENTIAL`, e token vencido com `CREDENTIAL_EXPIRED`. Geofence usa as coordenadas do local mapeado e `min(radiusMeters, 100)`: raios menores continuam restritivos, acima de 100 m sempre nega. A DT-23 acrescenta uma CHECK de 1 a 100 m no banco, implantada em 10/11; o futuro cadastro da US-39 deve validar esse intervalo antes de persistir. Evidência, implantação e limites em [`dt-23.md`](../entrega/evidencias/dt-23.md).
 - **Idempotência do pedido**: repetir o mesmo `requestId` devolve o mesmo evento e o mesmo comando, sem consumir a autorização de novo e sem esticar o prazo do comando.
 - **Terminal desconhecido**: nega com `UNKNOWN_TERMINAL`, preserva o identificador em `event.terminalId` e retorna `event.location: null`. Terminal ou local desativado nega com `TERMINAL_INACTIVE`. Eventos legados podem ter `terminalId: null`.
 - **Acesso negado não é erro HTTP**: `POST /access-events/qr` responde `200` com `decision: DENIED` e o `reason` (ex.: `OUT_OF_RANGE`, `AUTHORIZATION_EXPIRED`), porque toda tentativa é registrada como evento.
 - **Perfis**: `ADMIN` (administrador), `RESIDENT` (condômino), `VISITOR` (visitante).
+
+## CORS
+
+O app web (Flutter Web) chama a API de outra origem, e o navegador só deixa o app ler a resposta se a API a autorizar (DT-08). A API responde CORS por **allowlist exata**, configurada em `CORS_ALLOWED_ORIGINS` (lista separada por vírgula, validada no boot):
+
+| Origem | Quando |
+|---|---|
+| `http://localhost:5000` | desenvolvimento: `flutter run -d chrome --web-port 5000` contra a API local (`CORS_ALLOWED_ORIGINS=http://localhost:5000`) |
+| `https://<demo-web>.vercel.app` | demo web da US-38; o domínio entra aqui e na variável da Vercel quando for definido |
+| _(nenhuma)_ | app Android (não envia `Origin`) e o Swagger em `/docs` (mesma origem) não precisam de CORS |
+
+Regras:
+
+- **Padrão vazio = CORS desligado.** Em produção a variável fica na Vercel (Settings → Environment Variables, ambiente Production), não no GitHub.
+- Cada item é **exatamente uma origem** (`esquema://host[:porta]`): sem `*`, sem regex, sem barra final nem caminho, sem `null`. `http://` só vale para `localhost`, `127.0.0.1` e `[::1]`; as demais exigem `https://`. Valor inválido derruba o boot citando a variável.
+- **Preflight** (`OPTIONS` com `Origin` e `Access-Control-Request-Method`) de origem permitida: `204` com `Access-Control-Allow-Origin` igual à origem que chamou (nunca `*` nem a lista), `Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS`, `Allow-Headers: Authorization, Content-Type` e `Max-Age: 600`. De origem fora da lista: `204` sem nenhum cabeçalho de permissão, e o navegador bloqueia.
+- O cabeçalho `Access-Control-Allow-Origin` vai em **toda** resposta à origem permitida, inclusive `4xx`, `429` e `5xx`, para o app conseguir ler o erro. `Vary: Origin` acompanha qualquer resposta a uma requisição com `Origin`.
+- Sem `Allow-Credentials`: a autenticação é `Authorization: Bearer`, não cookie. O preflight não conta no limite de login.
+- **Valor inválido derruba o boot, inclusive na Vercel**, onde isso deixa a API inteira fora do ar. Confira a lista antes de salvar a variável; o comando está em [`deploy.md`](../guides/deploy.md#2-vercel).
+- **CORS não é autenticação.** Ele só controla o que o navegador deixa o app ler: uma origem fora da lista ainda consegue enviar a requisição ao servidor. A proteção real continua sendo o JWT, o perfil e o rate limit.
 
 ## Como o contrato é mantido
 

@@ -124,7 +124,9 @@ final requestIdFactoryProvider = Provider<RequestIdFactory>(
 /// Fluxo do scanner: permissão de localização, leitura do QR, posição e o
 /// pedido de acesso ao backend (US-29).
 final scannerControllerProvider =
-    NotifierProvider<ScannerController, ScannerState>(ScannerController.new);
+    NotifierProvider.autoDispose<ScannerController, ScannerState>(
+      ScannerController.new,
+    );
 
 class ScannerController extends Notifier<ScannerState> {
   int _operation = 0;
@@ -180,7 +182,7 @@ class ScannerController extends Notifier<ScannerState> {
     final qrValue = value.trim();
     // O preview repete a detecção enquanto o QR está à vista: só a primeira
     // leitura em `Scanning` vira pedido.
-    if (qrValue.isEmpty || state is! ScannerScanning) return;
+    if (!ref.mounted || qrValue.isEmpty || state is! ScannerScanning) return;
 
     final terminalId = terminalIdFromQrToken(qrValue);
     if (terminalId == null) {
@@ -243,7 +245,7 @@ class ScannerController extends Notifier<ScannerState> {
   }
 
   void onCameraError(String message) {
-    if (state is! ScannerScanning) return;
+    if (!ref.mounted || state is! ScannerScanning) return;
     state = ScannerFailure(message);
   }
 

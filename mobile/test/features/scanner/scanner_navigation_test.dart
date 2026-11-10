@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:controle_acesso/app.dart';
 import 'package:controle_acesso/features/scanner/access_contract.dart';
 import 'package:controle_acesso/features/scanner/http_access_gateway.dart';
+import 'package:controle_acesso/features/scanner/scanner_contracts.dart';
 import 'package:controle_acesso/features/scanner/scanner_gateways.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -10,15 +14,19 @@ import 'fakes.dart';
 
 void main() {
   late FakeAccessGateway access;
+  late FakeLocationGateway location;
 
-  setUp(() => access = FakeAccessGateway());
+  setUp(() {
+    access = FakeAccessGateway();
+    location = FakeLocationGateway();
+  });
 
   Future<void> pumpApp(WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           ...authOverrides(store: InMemorySessionStore(sessionFor())),
-          locationGatewayProvider.overrideWithValue(FakeLocationGateway()),
+          locationGatewayProvider.overrideWithValue(location),
           qrScannerGatewayProvider.overrideWithValue(FakeQrScannerGateway()),
           accessGatewayProvider.overrideWithValue(access),
         ],
@@ -58,10 +66,56 @@ void main() {
     expect(find.text('Acesso liberado'), findsNothing);
   });
 
-  // O controller é global e guarda o último estado: o primeiro quadro do
-  // scanner reaberto não pode mostrar a decisão da leitura anterior (um leitor
-  // de tela chegou a poder anunciá-la). `pumpAndSettle` esconde o problema,
-  // por isso olhamos só o primeiro quadro.
+  testWidgets('sair durante o GPS impede o pedido de acesso tardio', (
+    tester,
+  ) async {
+    final pending = location.pending = Completer<GeoCoordinate>();
+    await pumpApp(tester);
+    await tester.tap(find.text('Escanear QR'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('simular leitura'));
+    await tester.pump();
+    expect(find.text('Lendo posição…'), findsOneWidget);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.text('Início'), findsOneWidget);
+    pending.complete(location.point);
+    await tester.pumpAndSettle();
+
+    expect(access.requests, isEmpty);
+    expect(find.text('Início'), findsOneWidget);
+  });
+
+  testWidgets('GPS da tela fechada não interfere no scanner reaberto', (
+    tester,
+  ) async {
+    final oldPosition = location.pending = Completer<GeoCoordinate>();
+    await pumpApp(tester);
+    await tester.tap(find.text('Escanear QR'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('simular leitura'));
+    await tester.pump();
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    final newPosition = location.pending = Completer<GeoCoordinate>();
+    await tester.tap(find.text('Escanear QR'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('simular leitura'));
+    await tester.pump();
+    oldPosition.complete(location.point);
+    await tester.pump();
+    expect(find.text('Lendo posição…'), findsOneWidget);
+    expect(access.requests, isEmpty);
+
+    newPosition.complete(location.point);
+    await tester.pumpAndSettle();
+    expect(access.requests, hasLength(1));
+    expect(find.text('Acesso liberado'), findsOneWidget);
+  });
+
+  // `pumpAndSettle` esconderia um resultado antigo visível só no primeiro quadro.
   for (final (nome, result, titulo) in [
     ('liberado', null, 'Acesso liberado'),
     ('negado', DenialReason.outOfRange, 'Acesso negado'),
