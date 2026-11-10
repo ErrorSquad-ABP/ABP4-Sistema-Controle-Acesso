@@ -43,6 +43,11 @@
 #define DOOR_SERVO_OPEN 180
 #define DOOR_SERVO_STOP 90
 #define DOOR_SERVO_CLOSE 0
+// Faixa do pulso (us) mapeada em 0..180. Com 1000..2000, o STOP (90) vira 1500 us,
+// o neutro do servo continuo. Com a faixa antiga (500..2400) o STOP saia em 1450 us
+// e o servo girava devagar sozinho. Se ainda arrastar, ajuste o trimpot do servo.
+#define DOOR_SERVO_MIN_US 1000
+#define DOOR_SERVO_MAX_US 2000
 #define DOOR_MOVE_MS 1800U
 #define DOOR_HOLD_OPEN_MS 3000U
 
@@ -61,3 +66,9 @@
 #define TFT_RST_PIN 25
 #define TFT_MOSI_PIN 32
 #define TFT_SCK_PIN 33
+
+// Display do terminal: 0 = TFT ILI9341 acima; 1 = OLED SSD1306 128x64 por I2C.
+#define TERMINAL_DISPLAY_OLED 0
+#define OLED_SDA_PIN 21
+#define OLED_SCL_PIN 22
+#define OLED_I2C_ADDRESS 0x3C
