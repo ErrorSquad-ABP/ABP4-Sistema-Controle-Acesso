@@ -80,9 +80,41 @@ jobs:
           g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_command.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-command"
           "$RUNNER_TEMP/abp4-test-mqtt-command"
 
+      # DT-06: TLS ligado, com o fake de tests/fakes antes de include/ (o mqtt_ca.h de teste
+      # substitui o PEM real).
+      - name: Testes host (MQTT com TLS)
+        run: |
+          JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
+          g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=1 -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_tls.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-tls"
+          "$RUNNER_TEMP/abp4-test-mqtt-tls"
+
+      - name: Testes host (reconexao durante ciclo da porta)
+        run: |
+          JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
+          for tls in 0 1; do
+            g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=$tls -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_door_timing.cpp src/main.cpp src/modules/mqtt.cpp src/modules/door.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-door"
+            for phase in opening open closing; do
+              "$RUNNER_TEMP/abp4-test-mqtt-door" "$phase"
+            done
+          done
+
+      # setInsecure() aceita qualquer certificado: nao pode existir no firmware.
+      - name: Proibir setInsecure no firmware
+        run: |
+          if grep -rn "setInsecure" src include; then
+            echo "setInsecure() desliga a validacao do certificado (DT-06)" >&2
+            exit 1
+          fi
+
       # config.h tem segredos (WiFi/broker) e nao e versionado; no CI compila com o exemplo.
       - name: Preparar config.h a partir do exemplo
         run: cp include/config.example.h include/config.h
 
       - name: Build
         run: pio run
+
+      # DT-06: o caminho de producao (WiFiClientSecure + CA embutido) tambem precisa compilar.
+      - name: Build com TLS
+        run: pio run
+        env:
+          PLATFORMIO_BUILD_FLAGS: -DMQTT_USE_TLS=1

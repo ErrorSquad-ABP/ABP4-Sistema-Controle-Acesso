@@ -16,6 +16,15 @@
 #define MQTT_SOCKET_TIMEOUT_SECONDS 1
 #define MQTT_TCP_TIMEOUT_SECONDS 1
 
+// DT-06: 0 = texto claro (Mosquitto dev/Wokwi); 1 = TLS com validacao de cadeia,
+// validade e hostname contra o CA de include/mqtt_ca.h. Producao exige 1, com o
+// host do broker de producao (EMQX Cloud Serverless), porta 8883 e usuario/senha (so no config.h local).
+// O handshake bloqueia o loop ate este teto (core 2.x: segundos).
+#ifndef MQTT_USE_TLS
+#define MQTT_USE_TLS 0
+#endif
+#define MQTT_HANDSHAKE_TIMEOUT_SECONDS 5
+
 // Matriz de transporte da arquitetura; payloads v1 pertencem a US-04.
 #define MQTT_TOPIC_PREFIX "terminals/" TERMINAL_ID
 #define MQTT_TOPIC_QR MQTT_TOPIC_PREFIX "/qr"

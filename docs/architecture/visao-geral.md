@@ -1,6 +1,6 @@
 # Visão geral da arquitetura
 
-O sistema controla o acesso de pessoas a um edifício em três frentes que conversam por rede: o **Terminal de Acesso** (ESP32) exibe um QR Code rotativo e lê tags NFC, publicando e recebendo comandos por MQTT; o **app móvel** (Flutter) autentica o usuário, escaneia o QR Code e envia a geolocalização; e o **backend** (Node + Express + TypeScript) concentra as regras de acesso, persiste os eventos em PostgreSQL e é a única fonte de decisão — o terminal nunca decide sozinho. Em desenvolvimento o broker é o Mosquitto do `infra/docker-compose.dev.yml` e o banco é o Postgres do mesmo compose; em produção a API roda no Vercel, o worker MQTT no Render, o banco no Neon e o broker é o HiveMQ Cloud com TLS (ver [`adr/001-provisionamento-vercel-neon.md`](adr/001-provisionamento-vercel-neon.md)).
+O sistema controla o acesso de pessoas a um edifício em três frentes que conversam por rede: o **Terminal de Acesso** (ESP32) exibe um QR Code rotativo e lê tags NFC, publicando e recebendo comandos por MQTT; o **app móvel** (Flutter) autentica o usuário, escaneia o QR Code e envia a geolocalização; e o **backend** (Node + Express + TypeScript) concentra as regras de acesso, persiste os eventos em PostgreSQL e é a única fonte de decisão — o terminal nunca decide sozinho. Em desenvolvimento o broker é o Mosquitto do `infra/docker-compose.dev.yml` e o banco é o Postgres do mesmo compose; em produção a API roda no Vercel, o worker MQTT no Render, o banco no Neon e o broker é o EMQX Cloud Serverless com TLS (ver [`adr/001-provisionamento-vercel-neon.md`](adr/001-provisionamento-vercel-neon.md)).
 
 Esse é o **desenho alvo**, não a declaração de que todo o fluxo está operacional. Em **02/11/2026**, NFC/GPS do firmware são esqueletos; o terminal não publica heartbeat/status e usa MQTT sem TLS; o app lê QR/posição mas não solicita acesso ao backend (US-29). A decisão NFC no backend existe e é exercitada por terminal simulado. O worker Render não tem deploy comprovado. Conferência em [`../entrega/auditoria-estado-atual.md`](../entrega/auditoria-estado-atual.md).
 
@@ -18,7 +18,7 @@ flowchart LR
   B -- regras --> DB[(PostgreSQL)]
   W -- regras --> DB
   M -. dev .- MD[Mosquitto · docker compose]
-  M -. prod .- MP[HiveMQ Cloud · MQTT TLS]
+  M -. prod .- MP[EMQX Cloud · MQTT TLS]
 ```
 
 **Transporte**: app ↔ API por **HTTPS REST**; terminal ↔ backend por **MQTT bidirecional**. Na S1 o processo MQTT do backend roda localmente (US-04); na S2 o mesmo processo foi preparado para o Render (US-37, PR #26), sem operação remota comprovada. A Vercel hospeda só a API.
@@ -32,7 +32,7 @@ flowchart LR
 **Ambientes**:
 
 - **Dev**: broker Mosquitto local (porta `1884` no host, `1883` interna do container; sem TLS) e Postgres do compose — ver [`../guides/como-rodar.md`](../guides/como-rodar.md).
-- **Prod**: HiveMQ Cloud (MQTT sobre TLS, com credenciais), Postgres no Neon, API no Vercel e processo MQTT no Render (mergeado, deploy não observado).
+- **Prod**: EMQX Cloud Serverless (MQTT sobre TLS, com credenciais; substituiu o HiveMQ Cloud, encerrado), Postgres no Neon, API no Vercel e processo MQTT no Render (mergeado, deploy não observado). O terminal ESP32 fala TLS com o broker quando compilado com `MQTT_USE_TLS 1` (DT-06); conexão e negativos de certificado foram observados no ESP32 em 06/11/2026, mas servo e ACK continuam pendentes. A reconexão só inicia com a porta em `idle` ([`evidencias/dt-06.md`](../entrega/evidencias/dt-06.md)).
 
 ## Fluxo de acesso via QR
 
