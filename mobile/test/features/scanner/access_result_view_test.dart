@@ -149,7 +149,7 @@ void main() {
       await pumpView(tester, deniedResult(DenialReason.credentialExpired));
 
       expect(find.text('QR expirado'), findsOneWidget);
-      expect(find.textContaining('10 segundos'), findsOneWidget);
+      expect(find.textContaining('20 segundos'), findsOneWidget);
     });
 
     testWidgets('motivo desconhecido cai no texto genérico', (tester) async {

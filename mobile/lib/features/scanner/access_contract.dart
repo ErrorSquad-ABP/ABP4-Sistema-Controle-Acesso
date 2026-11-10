@@ -8,7 +8,7 @@ final _terminalIdPattern = RegExp(r'^[a-z0-9][a-z0-9-]{0,63}$');
 
 /// Extrai o terminal do QR rotativo do terminal.
 ///
-/// O formato é `v1.<terminalId>.<iat>.<exp>.<assinatura>` (US-19). O app só
+/// O formato é `v1.<terminalId>.<iat>.<ttl>.<assinatura>` (US-19). O app só
 /// lê o terminal para montar o pedido: autenticidade, validade e a conferência
 /// do terminal são do backend. Devolve `null` para qualquer outro texto.
 String? terminalIdFromQrToken(String token) {

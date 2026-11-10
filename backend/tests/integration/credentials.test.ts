@@ -4,6 +4,7 @@ import { IssueQrCredentialUseCase } from '../../src/application/terminal/qr-cred
 import type { UserRecord } from '../../src/domain/ports/user-repository.js';
 import { HmacQrTokenSigner } from '../../src/infrastructure/ids/hmac-qr-token-signer.js';
 import { buildContainer } from '../../src/main/composition-root.js';
+import { QR_TTL_MS } from '../../src/domain/terminal/messages.js';
 import { loadEnv } from '../../src/main/config/env.js';
 import { createApp } from '../../src/main/http/app.js';
 import { hashPassword } from '../../src/shared/password-hasher.js';
@@ -90,7 +91,7 @@ describe('POST /credentials/qr/validate', () => {
 
   it('rejeita credencial expirada', async () => {
     const old = new IssueQrCredentialUseCase(
-      new FixedClock(new Date(Date.now() - 20_000)),
+      new FixedClock(new Date(Date.now() - QR_TTL_MS - 10_000)),
       new SequentialIds(),
       signer,
     ).execute('terminal-01');

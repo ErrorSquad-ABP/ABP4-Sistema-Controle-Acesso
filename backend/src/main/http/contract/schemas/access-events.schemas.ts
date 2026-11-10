@@ -24,7 +24,7 @@ export const DenialReason = named(
     'UNKNOWN_TERMINAL',
     'TERMINAL_INACTIVE',
   ]),
-  'Motivo da negativa. CREDENTIAL_EXPIRED: QR fora da validade de 10 s · OUT_OF_RANGE: mais de 100 m do terminal',
+  'Motivo da negativa. CREDENTIAL_EXPIRED: QR fora da validade de 25 s · OUT_OF_RANGE: mais de 100 m do terminal',
 );
 
 export const GeoPoint = named(
