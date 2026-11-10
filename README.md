@@ -6,13 +6,13 @@
 
 Sistema integrado de baixo custo para controle de acesso em edifícios, com arquitetura prevista de terminal ESP32 (QR rotativo + NFC), app Flutter e backend Node/TypeScript por REST e MQTT. Este monorepo reúne backend, mobile, firmware, infraestrutura e documentação do projeto.
 
-## Estado atual — 02/11/2026 · board reconferido em 08/11/2026
+## Estado atual — 02/11/2026 · board reconferido em 08/11/2026 · atualizado em 10/11/2026
 
-- **Backend:** login JWT/RBAC, usuários, autorizações, QR assinado de 10 s, decisão de acesso, histórico, outbox e processamento MQTT implementados. Autorizações usam intervalo contínuo; a DT-23 limita o QR ao menor valor entre o raio do local e 100 m, com restrição de cadastro no banco. A correção ainda depende de merge/deploy.
+- **Backend:** login JWT/RBAC, usuários, autorizações, QR assinado de 10 s, decisão de acesso, histórico, outbox e processamento MQTT implementados. Autorizações usam intervalo contínuo; a DT-23 limita o QR ao menor valor entre o raio do local e 100 m, com restrição de cadastro no banco, implantada em produção em 10/11.
 - **App:** login real/sessão e leitura QR + posição implementados; o scanner **ainda não envia o pedido de acesso** (US-29). Minhas autorizações e admin ainda não têm telas funcionais completas.
-- **Terminal:** código de display QR, servo e feedback presente; NFC/GPS são esqueletos, status/heartbeat e TLS estão pendentes. Demonstração visual do QR atual e validação física não estão comprovadas.
-- **Operação:** API pública respondeu em 02/11 com `version: 6b6aa26`, `database: ok`, após uma primeira resposta 503; worker no Render continua sem deploy comprovado.
-- **Trello:** 44 cards em “Concluído”, com ressalvas de aceite e escopo — especialmente DT-11 (correção na DT-24), US-37 (deploy) e US-10/22 (demonstração real). O board foi reconferido em 08/11 e a DT-16 foi mergeada em 09/11: são 44 concluídos e 19 abertos; DT-23/DT-24 entraram como dívida técnica.
+- **Terminal:** código de display QR, servo e feedback presente; NFC/GPS são esqueletos e status/heartbeat segue pendente. O TLS do broker foi validado no ESP32 contra o EMQX (DT-06); servo/PWM e ACK ainda não.
+- **Operação:** API pública respondeu em 10/11 com `version: 2dd532b`, `database: ok`; worker no Render continua sem deploy comprovado.
+- **Trello:** o board foi reconferido em 08/11 e atualizado pelos merges de 09–10/11; a contagem viva deve ser lida no Trello. Permanecem ressalvas de aceite e escopo, especialmente US-37 (deploy) e US-10/22 (demonstração real). DT-06, DT-08, DT-23 e DT-24 foram concluídas.
 
 Conferência dos **44 cards**, evidências, testes e pendências em [`docs/entrega/auditoria-estado-atual.md`](docs/entrega/auditoria-estado-atual.md). Código integrado, simulação e operação real são tratados separadamente; o fluxo completo app → terminal real ainda não foi demonstrado.
 
