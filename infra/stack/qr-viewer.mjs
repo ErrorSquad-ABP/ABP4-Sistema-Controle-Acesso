@@ -42,6 +42,6 @@ http
 <title>QR terminal-dev-01</title><body style="font-family:sans-serif;text-align:center;background:#fff">
 <h2>terminal-dev-01</h2>${latest.png ? `<img src="${latest.png}" style="width:min(90vw,480px)">
 <p>expira em ${latest.expiresAt}<br>recebido em ${latest.receivedAt}</p>` : '<p>aguardando o primeiro QR...</p>'}
-<p style="color:#888">atualiza a cada 2 s; o QR vale 10 s</p></body>`);
+<p style="color:#888">atualiza a cada 2 s; o QR vale 25 s e troca a cada 20 s</p></body>`);
   })
   .listen(8081, () => console.log('[qr-viewer] http://localhost:8081'));
