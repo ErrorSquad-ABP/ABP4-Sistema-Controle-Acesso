@@ -239,7 +239,7 @@ Plano original, não uma lista de stories ainda abertas. Títulos, épico e spri
 | US-16 | Criar autorização admin | E2 | S2 |
 | US-17 | Consultar/cancelar autorização admin | E2 | S2 |
 | US-18 | Minhas autorizações usuário | E2 | S2 |
-| US-19 | Credencial QR rotativa + validação 10s | E2 | S2 |
+| US-19 | Credencial QR rotativa + validação 25s | E2 | S2 |
 | US-20 | Validação de acesso QR com geofence 100m | E2 | S3 |
 | US-21 | Eventos de acesso + histórico com filtros | E2 | S2/S3 |
 | US-22 | Display: render do QR + status | E3 | S2 |
@@ -271,17 +271,15 @@ Plano original, não uma lista de stories ainda abertas. Títulos, épico e spri
 - [`definition-of-done.md`](definition-of-done.md) — o que significa "pronto" para um card.
 - `sprints/` e `templates/` completam a pasta (US-11).
 
-## Estado observado em 02/11/2026 · board reconferido em 08/11/2026
+## Estado observado em 02/11/2026 · board reconferido em 08/11/2026 · fechamento da S2 em 10/11/2026
 
-Código local auditado: `66fe44a`; API pública observada em `6b6aa26`, com banco ok (uma primeira consulta retornou 503). Trello reconferido em 08/11 e com a DT-16 mergeada em 09/11: **63 cards não arquivados**, sendo **44 em Concluído (26 US + 18 DT)** e 19 nas demais listas. A contagem é declarada no quadro, não certificação de todos os aceites; a [auditoria por card](../entrega/auditoria-estado-atual.md) registra diferenças.
+Código auditado em 02/11: `66fe44a`; API pública observada em `6b6aa26`, com banco ok (uma primeira consulta retornou 503). No **fechamento da S2** (10/11, commit `1afd624`), o board tem **63 cards não arquivados**, sendo **48 em Concluído (26 US + 22 DT)**, 1 em review, 2 em andamento, 10 na Sprint 3 e 2 bloqueados. A contagem é declarada no quadro, não certificação de todos os aceites; o [review da S2](../entrega/review-2.md) e a [auditoria por card](../entrega/auditoria-estado-atual.md) registram as ressalvas.
 
 **Entregas integradas:** US-14/21/22/37 (#26), US-19 (#27), US-15/18 (#33), US-16/17 (#36), US-27 (#43), US-26 herdada da US-08 ([evidência](../entrega/evidencias/us-26-mqtt-servo.md)), US-20 (#42) e US-32 (E2E antecipado, #32). US-21 foi fechada pela fatia de consulta; o backend atual também grava decisões QR/NFC simulado, mas falta o leitor NFC do terminal (US-23). US-37 tem implementação, não deploy validado; US-22 tem código de renderização, não demonstração visual atual comprovada. A descrição da US-14 foi alinhada em 08/11: sem refresh/logout no servidor, logout local no app.
 
-A **US-29** (scanner QR + resultado no app) foi concluída em 05/11/2026, depois do fechamento da S2 ([`us-29.md`](../entrega/evidencias/us-29.md)), com câmera e GPS em aparelho real pendentes (US-34). A **US-28** (minhas autorizações no app) segue aberta, ainda com alvo S2 nesta tabela — escorrega para a S3.
+**Listas abertas no Trello (10/11, pós-fechamento da S2):** Sprint 3 = US-24/28/30/31/33/34/35/36/38/39; Em review = US-29; Em andamento = US-23/25; Bloqueado = DT-12/DT-22; Product Backlog vazio. **US-28 e US-29 são carry-over explícito para a S3**, registrado no [review da S2](../entrega/review-2.md); não há sprint em curso. A implementação e os testes da **US-29** estão no PR #55, em review, com a evidência em [`us-29.md`](../entrega/evidencias/us-29.md); falta validar câmera e GPS em aparelho real (US-34).
 
-**Listas abertas no Trello (09/11, pós-merge #51):** Sprint 2 = US-24; Product Backlog = US-28/30/31/33/34/35/36/38/39; Dívida Técnica = DT-22/DT-23/DT-24; Em andamento = DT-06, DT-08, US-23, US-25 e US-29; Bloqueado = DT-12. US-28/29 continuam abertas e a S2 ainda não terminou; não há transferência para S3 confirmada por esta auditoria.
-
-**Dívidas declaradas concluídas:** DT-01/02/03/04/05/07/09/10/11/13/14/15/16/17/18/19/20/21, além de DT-06, DT-08, DT-23 e DT-24 após os merges de 10/11. A **DT-11** ficou fechada pela **DT-24**, que integrou a pinagem por SHA e o Dependabot (#56). O teto de 100 m da **DT-23** também foi integrado e a migration aplicada em produção no mesmo dia. A **DT-16** foi mergeada no #51; os limites (pooler do Neon e callback dentro da transação de acesso) estão documentados na evidência.
+**Dívidas declaradas concluídas:** DT-01 a DT-11, DT-13 a DT-21, DT-23 e DT-24. A **DT-11** ficou fechada pela **DT-24**, que integrou a pinagem por SHA e o Dependabot (#56). O teto de 100 m da **DT-23** também foi integrado e a migration aplicada em produção no mesmo dia. A **DT-16** foi mergeada no #51; os limites (pooler do Neon e callback dentro da transação de acesso) estão documentados na evidência. Seguem abertas **DT-12** (câmera real + APK) e **DT-22** (corrente e continuidade), ambas dependentes de bancada.
 
 ### US-39 · Cadastro de locais de acesso (RF02) — descoberta em 29/10
 

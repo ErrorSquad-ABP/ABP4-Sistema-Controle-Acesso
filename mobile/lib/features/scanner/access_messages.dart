@@ -26,7 +26,7 @@ extension DenialReasonText on DenialReason {
     DenialReason.invalidCredential =>
       'Escaneie o QR exibido no terminal à sua frente.',
     DenialReason.credentialExpired =>
-      'O QR muda a cada 20 segundos. Aponte a câmera para o QR atualizado do '
+      'O QR muda a cada 10 segundos. Aponte a câmera para o QR atualizado do '
           'terminal e tente de novo.',
     DenialReason.userInactive =>
       'Seu cadastro está inativo. Procure a administração para regularizar o '

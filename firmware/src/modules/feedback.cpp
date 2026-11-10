@@ -32,7 +32,9 @@ void begin() {
   pinMode(FEEDBACK_BUZZER_PIN, OUTPUT);
   digitalWrite(FEEDBACK_RED_LED_PIN, kLedOffLevel);
   digitalWrite(FEEDBACK_GREEN_LED_PIN, kLedOffLevel);
-  noTone(FEEDBACK_BUZZER_PIN);
+  // noTone() aqui mexia num canal LEDC ainda nao configurado e gerava o
+  // "LEDC is not initialized" no boot; o pino em LOW ja deixa o buzzer mudo.
+  digitalWrite(FEEDBACK_BUZZER_PIN, LOW);
 }
 
 void playGranted() { runner.start(feedback_pattern::Effect::granted, millis()); }

@@ -11,7 +11,7 @@
 
 ## Resumo
 
-Atualização posterior ao recorte: a [DT-23](evidencias/dt-23.md) e a [DT-24](evidencias/dt-24.md) foram corrigidas, mergeadas e implantadas em 10/11 (#56, `2dd532b`), com a migration do teto de 100 m aplicada em produção. O diagnóstico abaixo permanece histórico e descreve o estado anterior a essa correção.
+Atualização posterior ao recorte: a [DT-23](evidencias/dt-23.md) e a [DT-24](evidencias/dt-24.md) foram corrigidas, mergeadas e implantadas em 10/11 (#56, `2dd532b`), com a migration do teto de 100 m aplicada em produção. A Sprint 2 foi encerrada em 10/11 com **11/13 histórias** e US-28/29 como carry-over explícito ([review-2](review-2.md)); o diagnóstico abaixo descreve o estado anterior a esses marcos.
 
 O projeto tem API com autenticação, usuários, autorizações, decisão QR, histórico, outbox e processamento MQTT; app com login/sessão e scanner local; firmware com display QR, servo e feedback. **Ainda não é um sistema completo demonstrado com app e terminal reais**: faltam envio QR pelo app, NFC/GPS no firmware, TLS no terminal e validação física.
 

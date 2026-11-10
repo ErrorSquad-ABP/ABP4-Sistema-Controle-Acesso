@@ -62,6 +62,8 @@ jobs:
           "$RUNNER_TEMP/abp4-test-layout"
           g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_qr_token.cpp -o "$RUNNER_TEMP/abp4-test-qr"
           "$RUNNER_TEMP/abp4-test-qr"
+          g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_qr_version.cpp -o "$RUNNER_TEMP/abp4-test-qr-version"
+          "$RUNNER_TEMP/abp4-test-qr-version"
           # DT-19: o token do QR precisa caber inteiro na versao 8 do encoder real.
           # A lib de terceiros nao compila com -Werror; so o teste nosso exige.
           gcc -std=c99 -O2 -I .pio/libdeps/esp32dev/QRCode/src \
@@ -118,3 +120,9 @@ jobs:
         run: pio run
         env:
           PLATFORMIO_BUILD_FLAGS: -DMQTT_USE_TLS=1
+
+      # DT-06/US-29: a variante OLED (TERMINAL_DISPLAY_OLED=1) precisa compilar.
+      - name: Build com TLS e OLED
+        run: pio run
+        env:
+          PLATFORMIO_BUILD_FLAGS: -DMQTT_USE_TLS=1 -DTERMINAL_DISPLAY_OLED=1

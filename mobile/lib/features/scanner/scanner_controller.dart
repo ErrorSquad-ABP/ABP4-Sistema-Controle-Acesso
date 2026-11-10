@@ -69,7 +69,7 @@ final class ScannerPermissionDenied extends ScannerState {
 }
 
 /// QR lido: obtendo a posição do aparelho. O valor do QR não fica no estado:
-/// é uma credencial de 25 s e não aparece em nenhuma tela.
+/// é uma credencial de 10 s e não aparece em nenhuma tela.
 final class ScannerLocating extends ScannerState {
   const ScannerLocating();
 }
