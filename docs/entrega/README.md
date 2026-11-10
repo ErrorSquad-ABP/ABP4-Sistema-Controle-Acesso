@@ -4,16 +4,16 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 
 ## Estado atual e conferência do Trello
 
-[`auditoria-estado-atual.md`](auditoria-estado-atual.md) registra o recorte de **02/11/2026** (`66fe44a`), reconferido no board em **08/11/2026** e com a **DT-16 mergeada em 09/11**, os **44 cards em Concluído**, evidência por card e divergências de aceite. Em particular: DT-11 não atende a pinagem completa/Dependabot (correção local na DT-24); US-37 não tem deploy comprovado; US-10/22 têm validações reais pendentes; o geofence não impõe teto absoluto de 100 m (correção local na DT-23). As correções locais ainda não foram mergeadas nem executadas no CI remoto. Evidências anteriores abaixo mantêm a data e os limites originais, não representam reteste atual.
+[`auditoria-estado-atual.md`](auditoria-estado-atual.md) registra o recorte de **02/11/2026** (`66fe44a`), reconferido no board em **08/11/2026** e atualizado pelos merges de **09–10/11**. Em particular: US-37 não tem deploy comprovado; US-10/22 têm validações reais pendentes. A DT-23 (teto de 100 m) e a DT-24 (Actions por SHA + Dependabot) foram mergeadas e implantadas em 10/11 (#56); a DT-11 ficou fechada pela DT-24. Evidências anteriores abaixo mantêm a data e os limites originais, não representam reteste atual.
 
 | Evidência | Card | Conteúdo | PR |
 |---|---|---|---|
-| [`dt-23.md`](evidencias/dt-23.md) | DT-23 | teto QR de 100 m e CHECK do raio no banco; validação local, sem deploy | — |
-| [`dt-24.md`](evidencias/dt-24.md) | DT-24 | Actions por SHA oficial e Dependabot semanal; validação local, sem CI remoto | — |
+| [`dt-23.md`](evidencias/dt-23.md) | DT-23 | teto QR de 100 m e CHECK do raio no banco; migration e API implantadas em produção | #56 |
+| [`dt-24.md`](evidencias/dt-24.md) | DT-24 | Actions por SHA oficial e Dependabot semanal; integrados e validados no CI | #56 |
 | [`dt-01-02-03.md`](evidencias/dt-01-02-03.md) | DT-01 · DT-02 · DT-03 | decisão real no worker, dedup persistente e mapeamento terminal→local, integrados sobre a `main` | #32 (origem no #31) |
-| [`dt-06.md`](evidencias/dt-06.md) | DT-06 | TLS no firmware com CA embutido e validação de certificado; validado no ESP32 real contra o EMQX | — |
+| [`dt-06.md`](evidencias/dt-06.md) | DT-06 | TLS no firmware com CA embutido e validação de certificado; validado no ESP32 real contra o EMQX | #53 |
 | [`dt-10-build-android-ci.md`](evidencias/dt-10-build-android-ci.md) | DT-10 | APK Android gerado, conferido e instalado no CI mobile | #35 |
-| [`dt-08.md`](evidencias/dt-08.md) | DT-08 | CORS por allowlist exata (`CORS_ALLOWED_ORIGINS`), preflight `204` e origens documentadas; produção e navegador real pendentes | — |
+| [`dt-08.md`](evidencias/dt-08.md) | DT-08 | CORS por allowlist exata (`CORS_ALLOWED_ORIGINS`), preflight `204` e origens documentadas; API implantada, prova com origem real pendente da US-38 | #54 |
 | [`dt-13.md`](evidencias/dt-13.md) | DT-13 | outbox de comando (`publishedAt`) com relay independente do terminal | #37 |
 | [`dt-14.md`](evidencias/dt-14.md) | DT-14 | orçamento de conexões por pool e medição da rajada concorrente | #44 |
 | [`dt-15.md`](evidencias/dt-15.md) | DT-15 | retenção de 24 h da deduplicação com expurgo em lotes e resultado no `/healthz` | #48 |

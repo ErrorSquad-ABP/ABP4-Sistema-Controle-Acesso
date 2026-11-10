@@ -42,7 +42,7 @@ Fluxo alvo: os passos de envio pelo app ainda dependem da US-29. O worker só pu
 2. O terminal exibe o QR Code no display.
 3. O usuário escaneia o QR Code com o app.
 4. O app envia o token lido do QR (com o identificador do terminal), a credencial do usuário e a geolocalização à API (HTTPS REST).
-5. A API valida o token do QR (formato, terminal e expiração de 10 s), a credencial do usuário, o intervalo contínuo de validade, o número de usos, o local e a distância. A DT-23 impõe `min(location.radiusMeters, 100)`, preservando raios menores; o banco restringe novos cadastros/edições a 1–100 m. Raios não finitos ou não positivos negam o QR. A correção foi validada localmente, não em produção.
+5. A API valida o token do QR (formato, terminal e expiração de 10 s), a credencial do usuário, o intervalo contínuo de validade, o número de usos, o local e a distância. A DT-23 impõe `min(location.radiusMeters, 100)`, preservando raios menores; o banco restringe novos cadastros/edições a 1–100 m. Raios não finitos ou não positivos negam o QR. A correção foi implantada em produção em 10/11 (#56).
 6. O caso de uso grava a decisão e o consumo da autorização na mesma transação, persiste o comando no registro compartilhado e publica a abertura no tópico do terminal (pela API na requisição do app; pelo processo MQTT nos fluxos do terminal).
 7. O terminal abre a porta, sinaliza o resultado (LED/buzzer) e publica o ACK de execução.
 8. O worker correlaciona o ACK no mesmo PostgreSQL usado pela API, mesmo após reinício. A decisão `GRANTED` é autorização; confirmação física depende do status do ACK.
