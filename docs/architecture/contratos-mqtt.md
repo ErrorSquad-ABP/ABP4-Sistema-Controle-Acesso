@@ -16,7 +16,7 @@ O pedido de acesso por QR **não** passa por MQTT: o app o envia à API por HTTP
 | `terminals/{id}/commands` | backend → terminal | 1 | não | comando de abertura ou negação |
 | `terminals/{id}/acks` | terminal → backend | 1 | não | ACK de execução |
 
-- O QR usa QoS 0 porque renova a cada 10 s: perder um token é irrelevante, o próximo chega logo.
+- O QR usa QoS 0 porque renova a cada 20 s: perder um token é irrelevante, o próximo chega logo.
 - O `status` é retido para que um consumidor que entra depois veja o último estado conhecido (online ou offline).
 - Comandos nunca são retidos: um comando antigo entregue a um terminal que reconecta seria perigoso.
 - O backend assina `terminals/+/access-events`, `terminals/+/status` e `terminals/+/acks`.
@@ -49,7 +49,7 @@ Mensagem com `v` desconhecida, `terminalId` diferente do tópico ou campo faltan
 }
 ```
 
-`token` é emitido pelo backend como `v1.<terminalId>.<iat>.<exp>.<assinatura>`, com `iat`/`exp` em segundos Unix e assinatura `base64url(HMAC-SHA-256)` sobre os quatro primeiros campos. O formato é compacto de propósito: o QR do terminal é versão 8 / ECC_LOW (152 bytes) e precisa caber até com `terminalId` de 64 caracteres. A chave vem de `QR_TOKEN_SECRET`, compartilhada pelos processos HTTP e MQTT; ela nunca segue na mensagem. `timestamp` é o instante `iat`, e `expiresAt` da mensagem é o mesmo instante de expiração assinado no token (`iat` + 10 s). O terminal só exibe o token. A validação criptográfica rejeita assinatura inválida, terminal divergente, timestamps incoerentes e token expirado; ela não concede acesso.
+`token` é emitido pelo backend como `v1.<terminalId>.<iat>.<ttl>.<assinatura>`, com `iat` em segundos Unix, `ttl` = 25 (segundos) e assinatura `base64url` dos 12 primeiros bytes (96 bits) do `HMAC-SHA-256` sobre os quatro primeiros campos. O formato é compacto de propósito: com `terminal-dev-01` o token tem 49 bytes e cabe no QR versão 3 (29×29), que o OLED 128×64 desenha em escala 2; o maior `terminalId` (64 caracteres) ainda cabe na versão 8 / ECC_LOW. A chave vem de `QR_TOKEN_SECRET`, compartilhada pelos processos HTTP e MQTT; ela nunca segue na mensagem. `timestamp` é o instante `iat`, e `expiresAt` da mensagem é o mesmo instante de expiração assinado no token (`iat` + `ttl`). O terminal só exibe o token. A validação criptográfica rejeita assinatura inválida, terminal divergente, timestamps incoerentes e token expirado; ela não concede acesso.
 
 ### Tentativa de acesso — `terminals/{id}/access-events`
 

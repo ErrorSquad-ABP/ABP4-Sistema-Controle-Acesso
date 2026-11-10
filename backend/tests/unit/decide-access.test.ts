@@ -8,7 +8,7 @@ import { StaleEventError } from '../../src/domain/errors/domain-error.js';
 import type { AccessRepository, AccessTransaction } from '../../src/domain/ports/access-repository.js';
 import { PendingCommands } from '../../src/domain/terminal/pending-commands.js';
 import { HmacQrTokenSigner } from '../../src/infrastructure/ids/hmac-qr-token-signer.js';
-import { COMMAND_TTL_MS } from '../../src/domain/terminal/messages.js';
+import { COMMAND_TTL_MS, QR_TTL_MS } from '../../src/domain/terminal/messages.js';
 import { FixedClock, NOW, SequentialIds, UUID_A } from '../support/terminal-fakes.js';
 
 const TERMINAL = 'terminal-01';
@@ -84,7 +84,7 @@ describe('validade temporal apos o lock', () => {
     const { useCase, tx, clock, authorization } = setup();
     const token = new IssueQrCredentialUseCase(clock, new SequentialIds(), signer).execute(TERMINAL).token;
     tx.findAuthorizations.mockImplementation(async () => {
-      clock.date = new Date(NOW.getTime() + 11_000);
+      clock.date = new Date(NOW.getTime() + QR_TTL_MS + 1_000);
       return [authorization];
     });
 

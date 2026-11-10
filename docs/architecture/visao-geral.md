@@ -38,11 +38,11 @@ flowchart LR
 
 Fluxo alvo: os passos de envio pelo app ainda dependem da US-29. O worker só publica QR para terminais vistos online, mas o firmware não envia esse status; a simulação precisa declarar o status sintético. Renderização visual do QR atual ainda carece de demonstração registrada (US-22).
 
-1. O processo MQTT do backend publica um QR Code rotativo (validade de 10 s) no tópico do terminal.
+1. O processo MQTT do backend publica um QR Code rotativo (validade de 25 s) no tópico do terminal.
 2. O terminal exibe o QR Code no display.
 3. O usuário escaneia o QR Code com o app.
 4. O app envia o token lido do QR (com o identificador do terminal), a credencial do usuário e a geolocalização à API (HTTPS REST).
-5. A API valida o token do QR (formato, terminal e expiração de 10 s), a credencial do usuário, o intervalo contínuo de validade, o número de usos, o local e a distância. A DT-23 impõe `min(location.radiusMeters, 100)`, preservando raios menores; o banco restringe novos cadastros/edições a 1–100 m. Raios não finitos ou não positivos negam o QR. A correção foi implantada em produção em 10/11 (#56).
+5. A API valida o token do QR (formato, terminal e expiração de 25 s), a credencial do usuário, o intervalo contínuo de validade, o número de usos, o local e a distância. A DT-23 impõe `min(location.radiusMeters, 100)`, preservando raios menores; o banco restringe novos cadastros/edições a 1–100 m. Raios não finitos ou não positivos negam o QR. A correção foi implantada em produção em 10/11 (#56).
 6. O caso de uso grava a decisão e o consumo da autorização na mesma transação, persiste o comando no registro compartilhado e publica a abertura no tópico do terminal (pela API na requisição do app; pelo processo MQTT nos fluxos do terminal).
 7. O terminal abre a porta, sinaliza o resultado (LED/buzzer) e publica o ACK de execução.
 8. O worker correlaciona o ACK no mesmo PostgreSQL usado pela API, mesmo após reinício. A decisão `GRANTED` é autorização; confirmação física depende do status do ACK.
@@ -75,5 +75,5 @@ Contrato mínimo: `messageId`, `terminalId`, versão e timestamp; comandos tamb�
 - O padrão é `ACCESS_MODE=real`: decisor real e tabelas validados antes de conectar ao MQTT. `demo` precisa ser explícito e é proibido em produção.
 - `Terminal` resolve o local usado por NFC, QR e geofence. Terminal desconhecido ou desativado não abre acesso. A tentativa desconhecida é persistida com o identificador recebido e local nulo, consultável pelo histórico.
 - `TerminalCommand` é o registro compartilhado por API e worker. A intenção de comando entra na mesma transação do evento e do consumo, com prazo ancorado na decisão; o ACK atualiza atomicamente por comando e terminal. Retentativa mantém identificador e prazo originais.
-- O QR é o token assinado da US-19 (`v1.<terminal>.<iat>.<exp>.<hmac>`, validade de 10 s), validado pelo `ValidateQrCredentialUseCase`; o usuário do pedido vem do JWT do login.
+- O QR é o token assinado da US-19 (`v1.<terminal>.<iat>.<ttl>.<hmac>`, validade de 25 s), validado pelo `ValidateQrCredentialUseCase`; o usuário do pedido vem do JWT do login.
 - Validação reproduzível sem Docker/admin em `backend`: `npm run test:e2e`. Roteiro em [`dt-01-02-03.md`](../entrega/evidencias/dt-01-02-03.md).

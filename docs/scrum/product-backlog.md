@@ -239,7 +239,7 @@ Plano original, não uma lista de stories ainda abertas. Títulos, épico e spri
 | US-16 | Criar autorização admin | E2 | S2 |
 | US-17 | Consultar/cancelar autorização admin | E2 | S2 |
 | US-18 | Minhas autorizações usuário | E2 | S2 |
-| US-19 | Credencial QR rotativa + validação 10s | E2 | S2 |
+| US-19 | Credencial QR rotativa + validação 25s | E2 | S2 |
 | US-20 | Validação de acesso QR com geofence 100m | E2 | S3 |
 | US-21 | Eventos de acesso + histórico com filtros | E2 | S2/S3 |
 | US-22 | Display: render do QR + status | E3 | S2 |

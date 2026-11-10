@@ -8,7 +8,7 @@ Sistema integrado de baixo custo para controle de acesso em edifícios, com arqu
 
 ## Estado atual — 02/11/2026 · board reconferido em 08/11/2026 · atualizado em 10/11/2026
 
-- **Backend:** login JWT/RBAC, usuários, autorizações, QR assinado de 10 s, decisão de acesso, histórico, outbox e processamento MQTT implementados. Autorizações usam intervalo contínuo; a DT-23 limita o QR ao menor valor entre o raio do local e 100 m, com restrição de cadastro no banco, implantada em produção em 10/11.
+- **Backend:** login JWT/RBAC, usuários, autorizações, QR assinado de 25 s, decisão de acesso, histórico, outbox e processamento MQTT implementados. Autorizações usam intervalo contínuo; a DT-23 limita o QR ao menor valor entre o raio do local e 100 m, com restrição de cadastro no banco, implantada em produção em 10/11.
 - **App:** login real/sessão e leitura QR + posição implementados; o scanner **ainda não envia o pedido de acesso** (US-29). Minhas autorizações e admin ainda não têm telas funcionais completas.
 - **Terminal:** código de display QR, servo e feedback presente; NFC/GPS são esqueletos e status/heartbeat segue pendente. O TLS do broker foi validado no ESP32 contra o EMQX (DT-06); servo/PWM e ACK ainda não.
 - **Operação:** API pública respondeu em 10/11 com `version: 2dd532b`, `database: ok`; worker no Render continua sem deploy comprovado.

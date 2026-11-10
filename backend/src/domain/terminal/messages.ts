@@ -7,8 +7,8 @@ export const CONTRACT_VERSION = 1;
 export const CHANNELS = ['qr', 'access-events', 'status', 'commands', 'acks'] as const;
 export type Channel = (typeof CHANNELS)[number];
 
-/** Validade do QR rotativo e do comando de abertura (ms). */
-export const QR_TTL_MS = 10_000;
+/** Validade do QR rotativo (25 s) e do comando de abertura (10 s), em ms. */
+export const QR_TTL_MS = 25_000;
 export const COMMAND_TTL_MS = 10_000;
 
 interface Envelope {

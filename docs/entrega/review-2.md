@@ -19,7 +19,7 @@
 
 **Objetivo:** fluxo QR real ponta-a-ponta, backend administrativo, app consumindo o contrato e operação com deploy seguro.
 
-A sprint entregou o **fluxo QR real no backend** (credencial de 10 s, decisão, consumo condicional da autorização, evento auditado e comando MQTT), o **admin de usuários e autorizações na API**, o **login real com sessão no app**, o **worker MQTT com outbox/dedup/relay** e um conjunto de **endurecimentos de entrega** (migrations no CD, seed protegida, TLS no firmware, CORS, teto de 100 m, Actions por SHA e Dependabot).
+A sprint entregou o **fluxo QR real no backend** (credencial de 25 s, decisão, consumo condicional da autorização, evento auditado e comando MQTT), o **admin de usuários e autorizações na API**, o **login real com sessão no app**, o **worker MQTT com outbox/dedup/relay** e um conjunto de **endurecimentos de entrega** (migrations no CD, seed protegida, TLS no firmware, CORS, teto de 100 m, Actions por SHA e Dependabot).
 
 O time tinha folga no fim da sprint e **antecipou trabalho da S3**: US-20, US-32, DT-23 e DT-24, além de absorver 22 das 24 dívidas técnicas. O encerramento foi feito em **10/11**, um dia antes da data prevista, sem antecipar a cerimônia de Review.
 
@@ -45,7 +45,7 @@ A S2 não teve estimativa por pontos registrada; os números não representam ve
 
 - **API na Vercel:** `/health` responde `status: ok`, `database: ok`, `version: 2dd532b`. O contrato está em `/docs` e `/openapi.json`.
 - **Autenticação e autorização:** login JWT com perfis ADMIN/RESIDENT/VISITOR, rate limit, CRUD de usuários, criação/consulta/cancelamento de autorizações e `GET /me/authorizations`.
-- **QR real:** `POST /api/v1/access-events/qr` valida token assinado de 10 s, terminal, credencial, vigência, usos, local e distância (mínimo entre o raio do local e **100 m**), grava o evento e publica o comando de abertura. Negativa é `200` com `decision: DENIED`, não erro HTTP.
+- **QR real:** `POST /api/v1/access-events/qr` valida token assinado de 25 s, terminal, credencial, vigência, usos, local e distância (mínimo entre o raio do local e **100 m**), grava o evento e publica o comando de abertura. Negativa é `200` com `decision: DENIED`, não erro HTTP.
 - **Banco:** Neon com migrations aplicadas pelo CD; a CHECK de 1–100 m existe em produção.
 - **MQTT:** worker com outbox persistente, relay em janela econômica (18:45–23:05), deduplicação com TTL de 24 h e ACK correlacionado. **O deploy no Render não foi observado**; a implementação está na `main`.
 - **Mobile:** login real, sessão persistida em Keystore, logout local e scanner que lê o QR e obtém posição. **Não envia o pedido de acesso** e não publica APK em loja.
@@ -61,7 +61,7 @@ A S2 não teve estimativa por pontos registrada; os números não representam ve
 | US-16 | Criação de autorização com intervalo, usos e validações | [`authorizations`](../../backend/src/), PR #36 |
 | US-17 | Consulta com filtros/status e cancelamento com motivo; 409 em conflito | PR #36, [DT-17](evidencias/dt-17.md) |
 | US-18 | `GET /me/authorizations` paginado com status calculado | PR #33 |
-| US-19 | Credencial QR assinada `v1.<terminal>.<iat>.<exp>.<hmac>`, validade de 10 s | [`qr-credential`](../../backend/src/), PR #27 |
+| US-19 | Credencial QR assinada `v1.<terminal>.<iat>.<ttl>.<hmac>`, validade de 25 s | [`qr-credential`](../../backend/src/), PR #27 |
 | US-21 | Consulta de eventos e histórico com filtros; gravação QR/NFC simulado | PR #26, [DT-01/02/03](evidencias/dt-01-02-03.md) |
 | US-22 | Render do QR no display com cache por token e status | PR #26; demonstração visual pendente |
 | US-26 | Comando `open`/`deny` via MQTT com ACK e servo | [evidência](evidencias/us-26-mqtt-servo.md) |
