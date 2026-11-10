@@ -120,3 +120,9 @@ jobs:
         run: pio run
         env:
           PLATFORMIO_BUILD_FLAGS: -DMQTT_USE_TLS=1
+
+      # DT-06/US-29: a variante OLED (TERMINAL_DISPLAY_OLED=1) precisa compilar.
+      - name: Build com TLS e OLED
+        run: pio run
+        env:
+          PLATFORMIO_BUILD_FLAGS: -DMQTT_USE_TLS=1 -DTERMINAL_DISPLAY_OLED=1

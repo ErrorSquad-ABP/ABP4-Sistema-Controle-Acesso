@@ -31,11 +31,13 @@ QRCode qr;
 uint8_t qrBuffer[384];  // cobre a versao 8 (49x49 modulos)
 
 // Ajustes de leitura, trocados em tempo de execucao pela serial (teste de bancada):
-// i = inverte as cores, c = brilho baixo/alto, s = escala maxima / escala 1 com
-// margem completa de 4 modulos.
+// i = inverte as cores, c = brilho baixo/alto, s = escala 1 com margem completa /
+// escala maxima (sem a zona de silencio de 4 modulos que o padrao exige).
 bool inverted = false;
 bool lowContrast = false;
-bool fullQuietZone = false;
+// Padrao conforme a especificacao: zona de silencio de 4 modulos. Em 128x64 isso
+// obriga escala 1; a tecla `s` troca para escala maxima durante o teste de leitura.
+bool fullQuietZone = true;
 
 bool qrVisible = false;
 char qrToken[qr_token::kMaxTokenBytes + 1] = {0};
@@ -77,7 +79,7 @@ bool drawQr(const char* token) {
 
 void printMode() {
   Serial.printf("[display] modo: cores %s, brilho %s, %s\n", inverted ? "invertidas" : "normais",
-                lowContrast ? "baixo" : "alto", fullQuietZone ? "escala 1 + margem completa" : "escala maxima");
+                lowContrast ? "baixo" : "alto", fullQuietZone ? "escala 1 + margem completa" : "escala maxima (sem zona de silencio)");
 }
 
 // Le uma tecla da serial e aplica o ajuste. Devolve true se o QR precisa ser redesenhado.

@@ -68,7 +68,10 @@
 #define TFT_SCK_PIN 33
 
 // Display do terminal: 0 = TFT ILI9341 acima; 1 = OLED SSD1306 128x64 por I2C.
+// O guard permite habilitar a variante por -DTERMINAL_DISPLAY_OLED=1 no build.
+#ifndef TERMINAL_DISPLAY_OLED
 #define TERMINAL_DISPLAY_OLED 0
+#endif
 #define OLED_SDA_PIN 21
 #define OLED_SCL_PIN 22
 #define OLED_I2C_ADDRESS 0x3C
