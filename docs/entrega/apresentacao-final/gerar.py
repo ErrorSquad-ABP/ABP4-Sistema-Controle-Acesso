@@ -105,7 +105,7 @@ for i, (titulo, corpo) in enumerate([
     text(s, titulo.upper(), x, 330, 320, 40, 20, GREEN, True)
     text(s, corpo, x, 390, 330, 140, 30, INK)
 text(s, 'A regra não fica no celular.', 80, 620, 1440, 60, 40, INK, True)
-text(s, 'Sem confiar no aparelho, sem liberar por ausência de regra.', 80, 700, 1440, 50, 26, MUTED)
+text(s, 'Nesta demonstração o terminal do QR é simulado: sem ESP32 conectado e sem ACK de movimento.', 80, 700, 1440, 50, 24, MUTED)
 
 # 03 — entrar e autorizações
 s = slide('02 / App', 'APK debug em Android 15 · tema escuro · API local real', note=
@@ -122,7 +122,7 @@ s = slide('03 / Detalhe', 'Sem frame para o erro de rede: usa o cartão de estad
 phone(s, 'app-detalhe.png', 150, 200, 260)
 phone(s, 'app-vazio.png', 460, 200, 260)
 text(s, 'Cada autorização tem contexto.', 820, 240, 700, 60, 46, INK, True)
-text(s, 'Local, período, usos e pessoa na mesma tela.\nJanela que vira o dia mostra as duas datas.\nVazio, carregando e erro previstos.', 820, 330, 700, 180, 28)
+text(s, 'Local, período, usos e pessoa na mesma tela.\nStatus, janela e usos restantes coerentes.\nVazio, carregando e erro previstos.', 820, 330, 700, 180, 28)
 
 # 05 — scanner e perfil
 s = slide('04 / Câmera e perfil', 'Câmera do aparelho lendo o QR exibido no monitor', note=
@@ -164,7 +164,7 @@ for i, (nome, detalhe) in enumerate([
     text(s, detalhe, x + 24, 405, 230, 60, 20, 'A6D5B8')
 text(s, 'APP → HTTPS → API → Postgres', 80, 540, 900, 45, 30, PAPER, True)
 text(s, 'API → MQTT → BROKER → ESP32 → ACK', 80, 595, 900, 45, 30, PAPER, True)
-text(s, 'O worker no Render mantém a sessão do terminal e o relay da outbox.', 80, 680, 1400, 50, 24, 'BAC3B9')
+text(s, 'O worker no Render mantém a própria conexão MQTT e o relay da outbox; acompanha o status do terminal.', 80, 680, 1400, 50, 24, 'BAC3B9')
 
 # 09 — no ar
 s = slide('08 / Está no ar', 'Verificações de 11/11: /health, /healthz e logs', True, note=
@@ -189,17 +189,17 @@ heading(s, 'O que sustenta o "está pronto".')
 for x, valor, rotulo, legenda in [
     (80, '640', 'FLUTTER', 'inclui acessibilidade 2.0x'),
     (590, '433', 'BACKEND', 'API + domínio + rotas'),
-    (1100, '31', 'E2E', 'banco e broker reais'),
+    (1100, 'E2E', 'INTEGRAÇÃO', 'banco e broker reais'),
 ]:
     text(s, valor, x, 330, 430, 150, 120, INK, True)
     text(s, rotulo, x, 500, 430, 40, 22, GREEN, True)
     text(s, legenda, x, 555, 430, 60, 24, MUTED)
-text(s, 'Revisão independente: 5 achados, 5 correções com teste de regressão.', 80, 690, 1440, 50, 28, INK, True)
+text(s, 'Revisão independente apontou problemas reais; todos foram corrigidos com teste de regressão.', 80, 690, 1440, 50, 26, INK, True)
 
 # 11 — limites
-s = slide('10 / O que falta', 'Escopo honesto do que ainda depende de bancada', note=
-          '1min — O software está fechado; o que falta é físico. Servo e cancela, heartbeat do terminal, modo offline, build release assinado. Dizer isso protege a entrega.')
-heading(s, 'Software fechado. Bancada pendente.')
+s = slide('10 / O que falta', 'Escopo honesto: bancada física e distribuição', note=
+          '1min — O fluxo QR está demonstrado de ponta a ponta em software. O que falta é bancada e distribuição: servo e cancela, heartbeat do terminal, modo offline e build release assinado. Dizer isso protege a entrega.')
+heading(s, 'Fluxo QR demonstrado. Física pendente.')
 for i, (titulo, corpo) in enumerate([
     ('Servo e cancela', 'ACK confirma feedback;\no movimento físico não foi validado'),
     ('Heartbeat', 'status online hoje vem\ndo simulador, não do firmware'),
