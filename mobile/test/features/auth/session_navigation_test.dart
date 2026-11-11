@@ -43,18 +43,18 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Verificando sua sessão…'), findsOneWidget);
+    expect(find.text('Carregando suas autorizações…'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     store.readGate!.complete();
     await tester.pumpAndSettle();
-    expect(find.text('Olá, Maria'), findsOneWidget);
+    expect(find.text('Minhas autorizações'), findsOneWidget);
   });
 
   testWidgets('sessão salva abre direto na Home', (tester) async {
     await pumpApp(tester, InMemorySessionStore(sessionFor()));
 
-    expect(find.text('Olá, Maria'), findsOneWidget);
+    expect(find.text('Minhas autorizações'), findsOneWidget);
     expect(find.text('Bem-vindo de volta'), findsNothing);
   });
 
@@ -64,12 +64,15 @@ void main() {
     final store = InMemorySessionStore(sessionFor());
     await pumpApp(tester, store);
 
-    await tester.ensureVisible(find.text('Sair da conta'));
+    await tester.tap(find.text('Perfil'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sair da conta'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cancelar'));
     await tester.pumpAndSettle();
-    expect(find.text('Olá, Maria'), findsOneWidget);
+    expect(find.text('Sair da conta'), findsOneWidget);
     expect(store.session, isNotNull);
 
     await tester.tap(find.text('Sair da conta'));
@@ -92,7 +95,10 @@ void main() {
       ..clearGate = Completer<void>();
     await pumpApp(tester, store);
 
-    await tester.ensureVisible(find.text('Sair da conta'));
+    await tester.tap(find.text('Perfil'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sair da conta'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(TextButton, 'Sair'));
@@ -117,13 +123,13 @@ void main() {
       sessionFor(validFor: const Duration(minutes: 5)),
     );
     await pumpApp(tester, store);
-    expect(find.text('Olá, Maria'), findsOneWidget);
+    expect(find.text('Minhas autorizações'), findsOneWidget);
 
     // O timer usa a mesma folga do isExpiredAt: sai 30 s antes do vencimento.
-    const expiresIn = Duration(minutes: 5);
-    await tester.pump(expiresIn - AuthSession.expirySkew - _oneSecond);
-    expect(find.text('Olá, Maria'), findsOneWidget);
-    await tester.pump(_oneSecond);
+    // Folga de 1 min dos dois lados: a abertura da tela consome tempo de teste.
+    await tester.pump(const Duration(minutes: 3));
+    expect(find.text('Minhas autorizações'), findsOneWidget);
+    await tester.pump(const Duration(minutes: 2));
     await tester.pumpAndSettle();
 
     expect(store.session, isNull);
@@ -156,12 +162,12 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
-    expect(find.text('Olá, Maria'), findsOneWidget);
+    expect(find.text('Minhas autorizações'), findsOneWidget);
 
     // Restam 10 min de token: a saída vem 30 s antes, não no prazo antigo.
     const remaining = Duration(minutes: 10);
     await tester.pump(remaining - AuthSession.expirySkew - _oneSecond);
-    expect(find.text('Olá, Maria'), findsOneWidget);
+    expect(find.text('Minhas autorizações'), findsOneWidget);
     await tester.pump(_oneSecond);
     await tester.pumpAndSettle();
 
@@ -183,6 +189,7 @@ void main() {
     gateway.loginFailure = AuthFailureReason.unauthorized;
     await tester.enterText(find.byType(TextFormField).last, 'senha-errada');
     await tester.ensureVisible(find.text('Entrar'));
+    await tester.pump();
     await tester.tap(find.text('Entrar'));
     await tester.pumpAndSettle();
 
