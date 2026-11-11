@@ -7,10 +7,9 @@ import '../auth/fakes.dart';
 
 /// `PATCH /me` simulado; registra o nome enviado e pode falhar.
 class FakeProfileGateway implements ProfileGateway {
-  FakeProfileGateway({this.failure, this.result});
+  FakeProfileGateway({this.failure});
 
   AuthFailureReason? failure;
-  AuthUser? result;
 
   /// Quando definido, o PATCH só responde ao completar o completer.
   Completer<void>? gate;
@@ -22,12 +21,11 @@ class FakeProfileGateway implements ProfileGateway {
     names.add(name);
     await gate?.future;
     if (failure != null) throw AuthFailure(failure!);
-    return result ??
-        AuthUser(
-          id: maria.id,
-          name: name,
-          email: maria.email,
-          role: maria.role,
-        );
+    return AuthUser(
+      id: maria.id,
+      name: name,
+      email: maria.email,
+      role: maria.role,
+    );
   }
 }

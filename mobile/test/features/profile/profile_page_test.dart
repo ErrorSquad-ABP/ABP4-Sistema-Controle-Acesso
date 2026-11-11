@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:controle_acesso/core/theme/app_colors.dart';
 import 'package:controle_acesso/core/theme/app_theme.dart';
 import 'package:controle_acesso/core/theme/theme_mode_provider.dart';
@@ -108,6 +110,31 @@ void main() {
     expect(find.text('Maria Souza Lima · Condômino'), findsOneWidget);
     expect(find.text('Nome atualizado.'), findsOneWidget);
     expect(store.session?.user.name, 'Maria Souza Lima');
+  });
+
+  testWidgets('salvar mostra carregando e bloqueia o botão até responder', (
+    tester,
+  ) async {
+    final gateway = FakeProfileGateway()..gate = Completer<void>();
+    await pumpProfile(tester, gateway: gateway);
+
+    await tester.tap(find.text('Editar nome'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), 'Maria Souza Lima');
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNull,
+    );
+
+    gateway.gate!.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nome atualizado.'), findsOneWidget);
+    expect(find.text('Maria Souza Lima · Condômino'), findsOneWidget);
   });
 
   testWidgets('nome com menos de 2 caracteres não chega ao servidor', (
