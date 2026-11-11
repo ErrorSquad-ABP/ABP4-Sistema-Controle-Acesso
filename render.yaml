@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     rootDir: backend
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: node dist/main/worker.js
     healthCheckPath: /healthz
     envVars:
@@ -12,7 +12,15 @@ services:
         value: production
       - key: LOG_LEVEL
         value: info
+      - key: ACCESS_MODE
+        value: real
       # Segredos e URL do broker ficam no painel do Render (sync: false).
+      - key: DATABASE_URL
+        sync: false
+      - key: QR_TOKEN_SECRET
+        sync: false
+      - key: JWT_SECRET
+        sync: false
       - key: MQTT_URL
         sync: false
       - key: MQTT_USERNAME
