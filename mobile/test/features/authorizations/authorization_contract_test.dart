@@ -1,3 +1,4 @@
+import 'package:controle_acesso/features/auth/auth_contract.dart';
 import 'package:controle_acesso/features/authorizations/authorization_contract.dart';
 import 'package:controle_acesso/features/authorizations/authorization_format.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,6 +43,9 @@ void main() {
     final item = page.items.single;
     expect(page.total, 1);
     expect(item.locationName, 'Edifício Aurora · Recepção');
+    expect(item.person.name, 'Maria Souza');
+    expect(item.person.role, UserRole.visitor);
+    expect(item.person.display, 'Maria Souza · Visitante');
     expect(item.status, AuthorizationStatus.active);
     expect(item.maxUses, 5);
     expect(item.remainingUses, 3);
@@ -54,6 +58,10 @@ void main() {
     final item = Authorization(
       id: 'id',
       locationName: 'Local',
+      person: const AuthorizationPerson(
+        name: 'Maria Souza',
+        role: UserRole.visitor,
+      ),
       startsAt: DateTime.utc(2026),
       endsAt: DateTime.utc(2026),
       maxUses: 5,
@@ -89,6 +97,21 @@ void main() {
     ('usos negativos', _item(remainingUses: -1)),
     ('máximo zero', _item(maxUses: 0)),
     ('data inválida', {..._item(), 'startsAt': 'ontem'}),
+    ('pessoa ausente', {..._item()}..remove('user')),
+    (
+      'pessoa sem nome',
+      {
+        ..._item(),
+        'user': {'id': 'x', 'name': ' ', 'role': 'VISITOR'},
+      },
+    ),
+    (
+      'perfil desconhecido',
+      {
+        ..._item(),
+        'user': {'id': 'x', 'name': 'Maria Souza', 'role': 'TALVEZ'},
+      },
+    ),
   ]) {
     test('$nome vira FormatException', () {
       expect(

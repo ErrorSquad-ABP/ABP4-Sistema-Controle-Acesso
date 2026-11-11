@@ -1,6 +1,10 @@
 import 'dart:async';
 
+import 'package:controle_acesso/features/auth/auth_contract.dart';
 import 'package:controle_acesso/features/authorizations/authorization_contract.dart';
+
+/// Pessoa padrão dos testes, igual ao frame de detalhe.
+const person = AuthorizationPerson(name: 'Maria Souza', role: UserRole.visitor);
 
 /// Autorização de teste no fuso do aparelho entre 14h e 18h.
 Authorization authorization({
@@ -11,11 +15,13 @@ Authorization authorization({
   DateTime? endsAt,
   int maxUses = 5,
   int remainingUses = 3,
+  AuthorizationPerson person = person,
 }) {
   final start = startsAt ?? DateTime(2026, 10, 27, 14);
   return Authorization(
     id: id,
     locationName: locationName,
+    person: person,
     startsAt: start.toUtc(),
     endsAt: (endsAt ?? DateTime(2026, 10, 27, 18)).toUtc(),
     maxUses: maxUses,
@@ -31,20 +37,29 @@ AuthorizationPage pageOf(List<Authorization> items) => AuthorizationPage(
   total: items.length,
 );
 
-/// Responde sem rede. `gate` segura a resposta para o teste ver o carregando.
+/// Responde sem rede. `gate`/`detailGate` seguram a resposta para o teste ver
+/// o carregando.
 class FakeAuthorizationGateway implements AuthorizationGateway {
   AuthorizationPage page = pageOf([]);
 
   AuthorizationFailureReason? failure;
 
+  /// Detalhe devolvido por `findById`; sem ele, monta um a partir do id.
+  Authorization? detail;
+
+  AuthorizationFailureReason? detailFailure;
+
   /// Erro fora do contrato, para checar que a tela não quebra.
   Object? crash;
 
   Completer<void>? gate;
+  Completer<void>? detailGate;
 
   int calls = 0;
   int lastPage = 0;
   int lastPageSize = 0;
+  int detailCalls = 0;
+  String? lastId;
 
   @override
   Future<AuthorizationPage> listMine({int page = 1, int pageSize = 100}) async {
@@ -57,5 +72,17 @@ class FakeAuthorizationGateway implements AuthorizationGateway {
     final failure = this.failure;
     if (failure != null) throw AuthorizationFailure(failure);
     return this.page;
+  }
+
+  @override
+  Future<Authorization> findById(String id) async {
+    detailCalls++;
+    lastId = id;
+    await detailGate?.future;
+    final crash = this.crash;
+    if (crash != null) throw crash;
+    final failure = detailFailure;
+    if (failure != null) throw AuthorizationFailure(failure);
+    return detail ?? authorization(id: id);
   }
 }

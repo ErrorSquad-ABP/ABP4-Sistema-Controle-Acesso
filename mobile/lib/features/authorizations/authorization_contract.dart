@@ -1,7 +1,10 @@
-/// Recorte de `GET /me/authorizations` (US-18) que a tela usa.
+import '../auth/auth_contract.dart';
+
+/// Recorte de `GET /me/authorizations` e `GET /authorizations/{id}` (US-18)
+/// que as telas usam.
 ///
-/// Situação é calculada pelo backend; o app só a apresenta. Os campos que a
-/// lista não mostra (usuário, contagem de usos, cancelamento) ficam de fora.
+/// Situação é calculada pelo backend; o app só a apresenta. A contagem de usos
+/// consumidos e os dados de cancelamento não aparecem em nenhum frame.
 enum AuthorizationStatus {
   scheduled('SCHEDULED', 'Agendada'),
   active('ACTIVE', 'Ativa'),
@@ -42,6 +45,7 @@ class Authorization {
   const Authorization({
     required this.id,
     required this.locationName,
+    required this.person,
     required this.startsAt,
     required this.endsAt,
     required this.maxUses,
@@ -52,6 +56,7 @@ class Authorization {
   factory Authorization.fromJson(Map<String, dynamic> json) {
     final id = json['id'];
     final location = json['location'];
+    final user = json['user'];
     final startsAt = json['startsAt'];
     final endsAt = json['endsAt'];
     final maxUses = json['maxUses'];
@@ -59,6 +64,7 @@ class Authorization {
     if (id is! String ||
         id.trim().isEmpty ||
         location is! Map<String, dynamic> ||
+        user is! Map<String, dynamic> ||
         startsAt is! String ||
         endsAt is! String ||
         maxUses is! int ||
@@ -74,6 +80,7 @@ class Authorization {
     return Authorization(
       id: id.trim(),
       locationName: name.trim(),
+      person: AuthorizationPerson.fromJson(user),
       // A API entrega UTC; a tela mostra no fuso do aparelho.
       startsAt: DateTime.parse(startsAt).toUtc(),
       endsAt: DateTime.parse(endsAt).toUtc(),
@@ -85,6 +92,7 @@ class Authorization {
 
   final String id;
   final String locationName;
+  final AuthorizationPerson person;
   final DateTime startsAt;
   final DateTime endsAt;
   final int maxUses;
@@ -94,6 +102,28 @@ class Authorization {
   /// Fração da barra de usos: o que ainda pode ser usado na janela.
   double get remainingFraction =>
       remainingUses >= maxUses ? 1 : remainingUses / maxUses;
+}
+
+/// `UserSummary` embutido na autorização: quem recebeu a liberação.
+class AuthorizationPerson {
+  const AuthorizationPerson({required this.name, required this.role});
+
+  factory AuthorizationPerson.fromJson(Map<String, dynamic> json) {
+    final name = json['name'];
+    if (name is! String || name.trim().isEmpty) {
+      throw const FormatException('Pessoa da autorizacao fora do contrato');
+    }
+    return AuthorizationPerson(
+      name: name.trim(),
+      role: UserRole.fromCode(json['role']),
+    );
+  }
+
+  final String name;
+  final UserRole role;
+
+  /// "Maria Souza · Visitante", como no frame de detalhe.
+  String get display => '$name · ${role.label}';
 }
 
 /// Envelope paginado `{ items, page, pageSize, total }`.
@@ -137,6 +167,9 @@ enum AuthorizationFailureReason {
   /// 401: token recusado; o cliente autenticado encerra a sessão.
   unauthorized,
 
+  /// 404 (ou id inválido): a autorização não existe ou não é do usuário.
+  notFound,
+
   /// 5xx ou 429: backend fora, sem banco ou pedindo calma.
   unavailable,
 
@@ -161,4 +194,6 @@ class AuthorizationFailure implements Exception {
 
 abstract interface class AuthorizationGateway {
   Future<AuthorizationPage> listMine({int page, int pageSize});
+
+  Future<Authorization> findById(String id);
 }

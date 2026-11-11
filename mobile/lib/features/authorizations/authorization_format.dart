@@ -4,6 +4,10 @@ library;
 
 String _twoDigits(int value) => value.toString().padLeft(2, '0');
 
+/// "3 de 5 usos restantes", igual na lista e no detalhe.
+String remainingUsesLabel({required int remaining, required int max}) =>
+    '$remaining de $max usos restantes';
+
 String _dayLabel(DateTime day, DateTime now) {
   final local = day.toLocal();
   final today = now.toLocal();

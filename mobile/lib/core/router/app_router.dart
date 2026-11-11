@@ -7,6 +7,7 @@ import '../../features/auth/login_page.dart';
 import '../../features/auth/session_controller.dart';
 import '../../features/auth/session_loading_page.dart';
 import '../../features/authorizations/authorization_contract.dart';
+import '../../features/authorizations/authorization_detail_page.dart';
 import '../../features/authorizations/authorizations_page.dart';
 import '../../features/locations/locations_page.dart';
 import '../../features/profile/profile_page.dart';
@@ -21,6 +22,12 @@ abstract final class AppRoutes {
   static const String login = '/login';
   static const String loading = '/loading';
   static const String scan = '/scan';
+
+  /// Detalhe de uma autorização, aberto pelo cartão da lista.
+  static const String authorizationDetailPattern = '/autorizacoes/:id';
+  static String authorizationDetail(String id) =>
+      '/autorizacoes/${Uri.encodeComponent(id)}';
+
   /// Administração de locais: aberta a partir do Perfil.
   static const String locations = '/locais';
 }
@@ -99,6 +106,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.scan,
         builder: (context, state) => const ScannerPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.authorizationDetailPattern,
+        builder: (context, state) =>
+            AuthorizationDetailPage(id: state.pathParameters['id']!),
       ),
       GoRoute(
         path: AppRoutes.locations,

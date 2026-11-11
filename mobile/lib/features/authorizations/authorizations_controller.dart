@@ -30,3 +30,10 @@ class MyAuthorizationsController extends AsyncNotifier<AuthorizationPage> {
     state = await AsyncValue.guard(_fetch);
   }
 }
+
+/// Autorização aberta pelo cartão da lista. Auto-dispose: sair do detalhe
+/// libera o dado; voltar refaz a consulta.
+final authorizationDetailProvider = FutureProvider.autoDispose
+    .family<Authorization, String>(
+      (ref, id) => ref.read(authorizationGatewayProvider).findById(id),
+    );

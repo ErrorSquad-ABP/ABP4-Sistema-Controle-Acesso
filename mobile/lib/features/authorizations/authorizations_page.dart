@@ -10,6 +10,7 @@ import 'authorization_card.dart';
 import 'authorization_contract.dart';
 import 'authorization_state_view.dart';
 import 'authorizations_controller.dart';
+import 'scan_action.dart';
 
 /// Tela principal do app (frame "Minhas autorizações"): cabeçalho, filtro,
 /// lista e a ação de escanear. O Histórico é a mesma tela com o outro filtro.
@@ -55,7 +56,10 @@ class _AuthorizationsPageState extends ConsumerState<AuthorizationsPage> {
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.screen,
               ),
-              child: _ScanAction(onPressed: () => context.push(AppRoutes.scan)),
+              child: ScanAction(
+                label: 'Escanear QR Code',
+                onPressed: () => context.push(AppRoutes.scan),
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
           ],
@@ -157,6 +161,9 @@ class _Content extends StatelessWidget {
             key: ValueKey(authorizations[index].id),
             authorization: authorizations[index],
             now: now,
+            onTap: () => context.push(
+              AppRoutes.authorizationDetail(authorizations[index].id),
+            ),
           ),
         ),
       ),
@@ -292,66 +299,6 @@ class _FilterOption extends StatelessWidget {
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                 color: selected ? palette.text : palette.textSecondary,
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ScanAction extends StatelessWidget {
-  const _ScanAction({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    final text = Theme.of(context).textTheme;
-
-    return SizedBox(
-      height: AppSpacing.controlHeight,
-      child: Material(
-        color: palette.text,
-        shape: const StadiumBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              0,
-              AppSpacing.xs,
-              0,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Escanear QR Code',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.labelLarge?.copyWith(color: palette.background),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: palette.background,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.qr_code_scanner,
-                      size: 20,
-                      color: palette.text,
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         ),

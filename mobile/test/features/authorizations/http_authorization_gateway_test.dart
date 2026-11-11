@@ -175,6 +175,93 @@ void main() {
     );
   });
 
+  group('findById', () {
+    const id = '7f8c1f5e-6c1a-4a8e-9a43-2d4b9f1c0a11';
+
+    test('pede o detalhe no endpoint do contrato', () async {
+      late http.Request sent;
+      final item = await _gateway((request) async {
+        sent = request;
+        return _json(_item());
+      }).findById(id);
+
+      expect(sent.method, 'GET');
+      expect(
+        sent.url.toString(),
+        'https://api.exemplo.com/api/v1/authorizations/$id',
+      );
+      expect(sent.headers['accept'], 'application/json');
+      expect(item.locationName, 'Edifício Aurora · Recepção');
+      expect(item.person.display, 'Maria Souza · Visitante');
+    });
+
+    test('codifica o id no caminho', () async {
+      late http.Request sent;
+      await _gateway((request) async {
+        sent = request;
+        return _json(_item());
+      }).findById('a/b c');
+
+      expect(sent.url.toString(), endsWith('/api/v1/authorizations/a%2Fb%20c'));
+    });
+
+    for (final (status, reason) in [
+      (404, AuthorizationFailureReason.notFound),
+      // Id fora do formato UUID volta 400; para a tela é "não existe".
+      (400, AuthorizationFailureReason.notFound),
+      (401, AuthorizationFailureReason.unauthorized),
+      (429, AuthorizationFailureReason.unavailable),
+      (500, AuthorizationFailureReason.unavailable),
+      (403, AuthorizationFailureReason.unexpected),
+      (204, AuthorizationFailureReason.unexpected),
+    ]) {
+      test('status $status vira ${reason.name}', () async {
+        await expectLater(
+          _gateway(
+            (_) async => _json({
+              'error': {'code': 'X', 'message': 'x'},
+            }, status),
+          ).findById(id),
+          _failsWith(reason),
+        );
+      });
+    }
+
+    for (final (nome, body) in [
+      ('corpo que não é JSON', 'isto não é json'),
+      ('JSON que não é objeto', '[1, 2]'),
+      (
+        'situação fora do contrato',
+        jsonEncode({..._item(), 'status': 'TALVEZ'}),
+      ),
+      ('sem pessoa', jsonEncode({..._item()}..remove('user'))),
+    ]) {
+      test('200 com $nome vira resposta inesperada', () async {
+        await expectLater(
+          _gateway((_) async => http.Response(body, 200)).findById(id),
+          _failsWith(AuthorizationFailureReason.unexpected),
+        );
+      });
+    }
+
+    test('sem resposta no prazo vira timeout', () async {
+      await expectLater(
+        _gateway(
+          (_) => Completer<http.Response>().future,
+          timeout: const Duration(milliseconds: 20),
+        ).findById(id),
+        _failsWith(AuthorizationFailureReason.timeout),
+      );
+    });
+
+    test('falha de transporte vira rede', () async {
+      await expectLater(
+        _gateway((_) => throw http.ClientException('sem rede')).findById(id),
+        _failsWith(AuthorizationFailureReason.network),
+      );
+    });
+  });
+
   group('com o cliente autenticado', () {
     Future<(ProviderContainer, List<http.Request>)> setUp({
       required Future<http.Response> Function(http.Request) respond,

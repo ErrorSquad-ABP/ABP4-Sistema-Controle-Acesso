@@ -37,6 +37,24 @@ class AuthorizationStateView extends StatelessWidget {
         onRetry: onRetry,
       );
 
+  /// Carregando do detalhe: o texto da lista fala em várias autorizações.
+  const AuthorizationStateView.loadingDetail()
+    : this._(
+        icon: null,
+        title: 'Carregando a autorização…',
+        message: null,
+        onRetry: null,
+      );
+
+  /// 404 (ou id inválido): sem botão; a linha de retorno fica acima do cartão.
+  const AuthorizationStateView.notFound()
+    : this._(
+        icon: Icons.search_off,
+        title: 'Autorização não encontrada',
+        message: 'Ela pode ter sido removida ou o link não existe mais.',
+        onRetry: null,
+      );
+
   final IconData? icon;
   final String title;
   final String? message;
