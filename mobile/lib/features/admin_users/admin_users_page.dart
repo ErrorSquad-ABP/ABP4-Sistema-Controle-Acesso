@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/clock.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/load_more_note.dart';
 import '../auth/auth_contract.dart';
 import '../auth/session_controller.dart';
 import 'access_event_card.dart';
@@ -41,6 +42,8 @@ class AdminUsersPage extends ConsumerStatefulWidget {
 class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
   AdminUsersTab _tab = AdminUsersTab.users;
   final _search = TextEditingController();
+  bool _loadingMoreUsers = false;
+  bool _loadingMoreHistory = false;
 
   @override
   void initState() {
@@ -89,6 +92,38 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
     // O formulário devolve true quando a conta foi criada.
     if (created == true && mounted) {
       await ref.read(adminUsersProvider.notifier).refresh();
+    }
+  }
+
+  /// Próxima página de contas. A página 1 continua na tela se ela falhar.
+  Future<void> _loadMoreUsers() async {
+    if (_loadingMoreUsers) return;
+    setState(() => _loadingMoreUsers = true);
+    try {
+      await ref.read(adminUsersProvider.notifier).loadMore();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_usersFailureMessage(error))),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingMoreUsers = false);
+    }
+  }
+
+  /// Próxima página do histórico. A página 1 continua na tela se ela falhar.
+  Future<void> _loadMoreHistory() async {
+    if (_loadingMoreHistory) return;
+    setState(() => _loadingMoreHistory = true);
+    try {
+      await ref.read(accessHistoryProvider.notifier).loadMore();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_historyFailureMessage(error))),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingMoreHistory = false);
     }
   }
 
@@ -306,11 +341,11 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
       ),
       if (page.total > page.items.length)
         _stateSliver(
-          _InfoNote(
-            icon: Icons.info_outline,
-            message:
-                'Mostrando ${page.items.length} de ${page.total} contas. '
-                'Use a busca para encontrar alguém.',
+          LoadMoreNote(
+            key: const Key('load-more-users'),
+            message: 'Mostrando ${page.items.length} de ${page.total} contas.',
+            loading: _loadingMoreUsers,
+            onPressed: _loadMoreUsers,
           ),
         ),
     ];
@@ -398,11 +433,13 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
       ),
       if (page.total > page.items.length)
         _stateSliver(
-          _InfoNote(
-            icon: Icons.info_outline,
+          LoadMoreNote(
+            key: const Key('load-more-history'),
             message:
                 'Mostrando os ${page.items.length} acessos mais recentes de '
                 '${page.total}.',
+            loading: _loadingMoreHistory,
+            onPressed: _loadMoreHistory,
           ),
         ),
     ];

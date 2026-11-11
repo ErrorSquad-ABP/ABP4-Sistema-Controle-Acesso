@@ -16,6 +16,11 @@ final adminAuthorizationsProvider =
 class AdminAuthorizationsController extends AsyncNotifier<AuthorizationPage> {
   AdminAuthorizationFilter _filter = AdminAuthorizationFilter.all;
 
+  /// Recorte ativo. A tela lê daqui em vez de guardar um filtro próprio: o
+  /// provider sobrevive à saída da tela e os chips precisam refletir o que a
+  /// lista realmente mostra.
+  AdminAuthorizationFilter get filter => _filter;
+
   @override
   Future<AuthorizationPage> build() async {
     // Trocar de conta zera a lista: o dado de um usuário não aparece no outro.
@@ -25,8 +30,9 @@ class AdminAuthorizationsController extends AsyncNotifier<AuthorizationPage> {
     return _fetch();
   }
 
-  Future<AuthorizationPage> _fetch() =>
-      ref.read(adminAuthorizationGatewayProvider).list(status: _filter.status);
+  Future<AuthorizationPage> _fetch({int page = 1}) => ref
+      .read(adminAuthorizationGatewayProvider)
+      .list(page: page, status: _filter.status);
 
   /// Troca o recorte de situação e busca de novo no servidor.
   Future<void> setFilter(AdminAuthorizationFilter filter) async {
@@ -39,5 +45,28 @@ class AdminAuthorizationsController extends AsyncNotifier<AuthorizationPage> {
   /// Pull-to-refresh, "Tentar novamente" e depois de criar ou cancelar.
   Future<void> refresh() async {
     state = await AsyncValue.guard(_fetch);
+  }
+
+  /// Busca a página seguinte e anexa ao que já está na tela. A página 1 fica
+  /// intacta se a nova falhar: o erro sobe para a tela avisar.
+  Future<void> loadMore() async {
+    final current = state.value;
+    if (current == null || current.items.length >= current.total) return;
+    final next = await _fetch(page: current.page + 1);
+    // Filtro trocado, lista recarregada ou sessão encerrada enquanto buscava.
+    if (!ref.mounted || !identical(state.value, current)) return;
+    final seen = {for (final item in current.items) item.id};
+    state = AsyncData(
+      AuthorizationPage(
+        items: [
+          ...current.items,
+          for (final item in next.items)
+            if (seen.add(item.id)) item,
+        ],
+        page: next.page,
+        pageSize: next.pageSize,
+        total: next.total,
+      ),
+    );
   }
 }

@@ -214,6 +214,27 @@ void main() {
     expect(banner.tone, FeedbackTone.warning);
   });
 
+  testWidgets('refresh com 401 encerra a sessão e limpa o cofre', (tester) async {
+    final auth = FakeAuthGateway();
+    final store = InMemorySessionStore(sessionFor());
+    await pumpProfile(tester, auth: auth, store: store);
+    expect(store.session, isNotNull);
+
+    // O backend passa a recusar o token depois da abertura.
+    auth.meFailure = AuthFailureReason.unauthorized;
+    await tester.fling(find.byType(ListView), const Offset(0, 300), 1000);
+    // Sem sessão, o Perfil mostra o indicador (o router levaria ao login):
+    // `pumpAndSettle` nunca terminaria.
+    for (var frame = 0; frame < 5; frame++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    expect(store.session, isNull);
+    expect(find.text('Meu perfil'), findsNothing);
+    // A sessão local foi encerrada: o provider do perfil já nasce vazio.
+    expect(find.byType(FeedbackBanner), findsNothing);
+  });
+
   testWidgets('sair da conta pede confirmação e encerra a sessão', (
     tester,
   ) async {

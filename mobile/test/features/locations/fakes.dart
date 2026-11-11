@@ -41,6 +41,9 @@ LocationPage pageOf(List<Location> items) => LocationPage(
 class FakeLocationGateway implements LocationGateway {
   LocationPage page = pageOf([]);
 
+  /// Páginas por número, para testar a paginação sob demanda.
+  final Map<int, LocationPage> pages = {};
+
   LocationFailureReason? listFailure;
   LocationFailureReason? createFailure;
 
@@ -72,7 +75,7 @@ class FakeLocationGateway implements LocationGateway {
     if (crash != null) throw crash;
     final failure = listFailure;
     if (failure != null) throw LocationFailure(failure);
-    return this.page;
+    return pages[page] ?? this.page;
   }
 
   @override

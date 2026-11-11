@@ -36,7 +36,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     try {
       await ref.read(profileUserProvider.notifier).refresh();
     } on AuthFailure catch (failure) {
-      // 401 já encerra a sessão: o redirect do router leva ao login.
+      // O 401 já encerrou a sessão no controller: o redirect do router leva
+      // ao login e não há aviso a mostrar.
       if (failure.reason == AuthFailureReason.unauthorized) return;
       _showNotice(_refreshFailure);
     } catch (_) {

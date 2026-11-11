@@ -6,6 +6,7 @@ import '../../core/clock.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/load_more_note.dart';
 import '../auth/auth_contract.dart';
 import '../auth/session_controller.dart';
 import '../authorizations/authorization_contract.dart';
@@ -28,7 +29,7 @@ class AdminAuthorizationsPage extends ConsumerStatefulWidget {
 class _AdminAuthorizationsPageState
     extends ConsumerState<AdminAuthorizationsPage> {
   final _search = TextEditingController();
-  AdminAuthorizationFilter _filter = AdminAuthorizationFilter.all;
+  bool _loadingMore = false;
 
   @override
   void dispose() {
@@ -45,6 +46,22 @@ class _AdminAuthorizationsPageState
     // O formulário devolve true quando a autorização foi criada.
     if (created == true && mounted) {
       await ref.read(adminAuthorizationsProvider.notifier).refresh();
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      await ref.read(adminAuthorizationsProvider.notifier).loadMore();
+    } catch (error) {
+      // A página 1 continua na tela; só avisa que a próxima não veio.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_listFailureMessage(error))),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
     }
   }
 
@@ -78,6 +95,7 @@ class _AdminAuthorizationsPageState
     final isAdmin =
         ref.watch(currentSessionProvider)?.user.role == UserRole.admin;
     final controller = ref.read(adminAuthorizationsProvider.notifier);
+    final filter = controller.filter;
     final query = _search.text.trim();
 
     return Scaffold(
@@ -123,15 +141,12 @@ class _AdminAuthorizationsPageState
                       child: Padding(
                         padding: const EdgeInsets.only(top: AppSpacing.sm),
                         child: _FilterChips(
-                          selected: _filter,
-                          onSelected: (filter) {
-                            setState(() => _filter = filter);
-                            controller.setFilter(filter);
-                          },
+                          selected: filter,
+                          onSelected: controller.setFilter,
                         ),
                       ),
                     ),
-                    ..._bodySlivers(page, now, query),
+                    ..._bodySlivers(page, now, query, filter),
                     const SliverToBoxAdapter(
                       child: SizedBox(height: AppSpacing.xs),
                     ),
@@ -167,6 +182,7 @@ class _AdminAuthorizationsPageState
     AsyncValue<AuthorizationPage> page,
     DateTime now,
     String query,
+    AdminAuthorizationFilter filter,
   ) {
     final Widget state;
     switch (page) {
@@ -174,39 +190,45 @@ class _AdminAuthorizationsPageState
         final visible = _visible(value.items);
         if (visible.isEmpty) {
           state = value.items.isEmpty && query.isEmpty
-              ? _StateView.empty(filter: _filter)
+              ? _StateView.empty(filter: filter)
               : const _StateView.noResults();
-        } else {
           return [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                AppSpacing.sm,
-                AppSpacing.screen,
-                0,
-              ),
-              sliver: SliverList.separated(
-                itemCount: visible.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: AppSpacing.sm),
-                itemBuilder: (context, index) {
-                  final authorization = visible[index];
-                  return AdminAuthorizationCard(
-                    key: ValueKey(authorization.id),
-                    authorization: authorization,
-                    now: now,
-                    onTap: () => context.push(
-                      AppRoutes.authorizationDetail(authorization.id),
-                    ),
-                    onCancel: canCancelAuthorization(authorization.status)
-                        ? () => _cancel(authorization)
-                        : null,
-                  );
-                },
-              ),
-            ),
+            _stateSliver(state),
+            // Com a busca ativa, o que ainda não foi carregado pode conter o
+            // que a pessoa procura: "Mostrar mais" continua disponível.
+            if (value.items.length < value.total) _loadMoreSliver(value),
           ];
         }
+        return [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              AppSpacing.sm,
+              AppSpacing.screen,
+              0,
+            ),
+            sliver: SliverList.separated(
+              itemCount: visible.length,
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: AppSpacing.sm),
+              itemBuilder: (context, index) {
+                final authorization = visible[index];
+                return AdminAuthorizationCard(
+                  key: ValueKey(authorization.id),
+                  authorization: authorization,
+                  now: now,
+                  onTap: () => context.push(
+                    AppRoutes.authorizationDetail(authorization.id),
+                  ),
+                  onCancel: canCancelAuthorization(authorization.status)
+                      ? () => _cancel(authorization)
+                      : null,
+                );
+              },
+            ),
+          ),
+          if (value.items.length < value.total) _loadMoreSliver(value),
+        ];
       case AsyncError(:final error):
         state = _StateView.error(
           message: _listFailureMessage(error),
@@ -217,18 +239,28 @@ class _AdminAuthorizationsPageState
         state = const _StateView.loading();
     }
 
-    return [
-      SliverPadding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.screen,
-          AppSpacing.sm,
-          AppSpacing.screen,
-          0,
-        ),
-        sliver: SliverToBoxAdapter(child: state),
-      ),
-    ];
+    return [_stateSliver(state)];
   }
+
+  Widget _stateSliver(Widget child) => SliverPadding(
+    padding: const EdgeInsets.fromLTRB(
+      AppSpacing.screen,
+      AppSpacing.sm,
+      AppSpacing.screen,
+      0,
+    ),
+    sliver: SliverToBoxAdapter(child: child),
+  );
+
+  Widget _loadMoreSliver(AuthorizationPage page) => _stateSliver(
+    LoadMoreNote(
+      key: const Key('load-more-authorizations'),
+      message:
+          'Mostrando ${page.items.length} de ${page.total} autorizações.',
+      loading: _loadingMore,
+      onPressed: _loadMore,
+    ),
+  );
 }
 
 class _Header extends StatelessWidget {

@@ -80,9 +80,7 @@ class _ThemeOption extends StatelessWidget {
         : Colors.transparent;
     final foreground = selected
         ? (isDark ? palette.background : palette.text)
-        // #6E6E6E sobre o trilho #E8E8E8 fica em 4,2:1 e reprova AA no texto;
-        // escurece só a opção apagada do tema claro.
-        : (isDark ? palette.textSecondary : const Color(0xFF525252));
+        : palette.textSecondaryStrong;
     final radius = BorderRadius.circular(AppRadius.pill);
 
     return Semantics(

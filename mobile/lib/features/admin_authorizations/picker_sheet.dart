@@ -12,12 +12,21 @@ class PickerOption {
   final String? subtitle;
 }
 
+/// Uma página de opções e se o servidor ainda tem mais.
+class PickerPage {
+  const PickerPage({required this.options, required this.hasMore});
+
+  final List<PickerOption> options;
+  final bool hasMore;
+}
+
 /// Folha de seleção com busca, usada pelos campos Pessoa e Local do
 /// formulário de autorização.
 ///
 /// Quem chama decide onde a busca acontece: `GET /users` aceita `search` e
 /// filtra no servidor; `GET /locations` não aceita, então o filtro é local
-/// sobre a página carregada.
+/// sobre as páginas já carregadas. As páginas seguintes vêm sob demanda pelo
+/// botão "Mostrar mais".
 class PickerSheet extends StatefulWidget {
   const PickerSheet({
     super.key,
@@ -33,8 +42,8 @@ class PickerSheet extends StatefulWidget {
   final String emptyLabel;
   final String errorLabel;
 
-  /// Devolve as opções já filtradas para [query].
-  final Future<List<PickerOption>> Function(String query) load;
+  /// Página [page] (a partir de 1) das opções para [query].
+  final Future<PickerPage> Function(String query, int page) load;
 
   /// Abre a folha e devolve a opção escolhida, ou null se fechar.
   static Future<PickerOption?> show(
@@ -43,7 +52,7 @@ class PickerSheet extends StatefulWidget {
     required String searchHint,
     required String emptyLabel,
     required String errorLabel,
-    required Future<List<PickerOption>> Function(String query) load,
+    required Future<PickerPage> Function(String query, int page) load,
   }) {
     return showModalBottomSheet<PickerOption>(
       context: context,
@@ -66,26 +75,93 @@ class PickerSheet extends StatefulWidget {
 
 class _PickerSheetState extends State<PickerSheet> {
   final _search = TextEditingController();
-  late Future<List<PickerOption>> _options;
+
+  final List<PickerOption> _options = [];
+  String _query = '';
+  int _page = 0;
+  int _request = 0;
+  bool _hasMore = false;
+  bool _loading = true;
+  bool _loadingMore = false;
+  bool _failed = false;
+  bool _moreFailed = false;
+  bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
-    _options = widget.load('');
+    _start('');
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _search.dispose();
     super.dispose();
   }
 
+  /// Nova busca: descarta as páginas anteriores e volta para a página 1.
+  Future<void> _start(String query) async {
+    _query = query;
+    final request = ++_request;
+    setState(() {
+      _loading = true;
+      _loadingMore = false;
+      _failed = false;
+      _moreFailed = false;
+    });
+    await _fetch(request, page: 1, reset: true);
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() {
+      _loadingMore = true;
+      _moreFailed = false;
+    });
+    await _fetch(_request, page: _page + 1, reset: false);
+  }
+
+  Future<void> _fetch(
+    int request, {
+    required int page,
+    required bool reset,
+  }) async {
+    try {
+      final result = await widget.load(_query, page);
+      // Uma busca nova enquanto esta respondia não pode misturar páginas.
+      if (_disposed || request != _request) return;
+      final seen = reset
+          ? <String>{}
+          : {for (final option in _options) option.id};
+      setState(() {
+        if (reset) _options.clear();
+        _options.addAll([
+          for (final option in result.options)
+            if (seen.add(option.id)) option,
+        ]);
+        _page = page;
+        _hasMore = result.hasMore;
+        _loading = false;
+        _loadingMore = false;
+      });
+    } catch (_) {
+      if (_disposed || request != _request) return;
+      setState(() {
+        _loading = false;
+        _loadingMore = false;
+        if (reset) {
+          _failed = true;
+        } else {
+          _moreFailed = true;
+        }
+      });
+    }
+  }
+
   void _searchNow() {
     FocusScope.of(context).unfocus();
-    final options = widget.load(_search.text.trim());
-    setState(() {
-      _options = options;
-    });
+    _start(_search.text.trim());
   }
 
   @override
@@ -137,47 +213,92 @@ class _PickerSheetState extends State<PickerSheet> {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Expanded(
-            child: FutureBuilder<List<PickerOption>>(
-              future: _options,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const Center(
-                    child: SizedBox.square(
-                      dimension: 32,
-                      child: CircularProgressIndicator(strokeWidth: 1.5),
-                    ),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return _SheetNote(
-                    message: widget.errorLabel,
-                    onRetry: _searchNow,
-                  );
-                }
-                final options = snapshot.data ?? const <PickerOption>[];
-                if (options.isEmpty) {
-                  return _SheetNote(message: widget.emptyLabel);
-                }
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screen,
-                    0,
-                    AppSpacing.screen,
-                    AppSpacing.sm,
-                  ),
-                  itemCount: options.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: AppSpacing.xs),
-                  itemBuilder: (context, index) => _OptionTile(
-                    option: options[index],
-                    onTap: () => Navigator.of(context).pop(options[index]),
-                  ),
-                );
-              },
-            ),
-          ),
+          Expanded(child: _body()),
         ],
+      ),
+    );
+  }
+
+  Widget _body() {
+    if (_loading) {
+      return const Center(
+        child: SizedBox.square(
+          dimension: 32,
+          child: CircularProgressIndicator(strokeWidth: 1.5),
+        ),
+      );
+    }
+    if (_failed) {
+      return _SheetNote(
+        message: widget.errorLabel,
+        onRetry: () => _start(_query),
+      );
+    }
+    // A última linha é o "Mostrar mais" (ou o aviso de que ele falhou), mesmo
+    // com a busca sem resultados na página carregada: o que falta pode estar
+    // na página seguinte.
+    final trailing = _hasMore || _moreFailed;
+    if (_options.isEmpty && !trailing) {
+      return _SheetNote(message: widget.emptyLabel);
+    }
+    final emptyNote = _options.isEmpty ? 1 : 0;
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        0,
+        AppSpacing.screen,
+        AppSpacing.sm,
+      ),
+      itemCount: emptyNote + _options.length + (trailing ? 1 : 0),
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: AppSpacing.xs),
+      itemBuilder: (context, index) {
+        if (index < emptyNote) {
+          return _SheetNote(message: widget.emptyLabel);
+        }
+        final position = index - emptyNote;
+        if (position == _options.length) {
+          return _moreFailed
+              ? _SheetNote(
+                  message: widget.errorLabel,
+                  onRetry: _loadMore,
+                )
+              : _LoadMoreTile(
+                  loading: _loadingMore,
+                  onPressed: _loadMore,
+                );
+        }
+        return _OptionTile(
+          option: _options[position],
+          onTap: () => Navigator.of(context).pop(_options[position]),
+        );
+      },
+    );
+  }
+}
+
+/// Busca a próxima página sem fechar a folha.
+class _LoadMoreTile extends StatelessWidget {
+  const _LoadMoreTile({required this.loading, required this.onPressed});
+
+  final bool loading;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppSpacing.controlHeight),
+      child: Center(
+        child: OutlinedButton(
+          key: const Key('picker-load-more'),
+          onPressed: loading ? null : onPressed,
+          child: loading
+              ? const SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Mostrar mais'),
+        ),
       ),
     );
   }

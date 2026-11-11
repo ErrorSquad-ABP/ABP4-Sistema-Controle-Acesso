@@ -60,6 +60,9 @@ AdminAccessEventPage eventsPageOf(List<AdminAccessEvent> items, {int? total}) =>
 class FakeAdminUsersGateway implements AdminUsersGateway {
   AdminUserPage page = usersPageOf([]);
 
+  /// Páginas por número, para testar a paginação sob demanda.
+  final Map<int, AdminUserPage> pages = {};
+
   AdminUsersFailureReason? listFailure;
   AdminUsersFailureReason? detailFailure;
   AdminUsersFailureReason? createFailure;
@@ -79,6 +82,7 @@ class FakeAdminUsersGateway implements AdminUsersGateway {
 
   int listCalls = 0;
   String lastSearch = '';
+  int lastPage = 0;
   int lastPageSize = 0;
   final List<CreateAdminUserRequest> created = [];
   final List<(String, UpdateAdminUserRequest)> updates = [];
@@ -95,13 +99,14 @@ class FakeAdminUsersGateway implements AdminUsersGateway {
   }) async {
     listCalls++;
     lastSearch = search;
+    lastPage = page;
     lastPageSize = pageSize;
     await listGate?.future;
     final crash = listCrash;
     if (crash != null) throw crash;
     final failure = listFailure;
     if (failure != null) throw AdminUsersFailure(failure);
-    return this.page;
+    return pages[page] ?? this.page;
   }
 
   @override
@@ -168,12 +173,17 @@ class FakeAdminUsersGateway implements AdminUsersGateway {
 
 class FakeAccessEventsGateway implements AccessEventsGateway {
   AdminAccessEventPage page = eventsPageOf([]);
+
+  /// Páginas por número, para testar a paginação sob demanda.
+  final Map<int, AdminAccessEventPage> pages = {};
+
   AccessEventsFailureReason? listFailure;
   Object? listCrash;
   Completer<void>? listGate;
 
   int listCalls = 0;
   AccessDecision? lastDecision;
+  int lastPage = 0;
   int lastPageSize = 0;
 
   @override
@@ -184,12 +194,13 @@ class FakeAccessEventsGateway implements AccessEventsGateway {
   }) async {
     listCalls++;
     lastDecision = decision;
+    lastPage = page;
     lastPageSize = pageSize;
     await listGate?.future;
     final crash = listCrash;
     if (crash != null) throw crash;
     final failure = listFailure;
     if (failure != null) throw AccessEventsFailure(failure);
-    return this.page;
+    return pages[page] ?? this.page;
   }
 }

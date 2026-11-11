@@ -18,13 +18,24 @@ class ProfileController extends Notifier<AuthUser?> {
   AuthUser? build() => ref.watch(currentSessionProvider)?.user;
 
   /// Reconsulta `GET /auth/me`. Em falha mantém o dado atual e repassa o erro
-  /// para a tela avisar sem apagar o perfil.
+  /// para a tela avisar sem apagar o perfil. O 401 encerra a sessão aqui
+  /// mesmo: o router leva ao login e o cofre local é limpo.
   Future<void> refresh() async {
     final session = ref.read(currentSessionProvider);
     if (session == null) return;
-    final user = await ref
-        .read(authGatewayProvider)
-        .currentUser(session.accessToken);
+    final AuthUser user;
+    try {
+      user = await ref
+          .read(authGatewayProvider)
+          .currentUser(session.accessToken);
+    } on AuthFailure catch (failure) {
+      if (failure.reason == AuthFailureReason.unauthorized) {
+        await ref
+            .read(sessionControllerProvider.notifier)
+            .revoke(session.accessToken);
+      }
+      rethrow;
+    }
     if (!ref.mounted) return;
     state = user;
     await _remember(user);

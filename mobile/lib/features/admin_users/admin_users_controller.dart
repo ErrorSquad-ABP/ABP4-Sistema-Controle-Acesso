@@ -37,15 +37,41 @@ class AdminUsersController extends AsyncNotifier<AdminUserPage> {
     return _fetch(ref.watch(adminUsersSearchProvider));
   }
 
-  Future<AdminUserPage> _fetch(String search) => ref
+  Future<AdminUserPage> _fetch(String search, {int page = 1}) => ref
       .read(adminUsersGatewayProvider)
-      .list(search: search, pageSize: adminUsersPageSize);
+      .list(search: search, page: page, pageSize: adminUsersPageSize);
 
   /// Pull-to-refresh, "Tentar novamente" e a volta do formulário mantêm a
   /// lista atual na tela enquanto buscam de novo.
   Future<void> refresh() async {
     final search = ref.read(adminUsersSearchProvider);
     state = await AsyncValue.guard(() => _fetch(search));
+  }
+
+  /// Busca a página seguinte da mesma busca e anexa às contas na tela. Se
+  /// falhar, a página 1 continua visível.
+  Future<void> loadMore() async {
+    final current = state.value;
+    if (current == null || current.items.length >= current.total) return;
+    final next = await _fetch(
+      ref.read(adminUsersSearchProvider),
+      page: current.page + 1,
+    );
+    // Busca trocada, lista recarregada ou sessão encerrada enquanto buscava.
+    if (!ref.mounted || !identical(state.value, current)) return;
+    final seen = {for (final user in current.items) user.id};
+    state = AsyncData(
+      AdminUserPage(
+        items: [
+          ...current.items,
+          for (final user in next.items)
+            if (seen.add(user.id)) user,
+        ],
+        page: next.page,
+        pageSize: next.pageSize,
+        total: next.total,
+      ),
+    );
   }
 }
 

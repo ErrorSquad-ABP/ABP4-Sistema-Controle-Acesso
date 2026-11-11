@@ -50,31 +50,40 @@ class _AdminAuthorizationFormPageState
 
   /// Busca pessoas no servidor: `GET /users` aceita `search` por nome ou
   /// e-mail. Só ativas entram, porque desativadas não acessam o condomínio.
-  Future<List<PickerOption>> _loadPeople(String query) async {
-    final page = await ref
+  Future<PickerPage> _loadPeople(String query, int page) async {
+    final result = await ref
         .read(adminUserGatewayProvider)
-        .list(search: query, active: true);
-    return [
-      for (final user in page.items)
-        PickerOption(id: user.id, title: user.name, subtitle: user.display),
-    ];
+        .list(search: query, active: true, page: page);
+    return PickerPage(
+      options: [
+        for (final user in result.items)
+          PickerOption(id: user.id, title: user.name, subtitle: user.display),
+      ],
+      hasMore: result.page * result.pageSize < result.total,
+    );
   }
 
-  /// `GET /locations` não tem busca: a folha carrega os ativos e filtra aqui.
-  Future<List<PickerOption>> _loadPlaces(String query) async {
-    final page = await ref.read(locationGatewayProvider).listActive();
+  /// `GET /locations` não tem busca: a folha filtra as páginas já carregadas
+  /// e busca a próxima no botão "Mostrar mais".
+  Future<PickerPage> _loadPlaces(String query, int page) async {
+    final result = await ref
+        .read(locationGatewayProvider)
+        .listActive(page: page);
     final folded = searchFold(query.trim());
-    return [
-      for (final place in page.items)
-        if (folded.isEmpty ||
-            searchFold(place.name).contains(folded) ||
-            searchFold(place.description ?? '').contains(folded))
-          PickerOption(
-            id: place.id,
-            title: place.name,
-            subtitle: place.description,
-          ),
-    ];
+    return PickerPage(
+      options: [
+        for (final place in result.items)
+          if (folded.isEmpty ||
+              searchFold(place.name).contains(folded) ||
+              searchFold(place.description ?? '').contains(folded))
+            PickerOption(
+              id: place.id,
+              title: place.name,
+              subtitle: place.description,
+            ),
+      ],
+      hasMore: result.page * result.pageSize < result.total,
+    );
   }
 
   Future<PickerOption?> _choose({
@@ -82,7 +91,7 @@ class _AdminAuthorizationFormPageState
     required String searchHint,
     required String emptyLabel,
     required String errorLabel,
-    required Future<List<PickerOption>> Function(String query) load,
+    required Future<PickerPage> Function(String query, int page) load,
   }) => PickerSheet.show(
     context,
     title: title,

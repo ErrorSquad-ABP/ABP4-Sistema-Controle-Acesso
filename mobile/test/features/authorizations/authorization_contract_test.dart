@@ -168,7 +168,7 @@ void main() {
     );
   });
 
-  test('outro dia mostra dia e mês; outro ano mostra o ano', () {
+  test('outro dia no mesmo ano mostra dia e mês', () {
     expect(
       authorizationWindowLabel(
         startsAt: DateTime(2026, 11, 12, 8, 5),
@@ -177,13 +177,46 @@ void main() {
       ),
       '12/11 · 08:05–09:00',
     );
+  });
+
+  test('janela que vira o dia mostra a data final', () {
+    expect(
+      authorizationWindowLabel(
+        startsAt: DateTime(2026, 10, 27, 22),
+        endsAt: DateTime(2026, 10, 28, 2),
+        now: DateTime(2026, 10, 27, 9),
+      ),
+      'Hoje 22:00 – 28/10 02:00',
+    );
+  });
+
+  test('janela que vira o ano mostra os dois anos', () {
     expect(
       authorizationWindowLabel(
         startsAt: DateTime(2025, 12, 31, 22),
         endsAt: DateTime(2026, 1, 1, 2),
         now: DateTime(2026, 10, 27, 9),
       ),
-      '31/12/2025 · 22:00–02:00',
+      '31/12/2025 22:00 – 01/01/2026 02:00',
+    );
+  });
+
+  test('a janela é impressa no fuso do aparelho, não em UTC', () {
+    // Meio-dia UTC: o deslocamento de qualquer fuso mantém início e fim no
+    // mesmo dia local, então o rótulo continua sendo "Hoje".
+    final startsAt = DateTime.utc(2026, 10, 27, 12);
+    final endsAt = DateTime.utc(2026, 10, 27, 12, 30);
+    String hhmm(DateTime value) =>
+        '${value.hour.toString().padLeft(2, '0')}:'
+        '${value.minute.toString().padLeft(2, '0')}';
+
+    expect(
+      authorizationWindowLabel(
+        startsAt: startsAt,
+        endsAt: endsAt,
+        now: startsAt.toLocal(),
+      ),
+      'Hoje · ${hhmm(startsAt.toLocal())}–${hhmm(endsAt.toLocal())}',
     );
   });
 }

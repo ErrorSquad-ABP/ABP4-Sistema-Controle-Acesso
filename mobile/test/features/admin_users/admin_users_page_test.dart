@@ -346,6 +346,151 @@ void main() {
     expect(events.lastDecision, isNull);
   });
 
+  testWidgets('"Mostrar mais" traz a próxima página de contas sem duplicar', (
+    tester,
+  ) async {
+    users.pages[1] = AdminUserPage(
+      items: [
+        userAccount(),
+        userAccount(
+          id: 'carlos',
+          name: 'Carlos Dias',
+          email: 'carlos.dias@exemplo.com',
+        ),
+      ],
+      page: 1,
+      pageSize: 2,
+      total: 3,
+    );
+    users.pages[2] = AdminUserPage(
+      items: [
+        // A API pode repetir um item entre páginas se a lista mudar.
+        userAccount(
+          id: 'carlos',
+          name: 'Carlos Dias',
+          email: 'carlos.dias@exemplo.com',
+        ),
+        userAccount(
+          id: 'joana',
+          name: 'Joana Reis',
+          email: 'joana.reis@exemplo.com',
+        ),
+      ],
+      page: 2,
+      pageSize: 2,
+      total: 3,
+    );
+    await pumpPage(tester);
+
+    expect(find.byKey(const Key('load-more-users')), findsOneWidget);
+    await tester.ensureVisible(find.text('Mostrar mais'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mostrar mais'));
+    await tester.pumpAndSettle();
+
+    expect(users.lastPage, 2);
+    expect(find.byType(AdminUserCard), findsNWidgets(3));
+    expect(find.text('Joana Reis'), findsOneWidget);
+    expect(find.text('Carlos Dias'), findsOneWidget);
+    expect(find.byKey(const Key('load-more-users')), findsNothing);
+  });
+
+  testWidgets('erro na segunda página de contas mantém a primeira', (
+    tester,
+  ) async {
+    users.pages[1] = AdminUserPage(
+      items: [userAccount()],
+      page: 1,
+      pageSize: 1,
+      total: 2,
+    );
+    await pumpPage(tester);
+
+    users.listFailure = AdminUsersFailureReason.unavailable;
+    await tester.ensureVisible(find.text('Mostrar mais'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mostrar mais'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Maria Souza'), findsOneWidget);
+    expect(
+      find.text(
+        'O serviço de usuários está fora do ar. Tente novamente em instantes.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('load-more-users')), findsOneWidget);
+
+    // Fecha o SnackBar para não deixar o timer pendente.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('histórico carrega a página seguinte sob demanda', (tester) async {
+    events.pages[1] = AdminAccessEventPage(
+      items: [accessEvent()],
+      page: 1,
+      pageSize: 1,
+      total: 2,
+    );
+    events.pages[2] = AdminAccessEventPage(
+      items: [
+        accessEvent(
+          id: 'antigo',
+          occurredAt: fixedNow.subtract(const Duration(days: 1)),
+          personName: 'Carlos Dias',
+        ),
+      ],
+      page: 2,
+      pageSize: 1,
+      total: 2,
+    );
+    await pumpPage(tester);
+    await tester.tap(find.byKey(const Key('tab-history')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('load-more-history')), findsOneWidget);
+    await tester.ensureVisible(find.text('Mostrar mais'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mostrar mais'));
+    await tester.pumpAndSettle();
+
+    expect(events.lastPage, 2);
+    expect(find.text('Carlos Dias'), findsOneWidget);
+    expect(find.byKey(const Key('load-more-history')), findsNothing);
+  });
+
+  testWidgets('erro na segunda página do histórico mantém a primeira', (
+    tester,
+  ) async {
+    events.pages[1] = AdminAccessEventPage(
+      items: [accessEvent(personName: 'Maria Souza')],
+      page: 1,
+      pageSize: 1,
+      total: 2,
+    );
+    await pumpPage(tester);
+    await tester.tap(find.byKey(const Key('tab-history')));
+    await tester.pumpAndSettle();
+
+    events.listFailure = AccessEventsFailureReason.unavailable;
+    await tester.ensureVisible(find.text('Mostrar mais'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mostrar mais'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Maria Souza'), findsOneWidget);
+    expect(
+      find.text(
+        'O serviço de histórico está fora do ar. Tente novamente em instantes.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('histórico vazio e com erro tem estados claros', (tester) async {
     await pumpPage(tester);
     await tester.tap(find.byKey(const Key('tab-history')));

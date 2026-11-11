@@ -21,7 +21,11 @@ AdminUserPage userPageOf(List<AdminUser> items) =>
 /// Responde sem rede. Os `gates` seguram a resposta para o teste ver o
 /// carregando, o criando e o cancelando.
 class FakeAdminAuthorizationGateway implements AdminAuthorizationGateway {
+  /// Página devolvida por `list` quando [pages] não tem a página pedida.
   AuthorizationPage page = pageOf([]);
+
+  /// Páginas por número, para testar a paginação sob demanda.
+  final Map<int, AuthorizationPage> pages = {};
 
   AdminFailureReason? listFailure;
   AdminFailureReason? createFailure;
@@ -36,6 +40,7 @@ class FakeAdminAuthorizationGateway implements AdminAuthorizationGateway {
   Completer<void>? cancelGate;
 
   int listCalls = 0;
+  int lastPage = 0;
   AuthorizationStatus? lastStatus;
   final List<CreateAuthorizationRequest> created = [];
   final List<({String id, String reason})> canceled = [];
@@ -50,13 +55,14 @@ class FakeAdminAuthorizationGateway implements AdminAuthorizationGateway {
     AuthorizationStatus? status,
   }) async {
     listCalls++;
+    lastPage = page;
     lastStatus = status;
     await listGate?.future;
     final crash = listCrash;
     if (crash != null) throw crash;
     final failure = listFailure;
     if (failure != null) throw AdminFailure(failure);
-    return this.page;
+    return pages[page] ?? this.page;
   }
 
   @override

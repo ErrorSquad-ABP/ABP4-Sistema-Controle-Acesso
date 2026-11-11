@@ -7,6 +7,7 @@ import 'package:controle_acesso/features/admin_authorizations/admin_authorizatio
 import 'package:controle_acesso/features/admin_authorizations/http_admin_authorization_gateway.dart';
 import 'package:controle_acesso/features/auth/session_controller.dart';
 import 'package:controle_acesso/features/locations/http_location_gateway.dart';
+import 'package:controle_acesso/features/locations/location_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -203,6 +204,82 @@ void main() {
 
     expect(find.text('Portaria Norte'), findsOneWidget);
     expect(find.text('Edifício Aurora · Recepção'), findsNothing);
+  });
+
+  testWidgets('seletor de local busca a página seguinte sob demanda', (
+    tester,
+  ) async {
+    places.pages[1] = LocationPage(
+      items: [
+        location(),
+        location(id: 'norte', name: 'Portaria Norte', description: null),
+      ],
+      page: 1,
+      pageSize: 2,
+      total: 3,
+    );
+    places.pages[2] = LocationPage(
+      items: [
+        location(
+          id: 'garagem',
+          name: 'Garagem Central',
+          description: 'Subsolo',
+        ),
+      ],
+      page: 2,
+      pageSize: 2,
+      total: 3,
+    );
+    await pumpForm(tester);
+
+    await tester.tap(find.byKey(const Key('field-place')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edifício Aurora · Recepção'), findsOneWidget);
+    expect(find.text('Garagem Central'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('picker-load-more')));
+    await tester.pumpAndSettle();
+
+    expect(places.lastPage, 2);
+    expect(find.text('Garagem Central'), findsOneWidget);
+    expect(find.text('Portaria Norte'), findsOneWidget);
+    expect(find.byKey(const Key('picker-load-more')), findsNothing);
+  });
+
+  testWidgets('busca sem resultado mantém "Mostrar mais" na folha', (
+    tester,
+  ) async {
+    places.pages[1] = LocationPage(
+      items: [location()],
+      page: 1,
+      pageSize: 1,
+      total: 2,
+    );
+    places.pages[2] = LocationPage(
+      items: [
+        location(id: 'garagem', name: 'Garagem Central', description: null),
+      ],
+      page: 2,
+      pageSize: 1,
+      total: 2,
+    );
+    await pumpForm(tester);
+
+    await tester.tap(find.byKey(const Key('field-place')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('picker-search')), 'garagem');
+    await tester.tap(find.byTooltip('Buscar'));
+    await tester.pumpAndSettle();
+
+    // O que a busca procura pode estar na página que ainda não veio.
+    expect(find.text('Nenhum local ativo encontrado.'), findsOneWidget);
+    expect(find.byKey(const Key('picker-load-more')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('picker-load-more')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Garagem Central'), findsOneWidget);
   });
 
   testWidgets('início da janela passa por data e hora e atualiza o campo', (
