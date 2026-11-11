@@ -4,10 +4,12 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 
 ## Estado atual e conferência do Trello
 
-`auditoria-estado-atual.md` registra o recorte de **02/11/2026** (`66fe44a`). O fechamento da Sprint 2 está em [`review-2.md`](review-2.md), com 11/13 histórias da S2, 28 PRs e 48/63 cards concluídos em 10/11. A auditoria é histórica; o review é o retrato do fechamento.
+`auditoria-estado-atual.md` registra o recorte de **02/11/2026** (`66fe44a`). O fechamento da Sprint 2 está em [`review-2.md`](review-2.md), atualizado em **11/11/2026**: as telas do app (US-28/30/31) e o cadastro de locais (US-39) foram entregues, o worker no Render foi observado no ar e o app foi executado em aparelho físico. A auditoria é histórica; o review é o retrato do fechamento.
 
 | Evidência | Card | Conteúdo | PR |
 |---|---|---|---|
+| [`us-37.md`](evidencias/us-37.md) | US-37 | worker `abp4-mqtt-worker` LIVE no Render em 11/11, `mqtt conectado` no EMQX TLS 8883 e `/healthz` ok; continuidade não medida | #26 |
+| [`us-29-aparelho.md`](evidencias/us-29-aparelho.md) | US-29 | execução manual em Motorola g86 5G (Android 15): login, autorizações, detalhe, scanner lendo QR, perfil nos dois temas, locais e admin; sem medição de GPS/tempo | #55 |
 | [`dt-23.md`](evidencias/dt-23.md) | DT-23 | teto QR de 100 m e CHECK do raio no banco; migration e API implantadas em produção | #56 |
 | [`dt-24.md`](evidencias/dt-24.md) | DT-24 | Actions por SHA oficial e Dependabot semanal; integrados e validados no CI | #56 |
 | [`dt-01-02-03.md`](evidencias/dt-01-02-03.md) | DT-01 · DT-02 · DT-03 | decisão real no worker, dedup persistente e mapeamento terminal→local, integrados sobre a `main` | #32 (origem no #31) |
@@ -28,7 +30,7 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 | [`us-08-wokwi.md`](evidencias/us-08-wokwi.md) | US-08 | servo, LEDs, buzzer e LCD herdados do protótipo | #19 |
 | [`us-10-scanner.md`](evidencias/us-10-scanner.md) | US-10 | scanner QR, geolocalização e textos em pt-BR | #20 |
 | [`us-20.md`](evidencias/us-20.md) | US-20 | decisão de acesso QR e geofence de 100 m | #42 |
-| [`us-29.md`](evidencias/us-29.md) | US-29 | scanner QR que pede o acesso ao backend e mostra o resultado liberado/negado; câmera e GPS reais pendentes | — |
+| [`us-29.md`](evidencias/us-29.md) · [`us-29-aparelho.md`](evidencias/us-29-aparelho.md) | US-29 | scanner QR que pede o acesso ao backend e mostra o resultado liberado/negado; execução em aparelho em 11/11, com limites declarados | #55 |
 | [`us-26-mqtt-servo.md`](evidencias/us-26-mqtt-servo.md) | US-26 | comando de abertura do servo via MQTT (herdado da US-08) | #19 · #25 |
 
 ## Matriz de requisitos

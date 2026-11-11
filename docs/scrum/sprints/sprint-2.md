@@ -2,7 +2,8 @@
 
 - **Planning 2**: início da sprint · **Review 2**: 11/11 19h30 · **Retro**: logo após a review (30 min)
 - **Foco macro**: fluxo QR real ponta-a-ponta + admin + deploy + design admin/terminal
-- **Fechamento do trabalho: 10/11/2026** · commit de referência `1afd624` · **11/13 histórias da S2** concluídas, com US-20/US-32/DT-23/DT-24 antecipadas da S3
+- **Fechamento do trabalho: 10/11/2026** · commit de referência `1afd624` · **11/13 histórias da S2** concluídas no fechamento, com US-20/US-32/DT-23/DT-24 antecipadas da S3
+- **Atualização de 11/11/2026**: US-28, US-29, US-30, US-31 e US-39 concluídas; app com 640 testes e execução em aparelho; worker observado LIVE no Render
 
 ## Escopo previsto
 
@@ -54,9 +55,9 @@ Cards puxados na Planning 2. Pontos ficam "—" enquanto a estimativa colaborati
 | US-22 | Display: render do QR + status | João | — | Concluído no Trello (#26); código presente, demonstração visual pendente |
 | US-26 | Comando de abertura do servo via MQTT | João | — | Concluído (herdado da US-08) |
 | US-27 | Login real + sessão | Felipe | — | Concluído (#43) |
-| US-28 | Minhas autorizações no app | — | — | **Não entregue — S3** (API pronta desde a US-18) |
-| US-29 | Scanner QR + resultado no app | Leo | — | **Em review — S3** (PR #55 aberto, não integrado; falta câmera/GPS reais; evidência [`us-29.md`](../../entrega/evidencias/us-29.md)) |
-| US-37 | Worker MQTT persistente no Render | João | — | Concluído no Trello (#26); implementação presente, deploy não comprovado |
+| US-28 | Minhas autorizações no app | — | — | **Concluída em 11/11** (tela "Minhas autorizações" no app; no fechamento de 10/11 era carry-over da S3) |
+| US-29 | Scanner QR + resultado no app | Leo | — | **Concluída em 11/11** — PR #55 mergeado; execução em aparelho registrada em [`us-29-aparelho.md`](../../entrega/evidencias/us-29-aparelho.md) |
+| US-37 | Worker MQTT persistente no Render | João | — | Implementação na `main` (#26); serviço observado **LIVE** em 11/11, com `mqtt conectado` e `/healthz` ok ([`us-37.md`](../../entrega/evidencias/us-37.md)) |
 
 **US-20 (fora da tabela porque não foi puxada na Planning 2)**: antecipada e declarada concluída em 28/10 pelo PR #42 — `/access-events/qr` decide e registra o evento. O teto de 100 m passou a ser imposto pela DT-23, mergeada e implantada em 10/11 com CHECK de 1–100 m no banco.
 
@@ -88,5 +89,18 @@ A S2 não teve estimativa por pontos registrada; o acompanhamento foi por aceite
 | Mobile (`main`) | 93 testes (a US-29 leva a 215 no PR #55) |
 | Firmware | 12 executáveis host + 6 cenários de timing; builds padrão/TLS |
 | Produção | `/health` `2dd532b`, `database: ok`; CHECK de 1–100 m aplicada |
+
+## Atualização de 11/11/2026
+
+O fechamento de 10/11 acima permanece como retrato daquele dia. Até 11/11, o trabalho carry-over foi concluído:
+
+- **US-28** (minhas autorizações), **US-30** (admin de autorizações) e **US-31** (usuários + histórico) entregues no app, com as 12 telas do Figma e o shell de abas **Autorizações/Histórico/Perfil**; a Home antiga foi removida.
+- **US-29** concluída: o app envia o pedido e mostra liberado/negado; execução manual em aparelho físico registrada em [`us-29-aparelho.md`](../../entrega/evidencias/us-29-aparelho.md).
+- **US-39** (locais) concluída: `GET`/`POST /api/v1/locations` e telas de locais/novo local; cadastro real conferido no PostgreSQL.
+- **US-37** com operação remota observada: worker **LIVE** no Render, `mqtt conectado` no EMQX TLS 8883 e `/healthz` ok ([`us-37.md`](../../entrega/evidencias/us-37.md)).
+- **Testes:** backend com **433 aprovados + 40 pulados**; Flutter com **640**; `flutter analyze` limpo.
+- A API de produção está em `a0625d7` com `database: ok`; `QR_TOKEN_SECRET` e `JWT_SECRET` foram rotacionados em 11/11.
+
+**Ainda fora:** servo/cancela física, US-24 (heartbeat), US-25 (offline), APK de release em loja, US-33 (segurança), US-35 (diagramas) e US-36 (relatório ABNT). O fluxo completo app → terminal real não foi demonstrado.
 
 Documento da cerimônia: [`sprint-2-review.md`](sprint-2-review.md) · retro: [`sprint-2-retro.md`](sprint-2-retro.md) · entrega: [`../../entrega/review-2.md`](../../entrega/review-2.md).

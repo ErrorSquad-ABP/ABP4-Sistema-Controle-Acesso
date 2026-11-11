@@ -271,11 +271,13 @@ Plano original, não uma lista de stories ainda abertas. Títulos, épico e spri
 - [`definition-of-done.md`](definition-of-done.md) — o que significa "pronto" para um card.
 - `sprints/` e `templates/` completam a pasta (US-11).
 
-## Estado observado em 02/11/2026 · board reconferido em 08/11/2026 · fechamento da S2 em 10/11/2026
+## Estado observado em 02/11/2026 · board reconferido em 08/11/2026 · fechamento da S2 em 10/11/2026 · atualização em 11/11/2026
 
 Código auditado em 02/11: `66fe44a`; API pública observada em `6b6aa26`, com banco ok (uma primeira consulta retornou 503). No **fechamento da S2** (10/11, commit `1afd624`), o board tem **63 cards não arquivados**, sendo **48 em Concluído (26 US + 22 DT)**, 1 em review, 2 em andamento, 10 na Sprint 3 e 2 bloqueados. A contagem é declarada no quadro, não certificação de todos os aceites; o [review da S2](../entrega/review-2.md) e a [auditoria por card](../entrega/auditoria-estado-atual.md) registram as ressalvas.
 
-**Entregas integradas:** US-14/21/22/37 (#26), US-19 (#27), US-15/18 (#33), US-16/17 (#36), US-27 (#43), US-26 herdada da US-08 ([evidência](../entrega/evidencias/us-26-mqtt-servo.md)), US-20 (#42) e US-32 (E2E antecipado, #32). US-21 foi fechada pela fatia de consulta; o backend atual também grava decisões QR/NFC simulado, mas falta o leitor NFC do terminal (US-23). US-37 tem implementação, não deploy validado; US-22 tem código de renderização, não demonstração visual atual comprovada. A descrição da US-14 foi alinhada em 08/11: sem refresh/logout no servidor, logout local no app.
+**Atualização de 11/11/2026:** US-28 (minhas autorizações), US-30 (admin de autorizações), US-31 (usuários + histórico) e US-39 (locais) estão em **Concluído** no Trello, com comentário de evidência. O app passou a ter as 12 telas do Figma, o shell de abas e 640 testes; foi executado em aparelho físico ([`us-29-aparelho.md`](../entrega/evidencias/us-29-aparelho.md)). O worker no Render foi observado LIVE, com `mqtt conectado` no EMQX TLS e `/healthz` ok ([`us-37.md`](../entrega/evidencias/us-37.md)), e a API está em `a0625d7` com `database: ok`. Continuam fora: servo/cancela física, US-24 (heartbeat), US-25 (offline), APK de release em loja, US-33 (segurança), US-35 (diagramas) e US-36 (relatório ABNT).
+
+**Entregas integradas (retrato de 10/11):** US-14/21/22/37 (#26), US-19 (#27), US-15/18 (#33), US-16/17 (#36), US-27 (#43), US-26 herdada da US-08 ([evidência](../entrega/evidencias/us-26-mqtt-servo.md)), US-20 (#42) e US-32 (E2E antecipado, #32). US-21 foi fechada pela fatia de consulta; o backend atual também grava decisões QR/NFC simulado, mas falta o leitor NFC do terminal (US-23). US-37 tem implementação, não deploy validado; US-22 tem código de renderização, não demonstração visual atual comprovada. A descrição da US-14 foi alinhada em 08/11: sem refresh/logout no servidor, logout local no app.
 
 **Listas abertas no Trello (10/11, pós-fechamento da S2):** Sprint 3 = US-24/28/30/31/33/34/35/36/38/39; Em review = US-29; Em andamento = US-23/25; Bloqueado = DT-12/DT-22; Product Backlog vazio. **US-28 e US-29 são carry-over explícito para a S3**, registrado no [review da S2](../entrega/review-2.md); não há sprint em curso. A implementação e os testes da **US-29** estão no PR #55, em review, com a evidência em [`us-29.md`](../entrega/evidencias/us-29.md); falta validar câmera e GPS em aparelho real (US-34).
 
@@ -283,11 +285,11 @@ Código auditado em 02/11: `66fe44a`; API pública observada em `6b6aa26`, com b
 
 ### US-39 · Cadastro de locais de acesso (RF02) — descoberta em 29/10
 
-- **Épico:** E2/E4 (proposta de classificação, a confirmar) · **Sprint alvo:** a definir (candidata S3, não comprometida) · **Status Trello:** Product Backlog · [Card](https://trello.com/c/Lg7ehTp4).
-- CRUD admin de locais, endereço/complemento separados de ponto geográfico confirmado, vínculo terminal→local e desativação; sem ampliar o limite QR de 100 m. O card detalha captura/validação do ponto de instalação, cenários sem posição e distinção entre coordenadas reais/simuladas.
-- `AccessLocation`/seed/mapeamento existem, mas **não há endpoint nem tela funcional** de cadastro; os PNGs claro/escuro são design, não implementação.
+- **Épico:** E2/E4 (proposta de classificação, a confirmar) · **Sprint alvo:** a definir (entregue em 11/11) · **Status Trello:** Concluído em 11/11 · [Card](https://trello.com/c/Lg7ehTp4).
+- CRUD admin de locais, endereço/complemento separados de ponto geográfico confirmado, vínculo terminal→local e desativação; sem ampliar o limite QR de 100 m.
+- Entregues `GET /api/v1/locations` (autenticado, só ativos, paginado) e `POST /api/v1/locations` (ADMIN, raio de 1–100 m), além da tela de locais e do cadastro no app. A execução em aparelho criou "Portaria" com raio de 100 m, conferida no PostgreSQL ([`us-29-aparelho.md`](../entrega/evidencias/us-29-aparelho.md)). Não há edição/desativação de local nesta entrega.
 - A distribuição histórica acima soma as 38 stories originais; a US-39 é adicional e sua classificação definitiva depende de refinamento.
 
 **DT-22 (RNF07):** decisão, estimativas e procedimento de medição já estão em [`../entrega/evidencias/dt-22.md`](../entrega/evidencias/dt-22.md); consumo e continuidade não foram medidos. A descrição no Trello foi sincronizada em 08/11: estratégia documentada, medição de corrente/continuidade pendente (US-34).
 
-Detalhe da sprint em [`sprints/sprint-2.md`](sprints/sprint-2.md). A API na Vercel não comprova a operação do worker no Render nem o fluxo físico completo.
+Detalhe da sprint em [`sprints/sprint-2.md`](sprints/sprint-2.md). A API na Vercel em `a0625d7` e o worker observado LIVE no Render em 11/11 comprovam a operação da API e do processo MQTT naquele instante; não comprovam o fluxo físico completo nem a abertura da cancela.
