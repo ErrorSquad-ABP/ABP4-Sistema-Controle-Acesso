@@ -8,6 +8,7 @@ import '../../features/auth/session_controller.dart';
 import '../../features/auth/session_loading_page.dart';
 import '../../features/authorizations/authorization_contract.dart';
 import '../../features/authorizations/authorizations_page.dart';
+import '../../features/locations/locations_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/scanner/scanner_page.dart';
 
@@ -20,6 +21,8 @@ abstract final class AppRoutes {
   static const String login = '/login';
   static const String loading = '/loading';
   static const String scan = '/scan';
+  /// Administração de locais: aberta a partir do Perfil.
+  static const String locations = '/locais';
 }
 
 /// Guarda de sessão: restaurando → abertura; deslogado → login; logado fora
@@ -96,6 +99,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.scan,
         builder: (context, state) => const ScannerPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.locations,
+        builder: (context, state) => const LocationsPage(),
       ),
     ],
   );

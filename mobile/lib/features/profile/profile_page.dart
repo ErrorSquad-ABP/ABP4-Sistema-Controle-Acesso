@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/feedback_banner.dart';
@@ -146,7 +148,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               const SizedBox(height: AppSpacing.lg),
               const _AppearanceSection(),
               const SizedBox(height: AppSpacing.lg),
-              _Settings(onLogout: _confirmLogout),
+              _Settings(
+                onLogout: _confirmLogout,
+                isAdmin: user.role == UserRole.admin,
+              ),
             ],
           ),
         ),
@@ -341,9 +346,10 @@ class _AppearanceSection extends StatelessWidget {
 }
 
 class _Settings extends StatelessWidget {
-  const _Settings({required this.onLogout});
+  const _Settings({required this.onLogout, required this.isAdmin});
 
   final VoidCallback onLogout;
+  final bool isAdmin;
 
   @override
   Widget build(BuildContext context) {
@@ -354,6 +360,14 @@ class _Settings extends StatelessWidget {
           icon: Icons.notifications_none,
           label: 'Notificações',
         ),
+        // A API de locais é de administração (POST exige ADMIN); a lista também
+        // só faz sentido para quem gerencia a unidade.
+        if (isAdmin)
+          _SettingsRow(
+            icon: Icons.place_outlined,
+            label: 'Locais de acesso',
+            onTap: () => context.push(AppRoutes.locations),
+          ),
         const _SettingsRow(
           icon: Icons.shield_outlined,
           label: 'Privacidade e segurança',
