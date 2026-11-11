@@ -32,3 +32,6 @@ Thumbs.db
 
 # Processo (ledger local do SDD)
 .superpowers/
+
+# Slides locais da entrega (nao versionados)
+docs/entrega/apresentacao-*/
