@@ -364,6 +364,18 @@ class _Settings extends StatelessWidget {
         // só faz sentido para quem gerencia a unidade.
         if (isAdmin)
           _SettingsRow(
+            icon: Icons.assignment_outlined,
+            label: 'Autorizações',
+            onTap: () => context.push(AppRoutes.adminAuthorizations),
+          ),
+        if (isAdmin)
+          _SettingsRow(
+            icon: Icons.people_outline,
+            label: 'Usuários e histórico',
+            onTap: () => context.push(AppRoutes.adminUsers),
+          ),
+        if (isAdmin)
+          _SettingsRow(
             icon: Icons.place_outlined,
             label: 'Locais de acesso',
             onTap: () => context.push(AppRoutes.locations),

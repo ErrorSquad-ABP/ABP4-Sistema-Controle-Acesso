@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/shell/app_shell.dart';
+import '../../features/admin_authorizations/admin_authorizations_page.dart';
+import '../../features/admin_users/admin_users_page.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/auth/session_controller.dart';
 import '../../features/auth/session_loading_page.dart';
@@ -30,6 +32,10 @@ abstract final class AppRoutes {
 
   /// Administração de locais: aberta a partir do Perfil.
   static const String locations = '/locais';
+  /// Administração de autorizações (US-30).
+  static const String adminAuthorizations = '/admin/autorizacoes';
+  /// Administração de usuários e histórico (US-31).
+  static const String adminUsers = '/admin/usuarios';
 }
 
 /// Guarda de sessão: restaurando → abertura; deslogado → login; logado fora
@@ -115,6 +121,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.locations,
         builder: (context, state) => const LocationsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.adminAuthorizations,
+        builder: (context, state) => const AdminAuthorizationsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.adminUsers,
+        builder: (context, state) => const AdminUsersPage(),
       ),
     ],
   );
