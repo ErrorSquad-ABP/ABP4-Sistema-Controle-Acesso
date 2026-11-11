@@ -1,3 +1,4 @@
+import 'package:controle_acesso/core/theme/app_colors.dart';
 import 'package:controle_acesso/core/theme/app_theme.dart';
 import 'package:controle_acesso/core/theme/theme_mode_provider.dart';
 import 'package:controle_acesso/core/widgets/feedback_banner.dart';
@@ -11,6 +12,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../auth/fakes.dart';
 import 'fakes.dart';
+
+/// Razão de contraste WCAG 2.x entre duas cores opacas.
+double _contrast(Color a, Color b) {
+  final first = a.computeLuminance();
+  final second = b.computeLuminance();
+  final (lighter, darker) = first >= second ? (first, second) : (second, first);
+  return (lighter + 0.05) / (darker + 0.05);
+}
 
 void main() {
   Future<void> pumpProfile(
@@ -231,6 +240,26 @@ void main() {
       matching: find.byType(InkWell),
     );
     expect(tester.getSize(logoutRow).height, greaterThanOrEqualTo(48));
+  });
+
+  testWidgets('texto do seletor de tema passa AA nos dois temas', (
+    tester,
+  ) async {
+    await pumpProfile(tester);
+    final lightLabel = tester.widget<Text>(find.text('Escuro'));
+    expect(
+      _contrast(lightLabel.style!.color!, AppPalette.light.hairline),
+      greaterThanOrEqualTo(4.5),
+    );
+
+    await tester.tap(find.text('Escuro'));
+    await tester.pumpAndSettle();
+
+    final darkLabel = tester.widget<Text>(find.text('Claro'));
+    expect(
+      _contrast(darkLabel.style!.color!, AppPalette.dark.background),
+      greaterThanOrEqualTo(4.5),
+    );
   });
 
   testWidgets('não estoura com fonte 1.3 em 360x640', (tester) async {
