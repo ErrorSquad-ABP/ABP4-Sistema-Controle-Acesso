@@ -60,7 +60,8 @@ def image(s, name, x, y, w, h):
 
 
 def phone(s, name, x, y, w=260):
-    h = w * 880 / 430
+    iw, ih = Image.open(CAP / name).size
+    h = w * ih / iw
     box(s, x - 8, y - 8, w + 16, h + 16, '292D29', True)
     image(s, name, x, y, w, h)
 
@@ -90,8 +91,8 @@ box(s, 885, 0, 715, 820, '171D18')
 text(s, 'O acesso\nganhou um\nfluxo real.', 80, 210, 810, 360, 87, PAPER, True)
 text(s, 'Sprint 2 / Integração', 85, 635, 740, 60, 34, PAPER)
 text(s, 'APP  ·  API  ·  BANCO  ·  MQTT', 85, 711, 760, 50, 20, 'A6D5B8')
-phone(s, 'app-home.png', 925, 225, 250)
-phone(s, 'app-liberado.png', 1240, 145, 250)
+phone(s, 'app-android-home.png', 925, 210, 250)
+phone(s, 'app-android-liberado.png', 1240, 140, 250)
 
 s = slide('01 / Evolução', 'S1: fundação · S2: integração e decisão · evidências na main', note=
           '0:50 — Antes havia login mock, contratos e demonstração de comandos. Agora o login é real e a API valida autorização, QR e distância. O pedido deixa evento, comando e ACK. Não confundir isso com produto completo ou homologação física.')
@@ -105,23 +106,24 @@ text(s, 'O fluxo integrado', 890, 360, 620, 65, 48, INK, True)
 text(s, 'Sessão autenticada\nRegras aplicadas no servidor\nEvento + comando + ACK', 890, 470, 630, 210, 32)
 text(s, 'A tela mostra o resultado. A autorização continua no backend.', 80, 735, 1420, 45, 26, GREEN)
 
-s = slide('02 / App em execução', 'Capturas: Flutter Web local + API real · sem alterações no código do app', note=
-          '1:00 — Mostrar login real e Home autenticada. A sessão é persistida pelo adaptador da plataforma; no alvo Android o projeto usa Keystore. Logout é local, sem revogação de JWT no servidor. A lista de autorizações e o shell completo ainda são US-28.')
-phone(s, 'app-login.png', 112, 168, 275)
-phone(s, 'app-home.png', 450, 168, 275)
-text(s, 'Entrar de verdade.\nContinuar com\nsegurança.', 855, 205, 660, 245, 61, INK, True)
-text(s, 'Login na API, não um mock.\nSessão restaurada ao reabrir.\nSaída explícita da conta.', 855, 505, 660, 185, 30)
-text(s, 'Autenticação real · sessão persistida', 855, 740, 650, 40, 20, GREEN)
+s = slide('02 / App no aparelho', 'Capturas de tela do APK em Android 15 · Android Debug · API local real', note=
+          '1:00 — Este não é o build web: é o APK rodando no celular. Login real contra a API, sessão persistida e Home. Fechei e reabri o app: a sessão voltou sem pedir senha, o que aparece na segunda captura. A lista de autorizações ainda não existe no app.')
+phone(s, 'app-android-login.png', 118, 168, 240)
+phone(s, 'app-android-home.png', 420, 168, 240)
+text(s, 'Entrar de verdade.\nContinuar com\nsegurança.', 800, 205, 720, 245, 58, INK, True)
+text(s, 'Login na API, não um mock.\nSessão restaurada ao reabrir.\nSaída explícita da conta.', 800, 500, 720, 185, 30)
+text(s, 'APK debug · Android · tela real do aparelho', 800, 740, 720, 40, 20, GREEN)
 
-s = slide('03 / O resultado chega ao app', 'Execução local real · entrada de câmera e GPS simulada no Chromium', note=
-          '1:20 — As duas telas vieram do mesmo build da main. O scanner decodificou um QR assinado fornecido por câmera virtual. Dentro do raio, a API autorizou; com posição a cerca de 1,1 km, negou por OUT_OF_RANGE. O GPS e a câmera não foram físicos. Não houve mock de resposta HTTP.')
-heading(s, 'Uma leitura. Duas decisões corretas.', size=55)
-phone(s, 'app-liberado.png', 220, 252, 255)
-phone(s, 'app-negado.png', 650, 252, 255)
-text(s, 'LIBERADO', 1050, 350, 460, 40, 23, GREEN, True)
-text(s, 'Autorização válida\ne posição no local.', 1050, 405, 460, 100, 30)
-text(s, 'NEGADO', 1050, 565, 460, 40, 23, RED, True)
-text(s, 'Fora do raio de 100 m.\nMotivo claro para o usuário.', 1050, 620, 470, 100, 29)
+s = slide('03 / Câmera e GPS reais', 'APK em aparelho físico · API/worker/PostgreSQL/Mosquitto locais · 11/11 16:10', note=
+          '1:20 — Três telas do mesmo aparelho: o scanner lendo o QR exibido no monitor, o acesso liberado com a posição a 6,8 m e o negado a 1.207,9 m. A câmera e o GPS são os do celular; a API, o banco e o worker são reais. Para o segundo caso, movi o local no banco 1,2 km e li o mesmo QR de novo. O motivo exibido vem do backend, não do app.')
+heading(s, 'Ler, decidir e mostrar no aparelho.', size=52)
+phone(s, 'app-android-scanner.jpg', 120, 250, 232)
+phone(s, 'app-android-liberado.png', 452, 250, 232)
+phone(s, 'app-android-negado.png', 784, 250, 232)
+text(s, '6,8 m', 1070, 330, 460, 80, 62, GREEN, True)
+text(s, 'posição real do celular\ndentro dos 100 m', 1070, 418, 470, 90, 25)
+text(s, '1.207,9 m', 1070, 560, 460, 80, 62, RED, True)
+text(s, 'fora do raio: negado com\nOUT_OF_RANGE no backend', 1070, 648, 480, 90, 25)
 
 s = slide('04 / Backend', 'Swagger/OpenAPI da aplicação · captura local de /docs · a0625d7', note=
           '1:00 — Auth e administração existem na API: usuários, autorizações e histórico. O QR vale 25 s; o servidor confere assinatura, terminal, usuário, vigência, usos e geofence limitada a 100 m. Negativa de negócio é uma decisão HTTP 200, não uma falha de transporte. As telas administrativas do app ainda não foram entregues.')
@@ -209,8 +211,8 @@ s = slide('11 / Próximos passos', 'S3 · 12–25/11/2026 · repositório e evid
 text(s, 'Do celular\nao terminal.\nCom rastro.', 80, 190, 900, 365, 83, INK, True)
 text(s, 'Demonstração e perguntas.', 85, 622, 900, 65, 36, GREEN, True)
 text(s, 'João Victor Lopes Rosa · Felipe Pacheco\nCarlos Santo · Caio Araujo\nLeonardo da Silva Irineu · Arthur Facchinetti', 85, 706, 900, 110, 22, MUTED)
-phone(s, 'app-liberado.png', 1080, 160, 280)
-text(s, 'github.com/ErrorSquad-ABP/\nABP4-Sistema-Controle-Acesso', 1000, 770, 530, 50, 18, MUTED)
+phone(s, 'app-android-liberado.png', 1080, 140, 262)
+text(s, 'github.com/ErrorSquad-ABP/\nABP4-Sistema-Controle-Acesso', 1000, 772, 530, 50, 18, MUTED)
 
 assert len(pages) == len(prs.slides) == 12
 for number, s in enumerate(prs.slides, 1):

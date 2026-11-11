@@ -23,15 +23,16 @@ Textos, números e formas do PowerPoint são editáveis; capturas continuam send
 
 ## O que foi executado
 
-As imagens de login, Home, acesso liberado e negado são **capturas do app da
-`main` em execução**, não mockups nem telas redesenhadas. O build web apontou
-para uma API local real; não houve substituição de respostas HTTP.
+As imagens de login, Home, scanner, acesso liberado e negado são **capturas de
+tela do APK rodando em um Motorola g86 5G (Android 15)**, feitas com
+`adb exec-out screencap`. Câmera e GPS são os do aparelho; API, worker, banco e
+broker são reais, em execução local. Nada de mockup ou tela redesenhada.
 
 | Parte | Ambiente e limite |
 |---|---|
-| App | Flutter Web, build de release local; não é demo web publicada nem aceite Android físico |
-| Câmera | Chromium com vídeo Y4M sintético contendo QR assinado; o scanner real decodificou o QR |
-| Posição | Geolocalização sintética: no local e a aproximadamente 1,1 km dele |
+| App | APK de debug no aparelho (`adb reverse` para a API local); não é build release nem publicação em loja |
+| Câmera | câmera traseira do celular lendo o QR exibido no monitor |
+| Posição | GPS do aparelho: 6,8 m (liberado) e 1.207,9 m (negado) |
 | API e worker | Processos reais separados, `ACCESS_MODE=real`; não foi usado decisor permissivo |
 | Banco | PostgreSQL 17 isolado em Docker, com migrations e seed fictícia do projeto |
 | MQTT | Mosquitto real local; observador registra mensagens sanitizadas |
@@ -39,10 +40,11 @@ para uma API local real; não houve substituição de respostas HTTP.
 | ESP32 físico | Placa real contra o EMQX em 06/11 (TLS + RC522), servo desligado; sem nova gravação nesta sessão — [US-23](../evidencias/us-23-nfc-rc522.md) |
 | Produção | API na Vercel (`a0625d7`, `database: ok`) e worker no Render `live` com `mqtt conectado` no EMQX — [US-37](../evidencias/us-37.md) |
 
-O fluxo capturado comprova integração de software e persistência. **Não comprova
-câmera/GPS físicos, movimento da cancela nem autonomia energética.**
-O ACK do simulador não é prova de abertura física. O NFC apresentado no slide 8
-usa código real do firmware e a bancada registrada, não uma foto inventada.
+O fluxo capturado comprova câmera e GPS reais do aparelho, decisão no backend e
+persistência. **Não comprova movimento da cancela, autonomia energética nem
+publicação em loja.** O ACK do simulador não é prova de abertura física. O NFC
+apresentado no slide 8 usa código real do firmware e a bancada registrada, não
+uma foto inventada.
 
 ## Roteiro de fala
 
@@ -54,8 +56,8 @@ reduza explicações dos slides 2, 5, 8 e 10 e não faça uma segunda demo ao vi
 |---|---|---|
 | 1. O acesso ganhou um fluxo real | 0:40 | Da fundação da S1 à integração da S2; declarar a simulação nas entradas |
 | 2. Do contrato à decisão | 0:50 | Login e regras deixaram de ser demonstração/stub |
-| 3. App em execução | 1:00 | Login na API, sessão e Home; o que a tela entrega hoje |
-| 4. Liberado e negado | 1:20 | Duas decisões da API real, com câmera/GPS sintéticos |
+| 3. App no aparelho | 1:00 | APK no celular: login na API, sessão restaurada ao reabrir |
+| 4. Câmera e GPS reais | 1:20 | Scanner lendo o monitor; 6,8 m liberado e 1.207,9 m negado |
 | 5. Backend | 1:00 | QR de 25 s, JWT, janela, usos e teto de 100 m; admin existe na API |
 | 6. Banco | 1:00 | Consulta SQL real com decisões QR/NFC e motivos; QR fora do raio não abre |
 | 7. MQTT | 1:00 | Comando e ACK compartilham `commandId`; QoS 1 não é prova de movimento |
@@ -67,12 +69,14 @@ reduza explicações dos slides 2, 5, 8 e 10 e não faça uma segunda demo ao vi
 
 ## Origem das capturas e dos números
 
-Capturas realizadas em **2026-11-11, entre 12:32 e 12:43 (America/Sao_Paulo)**,
-com dados fictícios. IDs identificam essa execução local, não fixtures universais.
+Capturas do aparelho em **2026-11-11, 16:08–16:13 (America/Sao_Paulo)**; as de
+API, banco, MQTT e idempotência vêm da execução local de 12:32–12:43. Dados
+fictícios; IDs identificam a execução, não fixtures universais.
 
 | Arquivo | Origem |
 |---|---|
-| `capturas/app-*.png` | Screenshots Playwright do build real servido em `127.0.0.1:5012` |
+| `capturas/app-android-*.png`, `app-android-scanner.jpg` | `adb exec-out screencap` do APK no Motorola g86 5G; apenas reduzidas de tamanho |
+| `capturas/app-*.png` (sem `android`) | Screenshots Playwright do build web, mantidos como registro anterior |
 | `capturas/api-openapi.png`, `api-qr.png` | Swagger real da API em `127.0.0.1:3012/docs`; recorte com zoom de leitura |
 | `capturas/banco.png`, `banco-recorte.png` | Saída real de `psql`, apresentada como texto no navegador; recorte remove espaço vazio |
 | `capturas/banco-consulta.txt` | Consulta executada e resultado do PostgreSQL; nenhum dado foi criado para preencher a imagem |

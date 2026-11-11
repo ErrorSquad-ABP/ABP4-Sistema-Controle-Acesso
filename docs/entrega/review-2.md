@@ -68,7 +68,7 @@ A S2 não teve estimativa por pontos registrada; os números não representam ve
 | US-26 | Comando `open`/`deny` via MQTT com ACK e servo | [evidência](evidencias/us-26-mqtt-servo.md) |
 | US-27 | Login real, sessão persistida e encerramento local | PR #43 |
 | US-28 | **Não entregue** — tela "minhas autorizações" no app | — |
-| US-29 | **Integrada e concluída no quadro** — pedido QR e resultado no app; câmera/GPS físicos pendentes na US-34/DT-12 | [PR #55](https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso/pull/55), [evidência](evidencias/us-29.md) |
+| US-29 | **Integrada e validada no aparelho** — pedido QR e resultado no app, câmera e GPS reais em 11/11; falta build release e ambiente de produção na US-34/DT-12 | [PR #55](https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso/pull/55), [evidência](evidencias/us-29.md), [aparelho](evidencias/us-29-aparelho.md) |
 | US-37 | Worker MQTT no Render; serviço `live` em 11/11 com MQTT TLS e `/healthz` ok | PR #26, [`deploy.md`](../guides/deploy.md), [`us-37.md`](evidencias/us-37.md) |
 
 ## 5. Antecipações da S3
@@ -102,7 +102,7 @@ Usar a `main` de referência, dependências instaladas e os ambientes do [guia l
 5. **Qualidade e operação (1–2 min):** API pública `a0625d7`/banco ok e Actions aprovadas; não confundir worker local com deploy no Render nem build web local com US-38 publicada.
 6. **Pendências e próximos passos (1–2 min):** US-28, GPS/heartbeat, offline, admin e bancada. Reservar o restante da janela de 10–15 min para perguntas, ajustando o tempo dos blocos.
 
-**São provas separadas:** capturas do app com câmera/GPS sintéticos, decisão e persistência reais locais, transporte/ACK do terminal simulado e evidência física anterior. Não há nova demonstração de câmera/GPS físicos, ESP32 conectado ou atuação do servo nesta review.
+**São provas complementares:** capturas do APK em aparelho físico (câmera e GPS reais), decisão e persistência locais, transporte/ACK do terminal simulado e evidência física anterior do ESP32. Não há demonstração do servo em movimento nesta review, e o terminal que exibiu o QR foi o simulador.
 
 **Execuções de 11/11 aprovadas:** [CD backend 43046423006](https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso/actions/runs/43046423006), [CI backend 43046423082](https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso/actions/runs/43046423082), [firmware 43046423239](https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso/actions/runs/43046423239) e [CodeQL 43046422439](https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso/actions/runs/43046422439).
 
@@ -111,7 +111,7 @@ Usar a `main` de referência, dependências instaladas e os ambientes do [guia l
 **Encerrar a sprint não significa 13/13 nem 100% de aceite físico.** Uma história do escopo da S2 segue para a S3, além das ressalvas de comprovação:
 
 - **US-28 (minhas autorizações no app):** não iniciada; a API está pronta desde a US-18.
-- **US-29 (integrada):** envio do QR e resultado funcionam no app; **câmera e GPS reais não validados**, a conferir na US-34/DT-12. Não é carry-over de implementação.
+- **US-29 (integrada):** envio do QR e resultado funcionam no app, e em 11/11 o fluxo rodou no aparelho com **câmera e GPS reais** (6,8 m liberado, 1.207,9 m negado). Faltam build release e execução contra a API de produção na US-34/DT-12.
 - **US-22 (demonstração visual do QR):** código presente e usado pelo worker, mas a demonstração visual atual não foi registrada.
 - **US-37 (worker no Render):** serviço no ar desde 11/11, com `mqtt conectado`, assinatura dos três filtros e `/healthz` ok; falta o ciclo com terminal físico.
 
@@ -129,7 +129,7 @@ Da S3, a US-23 (NFC) teve o software antecipado e integrado, mas continua em rev
 
 | Risco | Tratamento |
 |---|---|
-| Confundir app integrado com aceite físico | US-29 integrada, mas câmera/GPS físicos pendentes; a demo identifica entradas e terminal simulados |
+| Confundir app integrado com aceite físico | US-29 validada no aparelho (câmera/GPS reais), mas com APK debug e API local; release e produção seguem na US-34 |
 | `/health` verde mascarar integração incompleta | O smoke test cobre só API e banco; Render, app e hardware têm evidências próprias |
 | Worker no Render reiniciar ou dormir | Self-ping a cada 10 min; conferir `/healthz` e o log de reconexão após spin-down |
 | Hardware atrasar aceite NFC/GPS/câmera/energia | Concentrar a bancada na US-34; a revisão NFC integrada não foi regravada nem medida na placa |

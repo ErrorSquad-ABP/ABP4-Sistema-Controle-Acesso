@@ -18,7 +18,7 @@ Material de apoio com 12 slides 16:9: [roteiro e capturas](../../entrega/apresen
 4. **Terminal, qualidade e operação (2–3 min):** NFC integrado, ACK adiado até `idle`, evidência física anterior, testes, API publicada e worker MQTT no Render conectado ao EMQX.
 5. **Pendências e discussão (1–3 min):** US-28, bancada, heartbeat/GPS, offline e admin; registrar feedback sem antecipar decisões.
 
-**O que as capturas provam:** PostgreSQL 17 isolado (`5448`), Mosquitto (`1888`), API Express (`3012`), worker separado e Flutter web (`5012`), com decisor real e sem alteração do produto. Chromium com câmera fake Y4M e geolocalização sintética alimentou o scanner real. Status `online`, terminal e ACKs são simulados, pois US-24 não envia heartbeat. O [JSON sanitizado](../../entrega/apresentacao-sprint2/capturas/execucao-local.json) registra decisões, eventos e correlações. Não comprova câmera/GPS físicos, ESP32 conectado nem atuação de servo; build web local não é US-38 publicada.
+**O que as capturas provam:** o fluxo rodou no **aparelho físico** — câmera e GPS do celular, APK debug, API Express (`3000`), worker separado, PostgreSQL 17 (`5448`) e Mosquitto (`1888`) locais, com decisor real. Distâncias medidas: 6,8 m (`GRANTED`) e 1.207,9 m (`DENIED/OUT_OF_RANGE`). Status `online` e ACK vêm do terminal simulado, pois US-24 não envia heartbeat. [Evidência no aparelho](../../entrega/evidencias/us-29-aparelho.md). Não comprova build release, ESP32 conectado nem atuação de servo.
 
 ## Demos (por card)
 
@@ -44,7 +44,7 @@ Material de apoio com 12 slides 16:9: [roteiro e capturas](../../entrega/apresen
 ## O que não entra na entrega
 
 - **US-28** (minhas autorizações no app) não foi iniciada; a API está pronta.
-- **US-29 está integrada:** não falta envio nem resultado; falta validar câmera e GPS em aparelho real na US-34/DT-12.
+- **US-29 está integrada e validada no aparelho** (câmera/GPS reais em 11/11); faltam build release e execução contra a API de produção na US-34/DT-12.
 - **US-22** tem código, sem demonstração visual física atual registrada.
 - **US-37** está no ar no Render, conectado ao EMQX; falta o ciclo completo com terminal físico.
 - **DT-12** e **DT-22** seguem bloqueadas por bancada (câmera/APK e medição de energia).
@@ -67,7 +67,7 @@ Material de apoio com 12 slides 16:9: [roteiro e capturas](../../entrega/apresen
 ## Ações (o que vira card no backlog)
 
 - _Preencher durante a review. Candidatos já mapeados na retro:_
-  - implementar US-28 e validar câmera/GPS físicos da US-29 já integrada;
+  - implementar US-28 e fechar o build release da US-29 já validada no aparelho;
   - concentrar a bancada da US-34 para DT-12, DT-22, revisão NFC e GPS, sem presumir aceite;
   - comprovar o deploy do worker no Render (US-37);
   - registrar demonstração visual do QR (US-22).
