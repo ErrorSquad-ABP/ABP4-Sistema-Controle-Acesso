@@ -1,0 +1,10 @@
+{
+  "capturedAt": "2026-11-11T15:39:14.608466+00:00",
+  "requestId": "d1d5b9a2-2bec-491a-a597-204d25913048",
+  "before": 5,
+  "afterFirstRequest": 6,
+  "afterSameRequestId": 6,
+  "firstDecision": "GRANTED",
+  "retryDecision": "GRANTED",
+  "sameEvent": true
+}

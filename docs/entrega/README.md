@@ -4,7 +4,9 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 
 ## Estado atual e conferência do Trello
 
-`auditoria-estado-atual.md` registra o recorte de **02/11/2026** (`66fe44a`). O fechamento da Sprint 2 está em [`review-2.md`](review-2.md), com 11/13 histórias da S2, 28 PRs e 48/63 cards concluídos em 10/11. A auditoria é histórica; o review é o retrato do fechamento.
+`auditoria-estado-atual.md` registra o recorte de **02/11/2026** (`66fe44a`). O corte intermediário de 10/11 registrava 11/13 histórias da S2, 28 PRs e 48/63 cards concluídos; o fechamento atualizado está em [`review-2.md`](review-2.md). A auditoria é histórica; o review é o retrato do fechamento.
+
+**Review de 11/11/2026:** [apresentação da Sprint 2 — roteiro e capturas](apresentacao-sprint2/README.md) · PDF 16:9 e PPTX gerados localmente por `python docs/entrega/apresentacao-sprint2/gerar.py` (não versionados), para 10–15 min com foco no funcionamento real. O [review atualizado](review-2.md) substitui o corte intermediário de 10/11 acima: **12/13 histórias da S2**, **49/63 cards em listas concluídas + US-23 em review**, com ressalvas físicas e de deploy.
 
 | Evidência | Card | Conteúdo | PR |
 |---|---|---|---|
@@ -30,6 +32,7 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 | [`us-20.md`](evidencias/us-20.md) | US-20 | decisão de acesso QR e geofence de 100 m | #42 |
 | [`us-23-nfc-rc522.md`](evidencias/us-23-nfc-rc522.md) | US-23 | RC522 físico, MQTT QoS 1, decisão/ACK e feedback; roteiro de teste e resultados automáticos | a abrir |
 | [`us-29.md`](evidencias/us-29.md) | US-29 | scanner QR que pede o acesso ao backend e mostra o resultado liberado/negado; câmera e GPS reais pendentes | — |
+| [`us-37.md`](evidencias/us-37.md) | US-37 | worker MQTT no Render em produção, com `mqtt conectado`, assinatura e `/healthz` ok; falta o ciclo com terminal físico | #26 |
 | [`us-26-mqtt-servo.md`](evidencias/us-26-mqtt-servo.md) | US-26 | comando de abertura do servo via MQTT (herdado da US-08) | #19 · #25 |
 
 ## Matriz de requisitos

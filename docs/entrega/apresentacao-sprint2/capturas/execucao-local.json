@@ -1,0 +1,435 @@
+{
+  "capturedAt": "2026-11-11T15:32:41.129Z",
+  "commit": "a0625d7",
+  "environment": "local isolado; dados ficticios; decisor real; terminal simulado",
+  "health": {
+    "status": "ok",
+    "version": "a0625d7-review2-local",
+    "uptimeSeconds": 172,
+    "timestamp": "2026-11-11T15:32:41.129Z",
+    "database": "ok"
+  },
+  "attempts": [
+    {
+      "name": "QR dentro do raio",
+      "requestId": "ba17f3c9-3f9a-4d00-b77c-e31b0abe0097",
+      "status": 200,
+      "body": {
+        "decision": "GRANTED",
+        "reason": null,
+        "message": "Acesso autorizado",
+        "event": {
+          "id": "ba17f3c9-3f9a-4d00-b77c-e31b0abe0097",
+          "occurredAt": "2026-11-11T15:32:40.915Z",
+          "terminalId": "terminal-01",
+          "method": "QR",
+          "decision": "GRANTED",
+          "reason": null,
+          "user": {
+            "id": "a1000000-0000-4000-8000-000000000002",
+            "name": "Usuário Demonstração",
+            "role": "RESIDENT"
+          },
+          "location": {
+            "id": "a1000000-0000-4000-8000-000000000003",
+            "name": "Unidade de Demonstração"
+          },
+          "authorizationId": "a1000000-0000-4000-8000-000000000004",
+          "distanceMeters": 0
+        }
+      }
+    },
+    {
+      "name": "Repeticao idempotente",
+      "requestId": "ba17f3c9-3f9a-4d00-b77c-e31b0abe0097",
+      "status": 200,
+      "body": {
+        "decision": "GRANTED",
+        "reason": null,
+        "message": "Acesso autorizado",
+        "event": {
+          "id": "ba17f3c9-3f9a-4d00-b77c-e31b0abe0097",
+          "occurredAt": "2026-11-11T15:32:40.915Z",
+          "terminalId": "terminal-01",
+          "method": "QR",
+          "decision": "GRANTED",
+          "reason": null,
+          "user": {
+            "id": "a1000000-0000-4000-8000-000000000002",
+            "name": "Usuário Demonstração",
+            "role": "RESIDENT"
+          },
+          "location": {
+            "id": "a1000000-0000-4000-8000-000000000003",
+            "name": "Unidade de Demonstração"
+          },
+          "authorizationId": "a1000000-0000-4000-8000-000000000004",
+          "distanceMeters": 0
+        }
+      }
+    },
+    {
+      "name": "QR fora do raio",
+      "requestId": "b5cc0819-58c9-4ea8-9d5f-721e75827155",
+      "status": 200,
+      "body": {
+        "decision": "DENIED",
+        "reason": "OUT_OF_RANGE",
+        "message": "Acesso negado: OUT_OF_RANGE",
+        "event": {
+          "id": "b5cc0819-58c9-4ea8-9d5f-721e75827155",
+          "occurredAt": "2026-11-11T15:32:41.005Z",
+          "terminalId": "terminal-01",
+          "method": "QR",
+          "decision": "DENIED",
+          "reason": "OUT_OF_RANGE",
+          "user": {
+            "id": "a1000000-0000-4000-8000-000000000002",
+            "name": "Usuário Demonstração",
+            "role": "RESIDENT"
+          },
+          "location": {
+            "id": "a1000000-0000-4000-8000-000000000003",
+            "name": "Unidade de Demonstração"
+          },
+          "authorizationId": null,
+          "distanceMeters": 1111.9492664453662
+        }
+      }
+    }
+  ],
+  "trace": [
+    {
+      "topic": "terminals/terminal-01/status",
+      "qos": 1,
+      "retain": false,
+      "messageId": "85887fbd-10f4-4931-81a3-bb990320e650",
+      "state": "online",
+      "capturedAt": "2026-11-11T15:29:48.686Z"
+    },
+    {
+      "topic": "terminals/terminal-01/qr",
+      "qos": 0,
+      "retain": false,
+      "messageId": "125fded3-6095-4899-8489-6ec658756142",
+      "capturedAt": "2026-11-11T15:30:06.697Z"
+    },
+    {
+      "topic": "terminals/terminal-01/status",
+      "qos": 1,
+      "retain": false,
+      "messageId": "18f46831-2d34-4afc-ba4f-c0520dbdcf0d",
+      "state": "online",
+      "capturedAt": "2026-11-11T15:30:18.699Z"
+    },
+    {
+      "topic": "terminals/terminal-01/qr",
+      "qos": 0,
+      "retain": false,
+      "messageId": "0c254e5f-1e43-4324-b3f0-db1f38c3dc19",
+      "capturedAt": "2026-11-11T15:30:26.696Z"
+    },
+    {
+      "topic": "terminals/terminal-01/qr",
+      "qos": 0,
+      "retain": false,
+      "messageId": "4e939fb7-00ca-4a94-bb2e-16cf0c1aecb3",
+      "capturedAt": "2026-11-11T15:30:46.704Z"
+    },
+    {
+      "topic": "terminals/terminal-01/status",
+      "qos": 1,
+      "retain": false,
+      "messageId": "7d33c411-8f96-427e-b6c7-1bb500d31308",
+      "state": "online",
+      "capturedAt": "2026-11-11T15:30:48.709Z"
+    },
+    {
+      "topic": "terminals/terminal-01/qr",
+      "qos": 0,
+      "retain": false,
+      "messageId": "667f967f-02ff-40d4-9d50-f186ec7ecaf1",
+      "capturedAt": "2026-11-11T15:31:06.701Z"
+    },
+    {
+      "topic": "terminals/terminal-01/status",
+      "qos": 1,
+      "retain": false,
+      "messageId": "35eb7431-15d7-4991-b2ef-c511f3e67f9a",
+      "state": "online",
+      "capturedAt": "2026-11-11T15:31:18.715Z"
+    },
+    {
+      "topic": "terminals/terminal-01/qr",
+      "qos": 0,
+      "retain": false,
+      "messageId": "368b9e3d-2e12-488d-99fb-e3ff33dd6b6f",
+      "capturedAt": "2026-11-11T15:31:26.715Z"
+    },
+    {
+      "topic": "terminals/terminal-01/commands",
+      "qos": 1,
+      "retain": false,
+      "messageId": "5a22a9c6-860b-417a-b4e7-e482c40af3d1",
+      "commandId": "c637dbfe-c92a-435f-a633-3de8c22515b4",
+      "action": "open",
+      "capturedAt": "2026-11-11T15:31:41.351Z"
+    },
+    {
+      "topic": "terminals/terminal-01/acks",
+      "qos": 1,
+      "retain": false,
+      "messageId": "cc41ac01-eeb1-4546-b75c-37abb6c74c08",
+      "commandId": "c637dbfe-c92a-435f-a633-3de8c22515b4",
+      "status": "executed",
+      "capturedAt": "2026-11-11T15:31:41.356Z"
+    },
+    {
+      "topic": "terminals/terminal-01/qr",
+      "qos": 0,
+      "retain": false,
+      "messageId": "e08df84a-7a96-444b-9cc3-8c179fcd6d9f",
+      "capturedAt": "2026-11-11T15:31:46.724Z"
+    },
+    {
+      "topic": "terminals/terminal-01/status",
+      "qos": 1,
+      "retain": false,
+      "messageId": "b8487b9b-297c-4463-8491-a9a2f6342484",
+      "state": "online",
+      "capturedAt": "2026-11-11T15:31:48.722Z"
+    },
+    {
+      "topic": "terminals/terminal-01/qr",
+      "qos": 0,
+      "retain": false,
+      "messageId": "12099858-e24a-49eb-8b69-8dddc9d4f662",
+      "capturedAt": "2026-11-11T15:32:06.734Z"
+    },
+    {
+      "topic": "terminals/terminal-01/status",
+      "qos": 1,
+      "retain": false,
+      "messageId": "65a65250-ff2b-49f5-bec1-beb1ed4459ea",
+      "state": "online",
+      "capturedAt": "2026-11-11T15:32:18.723Z"
+    },
+    {
+      "topic": "terminals/terminal-01/qr",
+      "qos": 0,
+      "retain": false,
+      "messageId": "aa71f000-aef1-4774-ade3-60902bbf1784",
+      "capturedAt": "2026-11-11T15:32:26.742Z"
+    },
+    {
+      "topic": "terminals/terminal-01/commands",
+      "qos": 1,
+      "retain": false,
+      "messageId": "e99cb266-7060-4976-8b6b-5b2aa7a9a1f4",
+      "commandId": "c62aca78-ebe4-4110-a0f5-fbee6805cd2a",
+      "action": "open",
+      "capturedAt": "2026-11-11T15:32:38.581Z"
+    },
+    {
+      "topic": "terminals/terminal-01/acks",
+      "qos": 1,
+      "retain": false,
+      "messageId": "18d3d016-618b-41ab-9a84-658be71e1dd2",
+      "commandId": "c62aca78-ebe4-4110-a0f5-fbee6805cd2a",
+      "status": "executed",
+      "capturedAt": "2026-11-11T15:32:38.583Z"
+    },
+    {
+      "topic": "terminals/terminal-01/commands",
+      "qos": 1,
+      "retain": false,
+      "messageId": "f7aafebe-0cad-444b-8379-b5f8a147a369",
+      "commandId": "b2998611-78da-49b7-b357-efb4c5d1afca",
+      "action": "open",
+      "capturedAt": "2026-11-11T15:32:40.932Z"
+    },
+    {
+      "topic": "terminals/terminal-01/acks",
+      "qos": 1,
+      "retain": false,
+      "messageId": "b5230e14-7f86-4949-ae99-ee41bda356d6",
+      "commandId": "b2998611-78da-49b7-b357-efb4c5d1afca",
+      "status": "executed",
+      "capturedAt": "2026-11-11T15:32:40.933Z"
+    },
+    {
+      "topic": "terminals/terminal-01/commands",
+      "qos": 1,
+      "retain": false,
+      "messageId": "f7aafebe-0cad-444b-8379-b5f8a147a369",
+      "commandId": "b2998611-78da-49b7-b357-efb4c5d1afca",
+      "action": "open",
+      "capturedAt": "2026-11-11T15:32:40.979Z"
+    },
+    {
+      "topic": "terminals/terminal-01/acks",
+      "qos": 1,
+      "retain": false,
+      "messageId": "b5230e14-7f86-4949-ae99-ee41bda356d6",
+      "commandId": "b2998611-78da-49b7-b357-efb4c5d1afca",
+      "status": "executed",
+      "capturedAt": "2026-11-11T15:32:40.981Z"
+    },
+    {
+      "topic": "terminals/terminal-01/access-events",
+      "qos": 1,
+      "retain": false,
+      "messageId": "90c66e55-dc79-467e-9ec8-7ff97e24c5ec",
+      "type": "nfc_read",
+      "capturedAt": "2026-11-11T15:32:41.011Z"
+    },
+    {
+      "topic": "terminals/terminal-01/access-events",
+      "qos": 1,
+      "retain": false,
+      "messageId": "d79ca137-9863-42d6-8796-49876e336ea6",
+      "type": "nfc_read",
+      "capturedAt": "2026-11-11T15:32:41.013Z"
+    },
+    {
+      "topic": "terminals/terminal-01/commands",
+      "qos": 1,
+      "retain": false,
+      "messageId": "e4423f19-e4bf-4766-967a-dc2fa4228748",
+      "commandId": "4c9b494a-7e9f-4f25-819a-1b3d8bb10601",
+      "action": "open",
+      "capturedAt": "2026-11-11T15:32:41.068Z"
+    },
+    {
+      "topic": "terminals/terminal-01/acks",
+      "qos": 1,
+      "retain": false,
+      "messageId": "9fbb0cf1-bebc-4563-86f2-75c02c12dee7",
+      "commandId": "4c9b494a-7e9f-4f25-819a-1b3d8bb10601",
+      "status": "executed",
+      "capturedAt": "2026-11-11T15:32:41.069Z"
+    },
+    {
+      "topic": "terminals/terminal-01/commands",
+      "qos": 1,
+      "retain": false,
+      "messageId": "e9719657-7f3c-4583-af1a-702ab6d7a4ba",
+      "commandId": "ccae68c5-b796-4ffa-9d9d-198a8ff4f0fd",
+      "action": "deny",
+      "capturedAt": "2026-11-11T15:32:41.111Z"
+    },
+    {
+      "topic": "terminals/terminal-01/acks",
+      "qos": 1,
+      "retain": false,
+      "messageId": "acc45ee4-1246-4158-b665-304ab5b530a3",
+      "commandId": "ccae68c5-b796-4ffa-9d9d-198a8ff4f0fd",
+      "status": "executed",
+      "capturedAt": "2026-11-11T15:32:41.113Z"
+    }
+  ],
+  "events": [
+    {
+      "id": "ea9fd7e1-01f6-41de-8453-58dca44aee1d",
+      "method": "QR",
+      "decision": "GRANTED",
+      "reason": null,
+      "terminalId": "terminal-01",
+      "distanceMeters": "0.00"
+    },
+    {
+      "id": "a6bb34e3-83a7-43e9-8a89-4c4028eef1a9",
+      "method": "QR",
+      "decision": "GRANTED",
+      "reason": null,
+      "terminalId": "terminal-01",
+      "distanceMeters": "0.00"
+    },
+    {
+      "id": "272c7ec5-5e02-4ed7-a6f0-b19ea59c96de",
+      "method": "QR",
+      "decision": "DENIED",
+      "reason": "OUT_OF_RANGE",
+      "terminalId": "terminal-01",
+      "distanceMeters": "1111.95"
+    },
+    {
+      "id": "ba17f3c9-3f9a-4d00-b77c-e31b0abe0097",
+      "method": "QR",
+      "decision": "GRANTED",
+      "reason": null,
+      "terminalId": "terminal-01",
+      "distanceMeters": "0.00"
+    },
+    {
+      "id": "b5cc0819-58c9-4ea8-9d5f-721e75827155",
+      "method": "QR",
+      "decision": "DENIED",
+      "reason": "OUT_OF_RANGE",
+      "terminalId": "terminal-01",
+      "distanceMeters": "1111.95"
+    },
+    {
+      "id": "90c66e55-dc79-467e-9ec8-7ff97e24c5ec",
+      "method": "NFC",
+      "decision": "GRANTED",
+      "reason": null,
+      "terminalId": "terminal-01",
+      "distanceMeters": null
+    },
+    {
+      "id": "d79ca137-9863-42d6-8796-49876e336ea6",
+      "method": "NFC",
+      "decision": "DENIED",
+      "reason": "INVALID_CREDENTIAL",
+      "terminalId": "terminal-01",
+      "distanceMeters": null
+    }
+  ],
+  "commands": [
+    {
+      "commandId": "c637dbfe-c92a-435f-a633-3de8c22515b4",
+      "requestId": "ea9fd7e1-01f6-41de-8453-58dca44aee1d",
+      "terminalId": "terminal-01",
+      "ackStatus": "executed",
+      "ackReason": null
+    },
+    {
+      "commandId": "c62aca78-ebe4-4110-a0f5-fbee6805cd2a",
+      "requestId": "a6bb34e3-83a7-43e9-8a89-4c4028eef1a9",
+      "terminalId": "terminal-01",
+      "ackStatus": "executed",
+      "ackReason": null
+    },
+    {
+      "commandId": "b2998611-78da-49b7-b357-efb4c5d1afca",
+      "requestId": "ba17f3c9-3f9a-4d00-b77c-e31b0abe0097",
+      "terminalId": "terminal-01",
+      "ackStatus": "executed",
+      "ackReason": null
+    },
+    {
+      "commandId": "4c9b494a-7e9f-4f25-819a-1b3d8bb10601",
+      "requestId": "90c66e55-dc79-467e-9ec8-7ff97e24c5ec",
+      "terminalId": "terminal-01",
+      "ackStatus": "executed",
+      "ackReason": null
+    },
+    {
+      "commandId": "ccae68c5-b796-4ffa-9d9d-198a8ff4f0fd",
+      "requestId": "d79ca137-9863-42d6-8796-49876e336ea6",
+      "terminalId": "terminal-01",
+      "ackStatus": "executed",
+      "ackReason": null
+    }
+  ],
+  "authorizations": [
+    {
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "maxUses": 20,
+      "usedCount": 5,
+      "startsAt": "2026-01-01T03:00:00.000Z",
+      "endsAt": "2031-01-01T02:59:59.000Z"
+    }
+  ]
+}

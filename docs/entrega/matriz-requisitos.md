@@ -72,7 +72,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 8. **RF03**: confirmar com o professor/PO se "horário inicial/final" exige janela diária dentro do período — hoje é um intervalo contínuo.
 9. **RF13**: teto de 100 m implantado em produção em 10/11 (#56): migration aplicada, CHECK de 1–100 m confirmada e pré-check sem cadastros inválidos. Falta a US-39 validar o intervalo no cadastro.
 
-Pendências transversais: DT-11 fechada pela DT-24, com pinagem por SHA e Dependabot integrados em 10/11 (#56) ([evidência](evidencias/dt-24.md)); deploy Render da US-37 não comprovado; demonstração visual do QR da US-22 e câmera real da US-10/DT-12 ainda pendentes. API respondeu com banco ok em 02/11 (versão `6b6aa26`), após uma primeira resposta 503; não é prova de operação contínua nem de fluxo físico completo.
+Pendências transversais: DT-11 fechada pela DT-24, com pinagem por SHA e Dependabot integrados em 10/11 (#56) ([evidência](evidencias/dt-24.md)); worker MQTT da US-37 em produção desde 11/11 ([evidência](evidencias/us-37.md)); demonstração visual do QR da US-22 e câmera real da US-10/DT-12 ainda pendentes. API respondeu com banco ok em 02/11 (versão `6b6aa26`), após uma primeira resposta 503; não é prova de operação contínua nem de fluxo físico completo.
 
 ## Leitura do edital sobre "admin"
 

@@ -1,0 +1,17 @@
+terminals/terminal-01/commands
+{"qos": 1, "retain": false, "commandId": "b2998611-78da-49b7-b357-efb4c5d1afca", "action": "open"}
+
+terminals/terminal-01/acks
+{"qos": 1, "retain": false, "commandId": "b2998611-78da-49b7-b357-efb4c5d1afca", "status": "executed"}
+
+terminals/terminal-01/commands
+{"qos": 1, "retain": false, "commandId": "4c9b494a-7e9f-4f25-819a-1b3d8bb10601", "action": "open"}
+
+terminals/terminal-01/acks
+{"qos": 1, "retain": false, "commandId": "4c9b494a-7e9f-4f25-819a-1b3d8bb10601", "status": "executed"}
+
+terminals/terminal-01/commands
+{"qos": 1, "retain": false, "commandId": "ccae68c5-b796-4ffa-9d9d-198a8ff4f0fd", "action": "deny"}
+
+terminals/terminal-01/acks
+{"qos": 1, "retain": false, "commandId": "ccae68c5-b796-4ffa-9d9d-198a8ff4f0fd", "status": "executed"}

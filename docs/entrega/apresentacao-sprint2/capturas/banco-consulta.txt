@@ -1,0 +1,16 @@
+SELECT left(e.id::text,8) AS evento, e.method AS metodo,
+ e.decision AS decisao, coalesce(e.reason,'-') AS motivo,
+ coalesce(e."distanceMeters"::text,'-') AS distancia_m,
+ coalesce(c."ackStatus",'-') AS ack
+FROM "AccessEvent" e LEFT JOIN "TerminalCommand" c ON c."requestId"=e.id
+WHERE e."occurredAt">'2026-11-11' ORDER BY e."occurredAt" DESC LIMIT 4;
+
++----------+--------+---------+--------------------+-------------+----------+
+|  evento  | metodo | decisao |       motivo       | distancia_m |   ack    |
++----------+--------+---------+--------------------+-------------+----------+
+| d79ca137 | NFC    | DENIED  | INVALID_CREDENTIAL | -           | executed |
+| 90c66e55 | NFC    | GRANTED | -                  | -           | executed |
+| b5cc0819 | QR     | DENIED  | OUT_OF_RANGE       | 1111.95     | -        |
+| ba17f3c9 | QR     | GRANTED | -                  | 0.00        | executed |
++----------+--------+---------+--------------------+-------------+----------+
+(4 rows)

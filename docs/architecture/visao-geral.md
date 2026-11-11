@@ -21,7 +21,7 @@ flowchart LR
   M -. prod .- MP[EMQX Cloud · MQTT TLS]
 ```
 
-**Transporte**: app ↔ API por **HTTPS REST**; terminal ↔ backend por **MQTT bidirecional**. Na S1 o processo MQTT do backend roda localmente (US-04); na S2 o mesmo processo foi preparado para o Render (US-37, PR #26), sem operação remota comprovada. A Vercel hospeda só a API.
+**Transporte**: app ↔ API por **HTTPS REST**; terminal ↔ backend por **MQTT bidirecional**. Na S1 o processo MQTT do backend roda localmente (US-04); na S2 o mesmo processo foi preparado para o Render (US-37, PR #26) e passou a rodar lá em 11/11 ([evidência](../entrega/evidencias/us-37.md)). A Vercel hospeda só a API.
 
 **O que está mergeado ≠ o que foi observado em deploy** (02/11/2026):
 
@@ -32,7 +32,7 @@ flowchart LR
 **Ambientes**:
 
 - **Dev**: broker Mosquitto local (porta `1884` no host, `1883` interna do container; sem TLS) e Postgres do compose — ver [`../guides/como-rodar.md`](../guides/como-rodar.md).
-- **Prod**: EMQX Cloud Serverless (MQTT sobre TLS, com credenciais; substituiu o HiveMQ Cloud, encerrado), Postgres no Neon, API no Vercel e processo MQTT no Render (mergeado, deploy não observado). O terminal ESP32 fala TLS com o broker quando compilado com `MQTT_USE_TLS 1` (DT-06); conexão e negativos de certificado foram observados no ESP32 em 06/11/2026, mas servo e ACK continuam pendentes. A reconexão só inicia com a porta em `idle` ([`evidencias/dt-06.md`](../entrega/evidencias/dt-06.md)).
+- **Prod**: EMQX Cloud Serverless (MQTT sobre TLS, com credenciais; substituiu o HiveMQ Cloud, encerrado), Postgres no Neon, API no Vercel e processo MQTT no Render (`abp4-mqtt-worker`, no ar desde 11/11 — [`evidencias/us-37.md`](../entrega/evidencias/us-37.md)). O terminal ESP32 fala TLS com o broker quando compilado com `MQTT_USE_TLS 1` (DT-06); conexão e negativos de certificado foram observados no ESP32 em 06/11/2026, mas servo e ACK continuam pendentes. A reconexão só inicia com a porta em `idle` ([`evidencias/dt-06.md`](../entrega/evidencias/dt-06.md)).
 
 ## Fluxo de acesso via QR
 

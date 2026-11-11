@@ -1,0 +1,4 @@
+ci-backend-check	Testes (Vitest + cobertura)	2026-11-11T15:15:52.9208385Z  Test Files  53 passed (53)
+ci-backend-check	Testes (Vitest + cobertura)	2026-11-11T15:15:52.9209274Z       Tests  460 passed (460)
+ci-backend-check	E2E (PostgreSQL temporario + broker MQTT + API e worker separados)	2026-11-11T15:17:24.5909367Z  Test Files  1 passed (1)
+ci-backend-check	E2E (PostgreSQL temporario + broker MQTT + API e worker separados)	2026-11-11T15:17:24.5910411Z       Tests  31 passed (31)

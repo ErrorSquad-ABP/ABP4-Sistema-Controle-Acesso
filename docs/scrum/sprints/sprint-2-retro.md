@@ -32,7 +32,7 @@
 | 1 | Fechar US-29 com câmera e GPS em aparelho real | Leo | S3, antes da Review 3 |
 | 2 | Implementar US-28 e o shell de autorizações | A definir na Planning 3 | S3 |
 | 3 | Montar a bancada e fechar DT-12, DT-22, US-23 e US-24 na US-34 | Arthur + João | S3 |
-| 4 | Comprovar worker no Render e log de conexão MQTT (US-37) | João | S3 |
+| 4 | ~~Comprovar worker no Render e log de conexão MQTT (US-37)~~ — concluído em 11/11: serviço `live`, `mqtt conectado` e `/healthz` ok ([evidência](../../entrega/evidencias/us-37.md)) | João | S3 |
 | 5 | Registrar demonstração visual do QR (US-22) | João | S3 |
 | 6 | Manter checklist do Trello sincronizado com o merge, sem fechar por implementação | SM | contínuo |
 
