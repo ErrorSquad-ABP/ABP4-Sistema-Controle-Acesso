@@ -1,10 +1,14 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/widgets/feedback_banner.dart';
 import 'access_result_view.dart';
 import 'scanner_controller.dart';
@@ -18,6 +22,10 @@ class ScannerPage extends ConsumerStatefulWidget {
 }
 
 class _ScannerPageState extends ConsumerState<ScannerPage> {
+  /// Tema da leitura: o Figma desenha a câmera sobre o fundo escuro nos dois
+  /// temas, então a tela usa os tokens escuros do design system.
+  static final ThemeData _theme = AppTheme.dark();
+
   /// Não exibe resultado antes de iniciar a tentativa da página atual.
   bool _started = false;
 
@@ -32,13 +40,21 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
     });
   }
 
+  void _leave() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    } else {
+      context.go(AppRoutes.home);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final current = ref.watch(scannerControllerProvider);
     final ScannerState state = _started
         ? current
         : const ScannerRequestingPermission();
-    final text = Theme.of(context).textTheme;
 
     // Resultado em tela cheia (Figma), sem a barra de título do scanner.
     if (state case ScannerAccessResult(:final result)) {
@@ -51,42 +67,112 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Escanear QR')),
-      body: SafeArea(
-        // Com a fonte do sistema ampliada (RNF04), o texto e o aviso não cabem
-        // ao lado de uma câmera que ocupa a altura toda: a câmera ganha uma
-        // altura proporcional e o restante da tela rola.
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final previewHeight = (constraints.maxHeight * 0.5).clamp(
-              220.0,
-              480.0,
-            );
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.screen),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Aponte a câmera para o QR exibido no terminal. Sua posição '
-                    'é enviada para conferir que você está a até 100 m dele.',
-                    style: text.bodySmall,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  SizedBox(height: previewHeight, child: _previewArea(state)),
-                  const SizedBox(height: AppSpacing.sm),
-                  _status(state),
-                ],
+    return Theme(
+      data: _theme,
+      child: Builder(
+        builder: (context) => AnnotatedRegion<SystemUiOverlayStyle>(
+          // Fundo escuro fixo: os ícones do sistema precisam ser claros.
+          value: SystemUiOverlayStyle.light,
+          child: Scaffold(
+            body: SafeArea(
+              // Com a fonte do sistema ampliada (RNF04) a tela rola; o espaço
+              // extra do frame de 844 dp fica entre as três seções.
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  const padding = EdgeInsets.fromLTRB(
+                    AppSpacing.screen,
+                    AppSpacing.xs,
+                    AppSpacing.screen,
+                    40,
+                  );
+                  return SingleChildScrollView(
+                    padding: padding,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: (constraints.maxHeight - padding.vertical)
+                            .clamp(0, double.infinity),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _Instructions(onBack: _leave),
+                          _ReadingArea(state),
+                          _Support(state, onCancel: _leave),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
   }
+}
 
-  Widget _previewArea(ScannerState state) {
+class _Instructions extends StatelessWidget {
+  const _Instructions({required this.onBack});
+
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final text = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: InkWell(
+            onTap: onBack,
+            borderRadius: BorderRadius.circular(AppRadius.control),
+            child: SizedBox(
+              // Alvo de toque de 48 dp; o frame usa 40 dp de altura.
+              height: AppSpacing.xl,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.arrow_back, size: 20, color: palette.text),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    'Voltar',
+                    style: text.bodySmall?.copyWith(color: palette.text),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Escanear QR Code',
+          style: text.displaySmall?.copyWith(
+            height: 1.35,
+            letterSpacing: -0.96,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Aponte a câmera para o QR Code exibido no terminal',
+          style: text.bodyMedium?.copyWith(height: 1.35),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReadingArea extends ConsumerWidget {
+  const _ReadingArea(this.state);
+
+  final ScannerState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final palette = context.palette;
     final controller = ref.read(scannerControllerProvider.notifier);
     // A câmera segue aberta enquanto a posição e o pedido andam; o controller
@@ -96,56 +182,88 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
         state is ScannerLocating ||
         state is ScannerSending;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      child: ColoredBox(
-        color: palette.surface,
-        child: scanning
-            ? ref
-                  .watch(qrScannerGatewayProvider)
-                  .preview(
-                    onDetected: controller.onQrDetected,
-                    onError: controller.onCameraError,
-                  )
-            : Center(
-                child: Icon(
-                  Icons.qr_code_scanner,
-                  size: AppSpacing.xl,
-                  color: palette.textSecondary,
+    return SizedBox(
+      height: 280,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final side = math.min(280.0, constraints.maxWidth);
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned.fill(
+                child: scanning
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadius.control),
+                        child: ref
+                            .watch(qrScannerGatewayProvider)
+                            .preview(
+                              onDetected: controller.onQrDetected,
+                              onError: controller.onCameraError,
+                            ),
+                      )
+                    : Center(
+                        child: Icon(
+                          Icons.qr_code_scanner,
+                          size: AppSpacing.xl,
+                          color: palette.textSecondary,
+                        ),
+                      ),
+              ),
+              // Cantos do enquadramento do Figma, sobre a câmera.
+              IgnorePointer(
+                child: CustomPaint(
+                  size: Size.square(side),
+                  painter: _FramePainter(color: palette.text),
                 ),
               ),
+            ],
+          );
+        },
       ),
     );
   }
+}
 
-  Widget _status(ScannerState state) {
-    final text = Theme.of(context).textTheme;
+class _Support extends ConsumerWidget {
+  const _Support(this.state, {required this.onCancel});
+
+  final ScannerState state;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(scannerControllerProvider.notifier);
 
     return switch (state) {
-      ScannerRequestingPermission() => const _Busy(
-        label: 'Solicitando permissão de localização…',
+      ScannerRequestingPermission() => _SupportBody(
+        card: const _StatusCard.busy(
+          label: 'Solicitando permissão de localização…',
+        ),
+        action: _GhostAction(label: 'Cancelar', onPressed: onCancel),
       ),
-      ScannerScanning() => Text(
-        'Aponte a câmera para o QR',
-        style: text.titleMedium,
+      ScannerScanning() => _SupportBody(
+        card: const _StatusCard.proximity(),
+        action: _GhostAction(label: 'Cancelar', onPressed: onCancel),
       ),
-      ScannerLocating() => const _Busy(label: 'Lendo posição…'),
-      ScannerSending() => const _Busy(label: 'Verificando seu acesso…'),
-      ScannerPermissionDenied(:final message) => _Feedback(
-        tone: FeedbackTone.error,
+      ScannerLocating() => _SupportBody(
+        card: const _StatusCard.busy(label: 'Lendo posição…'),
+        action: _GhostAction(label: 'Cancelar', onPressed: onCancel),
+      ),
+      ScannerSending() => _SupportBody(
+        card: const _StatusCard.busy(label: 'Verificando seu acesso…'),
+        action: _GhostAction(label: 'Cancelar', onPressed: onCancel),
+      ),
+      ScannerPermissionDenied(:final message) => _ErrorSupport(
         message: message,
         action: 'Permitir novamente',
         onAction: controller.retry,
       ),
-      ScannerFailure(:final message) => _Feedback(
-        tone: FeedbackTone.error,
+      ScannerFailure(:final message) => _ErrorSupport(
         message: message,
         action: 'Tentar novamente',
         onAction: controller.retry,
       ),
-      ScannerSendFailed(:final message, :final retryable) => _Feedback(
-        tone: FeedbackTone.error,
+      ScannerSendFailed(:final message, :final retryable) => _ErrorSupport(
         message: message,
         action: retryable ? 'Tentar novamente' : 'Escanear de novo',
         onAction: retryable ? controller.retrySend : controller.retry,
@@ -156,50 +274,177 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
   }
 }
 
-class _Feedback extends StatelessWidget {
-  const _Feedback({
-    required this.tone,
-    required this.message,
-    required this.action,
-    required this.onAction,
-  });
+/// Card de apoio no rodapé com a ação única do estado (Figma: "Apoio e
+/// cancelamento").
+class _SupportBody extends StatelessWidget {
+  const _SupportBody({required this.card, required this.action});
 
-  final FeedbackTone tone;
-  final String message;
-  final String action;
-  final VoidCallback onAction;
+  final Widget card;
+  final Widget action;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        FeedbackBanner(tone: tone, message: message),
-        const SizedBox(height: AppSpacing.sm),
-        FilledButton(onPressed: onAction, child: Text(action)),
+        card,
+        const SizedBox(height: AppSpacing.md),
+        action,
       ],
     );
   }
 }
 
-class _Busy extends StatelessWidget {
-  const _Busy({required this.label});
+class _ErrorSupport extends StatelessWidget {
+  const _ErrorSupport({
+    required this.message,
+    required this.action,
+    required this.onAction,
+  });
 
-  final String label;
+  final String message;
+  final String action;
+  final VoidCallback onAction;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const SizedBox.square(
-          dimension: 20,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
-        ),
-      ],
+    return _SupportBody(
+      card: FeedbackBanner(tone: FeedbackTone.error, message: message),
+      action: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppSpacing.controlHeight),
+        child: FilledButton(onPressed: onAction, child: Text(action)),
+      ),
     );
   }
+}
+
+/// Card de apoio: proximidade exigida ou etapa em andamento.
+class _StatusCard extends StatelessWidget {
+  const _StatusCard.proximity()
+    : label = 'Sua localização deve estar a até 100 m do terminal',
+      icon = Icons.location_on_outlined,
+      busy = false;
+
+  const _StatusCard.busy({required this.label}) : icon = null, busy = true;
+
+  final String label;
+  final IconData? icon;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final text = Theme.of(context).textTheme;
+
+    return Semantics(
+      container: true,
+      liveRegion: busy,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          borderRadius: BorderRadius.circular(AppRadius.control),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (busy)
+              const SizedBox.square(
+                dimension: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Icon(icon, size: 20, color: palette.textSecondary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(label, style: text.bodySmall?.copyWith(height: 1.35)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Ação secundária do rodapé, sem preenchimento (Figma: "Cancelar").
+class _GhostAction extends StatelessWidget {
+  const _GhostAction({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final text = Theme.of(context).textTheme;
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppSpacing.controlHeight),
+      child: TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          foregroundColor: palette.text,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.control),
+          ),
+          textStyle: text.labelLarge,
+        ),
+        child: Text(label),
+      ),
+    );
+  }
+}
+
+/// Cantos do enquadramento (Figma: 280 × 280, traço de 3 dp).
+class _FramePainter extends CustomPainter {
+  const _FramePainter({required this.color});
+
+  final Color color;
+
+  static const double _arm = 44;
+  static const double _radius = 12;
+  static const double _stroke = 3;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const inset = _stroke / 2;
+    final right = size.width - inset;
+    final bottom = size.height - inset;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    // Superior esquerdo.
+    path
+      ..moveTo(inset, inset + _arm)
+      ..lineTo(inset, inset + _radius)
+      ..quadraticBezierTo(inset, inset, inset + _radius, inset)
+      ..lineTo(inset + _arm, inset);
+    // Superior direito.
+    path
+      ..moveTo(right - _arm, inset)
+      ..lineTo(right - _radius, inset)
+      ..quadraticBezierTo(right, inset, right, inset + _radius)
+      ..lineTo(right, inset + _arm);
+    // Inferior direito.
+    path
+      ..moveTo(right, bottom - _arm)
+      ..lineTo(right, bottom - _radius)
+      ..quadraticBezierTo(right, bottom, right - _radius, bottom)
+      ..lineTo(right - _arm, bottom);
+    // Inferior esquerdo.
+    path
+      ..moveTo(inset + _arm, bottom)
+      ..lineTo(inset + _radius, bottom)
+      ..quadraticBezierTo(inset, bottom, inset, bottom - _radius)
+      ..lineTo(inset, bottom - _arm);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_FramePainter oldDelegate) => oldDelegate.color != color;
 }
