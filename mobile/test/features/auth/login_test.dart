@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:controle_acesso/app.dart';
+import 'package:controle_acesso/core/theme/app_colors.dart';
+import 'package:controle_acesso/core/theme/app_spacing.dart';
+import 'package:controle_acesso/core/theme/theme_mode_provider.dart';
 import 'package:controle_acesso/core/widgets/feedback_banner.dart';
 import 'package:controle_acesso/features/auth/auth_contract.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +34,8 @@ void main() {
     );
     await tester.enterText(find.byType(TextFormField).last, 'senha-forte-123');
     await tester.ensureVisible(find.text('Entrar'));
+    // A rolagem do ensureVisible vale no quadro seguinte.
+    await tester.pump();
     await tester.tap(find.text('Entrar'));
   }
 
@@ -68,7 +73,7 @@ void main() {
     );
   });
 
-  testWidgets('login válido carrega, salva a sessão e abre a Home', (
+  testWidgets('login válido carrega, salva a sessão e sai do login', (
     tester,
   ) async {
     final gateway = FakeAuthGateway()..loginGate = Completer<void>();
@@ -88,8 +93,7 @@ void main() {
 
     expect(gateway.logins.single.email, 'maria.souza@exemplo.com');
     expect(store.session?.accessToken, 'jwt-maria');
-    expect(find.text('Olá, Maria'), findsOneWidget);
-    expect(find.text('Condômino · maria.souza@exemplo.com'), findsOneWidget);
+    expect(find.text('Bem-vindo de volta'), findsNothing);
   });
 
   testWidgets('cada falha do login tem mensagem e tom próprios', (
@@ -158,4 +162,89 @@ void main() {
     await pumpApp(tester);
     expect(find.text('ERRORSQUAD · FATEC'), findsOneWidget);
   });
+
+  testWidgets('segue o frame Entrar: marca, titulos, acao e rodape', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await pumpApp(tester);
+
+    expect(find.text('CONTROLE DE ACESSO'), findsOneWidget);
+    expect(find.text('ACESSO CORPORATIVO'), findsOneWidget);
+
+    final title = tester.widget<Text>(find.text('Bem-vindo de volta'));
+    expect(title.style?.fontSize, 32);
+    expect(title.style?.fontWeight, FontWeight.w600);
+    expect(title.textAlign, isNot(TextAlign.center));
+
+    // Marca: selo de 64 com o escudo de 32.
+    final tile = tester.widget<Container>(
+      find
+          .ancestor(
+            of: find.byIcon(Icons.verified_user_outlined),
+            matching: find.byType(Container),
+          )
+          .first,
+    );
+    expect(tile.constraints?.maxWidth, 64);
+    expect(tile.constraints?.maxHeight, 64);
+
+    // Ação principal com 56 de altura, rótulo a esquerda e seta a direita.
+    expect(
+      tester.getSize(find.byType(FilledButton)).height,
+      AppSpacing.controlHeight,
+    );
+    expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
+    expect(find.text('Esqueci minha senha'), findsOneWidget);
+
+    // Rodapé preso no fim da tela, 40 acima da borda como no frame.
+    expect(
+      tester.getBottomLeft(find.text('ERRORSQUAD · FATEC')).dy,
+      closeTo(844 - 40, 0.5),
+    );
+  });
+
+  testWidgets('escuro usa o selo claro, hairline e textos do frame', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ...authOverrides(),
+          themeModeProvider.overrideWith(_DarkModeNotifier.new),
+        ],
+        child: const App(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tile = tester.widget<Container>(
+      find
+          .ancestor(
+            of: find.byIcon(Icons.verified_user_outlined),
+            matching: find.byType(Container),
+          )
+          .first,
+    );
+    expect(
+      (tile.decoration! as BoxDecoration).color,
+      AppPalette.dark.text,
+      reason: 'no escuro o selo e o bloco claro do frame',
+    );
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.verified_user_outlined)).color,
+      AppPalette.dark.background,
+    );
+    expect(
+      tester.widget<Text>(find.text('ACESSO CORPORATIVO')).style?.color,
+      AppPalette.dark.textSecondary,
+    );
+  });
+}
+
+class _DarkModeNotifier extends ThemeModeNotifier {
+  @override
+  ThemeMode build() => ThemeMode.dark;
 }
