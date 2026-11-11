@@ -49,7 +49,20 @@ terminal principal para não misturar tokens dos terminais isolados dos testes.
 O `initdb --no-sync` é exclusivo do cluster descartável de teste; não modifica
 a durabilidade do banco da aplicação.
 
-### Evidência física registrada nesta sessão
+### Revisão do PR em 11/11/2026
+
+- Lint, typecheck e build do backend aprovados; suíte padrão com 420 testes
+  aprovados e 40 condicionais a banco pulados. E2E com PostgreSQL e broker
+  temporários: 31 aprovados.
+- Teste de regressão reproduziu espera de PUBACK logo após iniciar o servo.
+  O ACK passou a ser serializado e adiado até o próximo ciclo seguro do loop;
+  MQTT e novas leituras NFC ficam pausados enquanto a porta não está em `idle`.
+- Suíte host do CI aprovada, incluindo PUBACK de 5 s com TLS desligado e ligado;
+  builds físico, TFT/Wokwi e TLS com QR/OLED aprovados.
+- A publicação do ACK tem uma tentativa, sem persistência offline (US-25).
+  Esses resultados são de host/build, não uma nova gravação ou medição física.
+
+### Evidência física anterior à revisão do PR
 
 - ESP32-D0WD-V3, firmware `esp32dev`, gravado por USB na COM3, com verificação
   do hash da gravação. A COM é específica da máquina de teste.

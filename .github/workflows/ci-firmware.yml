@@ -106,7 +106,7 @@ jobs:
           JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
           for tls in 0 1; do
             g++ -std=c++11 -Wall -Wextra -Werror -DTERMINAL_LEGACY_TFT=1 -DMQTT_USE_TLS=$tls -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_door_timing.cpp src/main.cpp src/modules/mqtt.cpp src/modules/door.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-door"
-            for phase in opening open closing; do
+            for phase in opening open closing puback; do
               "$RUNNER_TEMP/abp4-test-mqtt-door" "$phase"
             done
           done

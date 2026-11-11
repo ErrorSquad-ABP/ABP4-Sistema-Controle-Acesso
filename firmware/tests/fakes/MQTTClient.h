@@ -12,6 +12,7 @@ struct TestBroker {
   bool online = false;
   int connectCalls = 0;
   uint32_t connectDelayMs = 0;
+  uint32_t publishDelayMs = 0;
   int loopCalls = 0;
   int subscriptions = 0;
   const char* subscribedTopics[8] = {};
@@ -55,6 +56,7 @@ class MQTTClient {
     return broker.subscribeResult;
   }
   bool publish(const char* topic, const char* payload, int length, bool retained, int qos) {
+    testNow += broker.publishDelayMs;
     broker.publishedTopic = topic;
     const unsigned int copied = static_cast<unsigned int>(length) < sizeof broker.publishedPayload - 1
         ? static_cast<unsigned int>(length)

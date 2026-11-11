@@ -11,7 +11,7 @@ using Actuator = terminal_command::Handler::Actuator;
 using Clock = uint64_t (*)();
 
 void begin();
-void update(bool allowReconnect = true);
+void update(bool allowBlocking = true);
 bool connected();
 // Confirma PUBACK (QoS 1); nunca decide acesso nem publica sem UTC confiavel.
 bool publishNfc(const char* uid);

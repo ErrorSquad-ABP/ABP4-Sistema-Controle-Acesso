@@ -58,7 +58,7 @@ void loop() {
   terminal_display::showQr(terminal_mqtt::qr(), now, clock_policy::reliable(now));
   terminal_display::showDoor(terminal_door::state());
   terminal_display::update();
-  terminal_nfc::update();
+  if (terminal_door::state() == door_machine::State::idle) terminal_nfc::update();
   terminal_gps::update();
   delay(10);  // Cede tempo ao scheduler do ESP32, sem esperar conexao de rede.
 }

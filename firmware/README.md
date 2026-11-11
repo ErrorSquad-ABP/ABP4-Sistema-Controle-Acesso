@@ -261,8 +261,9 @@ Wokwi). Em produção o terminal fala TLS com o broker EMQX Cloud Serverless:
    `MQTT_RETRY_MS`. Sem conexão não há inscrição: nenhum comando chega e a porta não abre.
 6. O handshake **bloqueia o `loop()`** até `MQTT_HANDSHAKE_TIMEOUT_SECONDS`
    (5 s; no core 2.x o valor é em segundos), mas só inicia com a porta em `idle`.
-   A porta é atualizada antes da rede; abertura, espera aberta e fechamento adiam
-   a reconexão. Uma conexão viva continua atendida. Ao conectar, a serial mostra
+    A porta é atualizada antes da rede; abertura, espera aberta e fechamento pausam
+    MQTT e novas leituras NFC. O ACK é publicado após o ciclo, para que a espera
+    pelo PUBACK QoS 1 não atrase a parada do servo. Ao conectar, a serial mostra
    `[mqtt] tls ok em <N> ms, heap livre <M> B`.
 
 A porta 8883 é convenção: a regra é "CA obrigatório". Com `MQTT_USE_TLS 1` e um
@@ -309,7 +310,7 @@ Os testes host rodam sem Arduino, com tempo e periféricos simulados:
 | `test_mqtt` | módulo MQTT real com doubles: offline, retentativas, inscrição, reconexão |
 | `test_mqtt_command` | JSON v1 de ponta a ponta: ACK publicado, dedup, prazo, `deny`, recusas e QR |
 | `test_mqtt_tls` | TLS (DT-06): CA configurado, sem `setInsecure`, sem conexão sem hora confiável, certificado recusado libera o transporte e não inscreve (compilar com `-DMQTT_USE_TLS=1`) |
-| `test_mqtt_door_timing` | `main` + MQTT + porta reais; queda nas três fases não inicia reconexão antes da parada do servo (TLS desligado e ligado) |
+| `test_mqtt_door_timing` | `main` + MQTT + porta reais; queda nas três fases e PUBACK lento não atrasam a parada do servo (TLS desligado e ligado) |
 
 Linux/CI, a partir de `firmware/`:
 
@@ -331,8 +332,8 @@ g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "
 g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_command.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt-command && /tmp/t-mqtt-command
 g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=1 -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_tls.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt-tls && /tmp/t-mqtt-tls
 for tls in 0 1; do
-  g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=$tls -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_door_timing.cpp src/main.cpp src/modules/mqtt.cpp src/modules/door.cpp -o /tmp/t-mqtt-door
-  for phase in opening open closing; do /tmp/t-mqtt-door "$phase"; done
+  g++ -std=c++11 -Wall -Wextra -Werror -DTERMINAL_LEGACY_TFT=1 -DMQTT_USE_TLS=$tls -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_door_timing.cpp src/main.cpp src/modules/mqtt.cpp src/modules/door.cpp -o /tmp/t-mqtt-door
+  for phase in opening open closing puback; do /tmp/t-mqtt-door "$phase"; done
 done
 ```
 

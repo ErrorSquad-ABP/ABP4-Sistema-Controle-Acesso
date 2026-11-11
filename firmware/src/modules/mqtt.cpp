@@ -47,6 +47,8 @@ uint8_t queueCount = 0;
 // prazo, entao o comando e recusado (fail-closed) em vez de aberto.
 constexpr unsigned int kPayloadCapacity = 512;
 constexpr size_t kAckCapacity = 320;
+char pendingAck[kAckCapacity] = {};
+size_t pendingAckLength = 0;
 
 uint64_t clockNow() { return clockSource == nullptr ? 0 : clockSource(); }
 
@@ -82,7 +84,7 @@ void makeMessageId(char* out, size_t size) {
   out[position] = '\0';
 }
 
-void publishAck(const terminal_command::Ack& ack) {
+void queueAck(const terminal_command::Ack& ack) {
   char messageId[37];
   makeMessageId(messageId, sizeof messageId);
 
@@ -98,15 +100,11 @@ void publishAck(const terminal_command::Ack& ack) {
   document["status"] = ack.status;
   if (ack.reason != nullptr) document["reason"] = ack.reason;
 
-  char payload[kAckCapacity];
-  const size_t length = serializeJson(document, payload, sizeof payload);
-  if (length == 0 || length >= sizeof payload) {
+  pendingAckLength = serializeJson(document, pendingAck, sizeof pendingAck);
+  if (pendingAckLength == 0 || pendingAckLength >= sizeof pendingAck) {
+    pendingAckLength = 0;
     Serial.println("[mqtt] ack excedeu o buffer; descartado");
     return;
-  }
-  if (!client.publish(terminal_settings::acksTopic, payload,
-                      static_cast<int>(length), false, 1)) {
-    Serial.println("[mqtt] falha ao publicar ack");
   }
 }
 
@@ -149,7 +147,7 @@ void readCommand(const uint8_t* payload, unsigned int length) {
     return;
   }
   Serial.printf("[mqtt] comando %s: %s\n", ack->commandId, ack->status);
-  publishAck(*ack);
+  queueAck(*ack);
 }
 
 void readQr(const uint8_t* payload, unsigned int length) {
@@ -229,7 +227,9 @@ void begin() {
   if (wifiRetry.ready(millis())) startWiFi();
 }
 
-void update(bool allowReconnect) {
+void update(bool allowBlocking) {
+  // QoS 1 e manutencao MQTT podem esperar pela rede; nunca atrasar o servo.
+  if (!allowBlocking) return;
   const uint32_t now = millis();
   if (WiFi.status() != WL_CONNECTED) {
     client.disconnect();
@@ -242,7 +242,6 @@ void update(bool allowReconnect) {
   }
 
   if (!client.connected()) {
-    if (!allowReconnect) return;
 #if MQTT_USE_TLS
     // Sem hora UTC confiavel todo certificado parece vencido ou ainda invalido:
     // esperar o SNTP sem gastar tentativa nem segurar o loop num handshake inutil.
@@ -295,6 +294,14 @@ void update(bool allowReconnect) {
 #endif
   }
   client.loop();
+  if (pendingAckLength != 0) {
+    if (!client.publish(terminal_settings::acksTopic, pendingAck,
+                        static_cast<int>(pendingAckLength), false, 1)) {
+      Serial.println("[mqtt] falha ao publicar ack");
+    }
+    pendingAckLength = 0;
+    if (!client.connected()) return;
+  }
   if (queueCount != 0) {
     // Retirar antes de publicar ACK: publicacoes podem receber novos comandos.
     char payload[513];

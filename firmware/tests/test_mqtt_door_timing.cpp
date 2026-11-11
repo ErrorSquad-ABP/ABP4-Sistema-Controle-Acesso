@@ -42,9 +42,11 @@ void playGranted() {}
 void playDenied() {}
 }
 namespace terminal_nfc {
-void setPublisher(Publisher) {}
+Publisher publisher = nullptr;
+bool scan = false;
+void setPublisher(Publisher value) { publisher = value; }
 void begin() {}
-void update() {}
+void update() { if (scan && publisher) publisher("04A1B2C3"); }
 }
 namespace terminal_gps {
 void begin() {}
@@ -63,11 +65,40 @@ int main(int argc, char** argv) {
   loop();
   assert(terminal_mqtt::connected());
 
+  if (strcmp(argv[1], "puback") == 0) {
+    broker.publishDelayMs = 5000;
+    char topic[] = "terminals/terminal-dev-01/commands";
+    char payload[] = "{\"v\":1,\"terminalId\":\"terminal-dev-01\",\"commandId\":\"11111111-1111-4111-8111-111111111111\",\"action\":\"open\",\"expiresAt\":\"2030-01-01T00:00:00.000Z\"}";
+    broker.callback(nullptr, topic, payload, static_cast<int>(strlen(payload)));
+    testNow = 10000;
+    loop();
+    assert(testNow == 10010);
+    assert(testServo.attached && testServo.value == 180);
+    terminal_nfc::scan = true;
+    testNow = 11000;
+    loop();
+    assert(testNow == 11010);
+    testNow = 11800;
+    loop();
+    assert(testServo.value == 90 && testServo.writtenAt == 11800);
+    testNow = 14800;
+    loop();
+    assert(testNow == 14810 && testServo.value == 0);
+    terminal_nfc::scan = false;
+    testNow = 16600;
+    loop();
+    assert(!testServo.attached && testServo.writtenAt == 16600);
+    assert(broker.publishCalls == 1 && broker.publishedQos == 1);
+    assert(strstr(broker.publishedPayload, "\"status\":\"executed\"") != nullptr);
+    puts("mqtt door timing: PUBACK lento nao atrasa servo nem permite leitura NFC durante o ciclo");
+    return 0;
+  }
+
   testNow = 10000;
   assert(terminal_door::requestOpen());
   const int loops = broker.loopCalls;
   loop();
-  assert(broker.loopCalls > loops);
+  assert(broker.loopCalls == loops);
   assert(testServo.value == 180);
   assert(testServo.attached);
 

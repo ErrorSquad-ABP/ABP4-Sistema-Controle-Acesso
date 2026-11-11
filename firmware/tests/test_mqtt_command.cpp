@@ -40,6 +40,7 @@ void deliver(const char* json, const char* topic = kCommandsTopic) {
   assert(actions == beforeActions);
   assert(broker.publishCalls == beforePublishes);  // Sem QoS 1 reentrante no callback.
   terminal_mqtt::update();
+  terminal_mqtt::update();
 }
 
 void expectPublish(const char* fragment) {
