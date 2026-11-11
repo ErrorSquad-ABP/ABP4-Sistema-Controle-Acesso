@@ -211,8 +211,7 @@ s = slide('11 / Próximos passos', 'S3 · 12–25/11/2026 · repositório e evid
 text(s, 'Do celular\nao terminal.\nCom rastro.', 80, 190, 900, 365, 83, INK, True)
 text(s, 'Demonstração e perguntas.', 85, 622, 900, 65, 36, GREEN, True)
 text(s, 'João Victor Lopes Rosa · Felipe Pacheco\nCarlos Santo · Caio Araujo\nLeonardo da Silva Irineu · Arthur Facchinetti', 85, 706, 900, 110, 22, MUTED)
-phone(s, 'app-android-liberado.png', 1080, 140, 262)
-text(s, 'github.com/ErrorSquad-ABP/\nABP4-Sistema-Controle-Acesso', 1000, 772, 530, 50, 18, MUTED)
+phone(s, 'app-android-liberado.png', 1080, 150, 280)
 
 assert len(pages) == len(prs.slides) == 12
 for number, s in enumerate(prs.slides, 1):
