@@ -60,6 +60,20 @@ export const UpdateUserRequest = named(
   { minProperties: 1 },
 );
 
+/** So o que o proprio usuario pode mudar; papel, id, e-mail e situacao ficam de fora. */
+export const UpdateCurrentUserRequest = named(
+  'UpdateCurrentUserRequest',
+  z
+    .object({
+      name: Name.optional(),
+    })
+    .refine((v) => v.name !== undefined, {
+      message: 'Informe ao menos um campo para atualizar',
+    }),
+  'Atualizacao do proprio perfil: envie o nome (ao menos um campo)',
+  { minProperties: 1 },
+);
+
 export const ListUsersQuery = PaginationQuery.extend({
   role: Role.optional(),
   active: z

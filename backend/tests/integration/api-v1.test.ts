@@ -13,6 +13,7 @@ const app = createApp(buildContainer(env));
 const IMPLEMENTED = new Set([
   'login',
   'getCurrentUser',
+  'updateCurrentUser',
   'listUsers',
   'createUser',
   'getUser',
@@ -25,6 +26,8 @@ const IMPLEMENTED = new Set([
   'cancelAuthorization',
   'listMyAccessEvents',
   'listAccessEvents',
+  'listLocations',
+  'createLocation',
   'validateQrCredential',
   'requestQrAccess',
 ]);

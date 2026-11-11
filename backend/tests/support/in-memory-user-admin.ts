@@ -7,7 +7,7 @@ import type {
   UserListFilters,
   UserUpdateOptions,
 } from '../../src/domain/ports/user-admin-repository.js';
-import type { UserRecord } from '../../src/domain/ports/user-repository.js';
+import type { UserProfileChanges, UserRecord } from '../../src/domain/ports/user-repository.js';
 
 export class InMemoryUserAdminRepository implements UserAdminRepository {
   private readonly users: UserRecord[];
@@ -22,6 +22,10 @@ export class InMemoryUserAdminRepository implements UserAdminRepository {
 
   async findById(id: string): Promise<UserRecord | null> {
     return this.users.find((user) => user.id === id) ?? null;
+  }
+
+  async updateProfile(id: string, changes: UserProfileChanges): Promise<UserRecord | null> {
+    return this.update(id, changes);
   }
 
   async list(filters: UserListFilters): Promise<{ items: UserRecord[]; total: number }> {

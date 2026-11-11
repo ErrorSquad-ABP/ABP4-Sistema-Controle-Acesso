@@ -11,6 +11,7 @@ import { authorizationsRoutes } from './routes/authorizations.routes.js';
 import { credentialsRoutes } from './routes/credentials.routes.js';
 import { docsRoutes } from './routes/docs.routes.js';
 import { healthRoutes } from './routes/health.routes.js';
+import { locationsRoutes } from './routes/locations.routes.js';
 import { usersRoutes } from './routes/users.routes.js';
 
 export interface CreateAppOptions {
@@ -44,6 +45,7 @@ export function configureApp(
   app.use(API_V1_PREFIX, authorizationsRoutes(container));
   app.use(API_V1_PREFIX, accessEventsRoutes(container));
   app.use(API_V1_PREFIX, credentialsRoutes(container));
+  app.use(API_V1_PREFIX, locationsRoutes(container));
   app.use(API_V1_PREFIX, apiV1StubRoutes());
   for (const router of options.extraRoutes ?? []) app.use(router);
 

@@ -15,11 +15,13 @@ import {
   ListAuthorizationsQuery,
   ListMyAuthorizationsQuery,
 } from './schemas/authorizations.schemas.js';
-import { IdParams } from './schemas/common.schemas.js';
+import { IdParams, PaginationQuery } from './schemas/common.schemas.js';
 import { ValidateQrCredentialRequest, ValidateQrCredentialResponse } from './schemas/credentials.schemas.js';
+import { CreateLocationRequest, Location, LocationPage } from './schemas/locations.schemas.js';
 import {
   CreateUserRequest,
   ListUsersQuery,
+  UpdateCurrentUserRequest,
   UpdateUserRequest,
   User,
   UserPage,
@@ -31,7 +33,7 @@ import {
  * Rota nova ou alterada: edite aqui e rode `npm run openapi:generate`.
  */
 
-export type ContractTag = 'auth' | 'users' | 'authorizations' | 'access-events' | 'credentials';
+export type ContractTag = 'auth' | 'users' | 'authorizations' | 'access-events' | 'credentials' | 'locations';
 
 /** public: sem token · authenticated: qualquer perfil logado · admin: so ADMIN. */
 export type Access = 'public' | 'authenticated' | 'admin';
@@ -108,6 +110,22 @@ export const operations: readonly Operation[] = [
     success: { status: 200, description: 'Usuario logado', schema: User },
     extraErrors: [429, 503],
     example: {},
+  },
+  {
+    operationId: 'updateCurrentUser',
+    method: 'patch',
+    path: '/me',
+    tag: 'auth',
+    summary: 'Atualizar meu perfil',
+    description:
+      'Atualiza so o proprio cadastro (nome). Papel/perfil, id, e-mail e situacao ativa nao podem ser ' +
+      'alterados por esta rota; o usuario vem do JWT.',
+    story: 'US-14',
+    access: 'authenticated',
+    body: UpdateCurrentUserRequest,
+    success: { status: 200, description: 'Usuario atualizado', schema: User },
+    extraErrors: [429, 503],
+    example: { body: { name: 'Maria Souza' } },
   },
 
   // --------------------------------------------------------------- users
@@ -314,6 +332,46 @@ export const operations: readonly Operation[] = [
     success: { status: 200, description: 'Pagina de eventos', schema: AccessEventPage },
     extraErrors: [429, 503],
     example: { query: { decision: 'DENIED', method: 'QR', from: '2026-10-01T00:00:00Z', to: '2026-10-31T23:59:59Z' } },
+  },
+
+  // ------------------------------------------------------------ locations
+  {
+    operationId: 'listLocations',
+    method: 'get',
+    path: '/locations',
+    tag: 'locations',
+    summary: 'Listar locais de acesso ativos',
+    description: 'Somente locais ativos, em ordem alfabetica. Qualquer perfil logado consulta.',
+    story: 'US-39',
+    access: 'authenticated',
+    query: PaginationQuery,
+    success: { status: 200, description: 'Pagina de locais', schema: LocationPage },
+    extraErrors: [429, 503],
+    example: { query: { page: '1' } },
+  },
+  {
+    operationId: 'createLocation',
+    method: 'post',
+    path: '/locations',
+    tag: 'locations',
+    summary: 'Cadastrar local de acesso',
+    description:
+      'So ADMIN. `radiusMeters` aceita de 1 a 100 (teto da DT-23); omitido, usa 100. ' +
+      'Latitude e longitude em graus decimais.',
+    story: 'US-39',
+    access: 'admin',
+    body: CreateLocationRequest,
+    success: { status: 201, description: 'Local criado', schema: Location },
+    extraErrors: [429, 503],
+    example: {
+      body: {
+        name: 'Edificio Aurora - Recepcao',
+        description: 'Av. Central, 1200',
+        latitude: -23.1857,
+        longitude: -45.8846,
+        radiusMeters: 100,
+      },
+    },
   },
 ];
 

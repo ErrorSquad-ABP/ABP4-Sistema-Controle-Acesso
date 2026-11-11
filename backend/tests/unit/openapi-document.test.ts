@@ -26,9 +26,9 @@ describe('documento OpenAPI v1', () => {
     await expect(SwaggerParser.validate(structuredClone(document))).resolves.toBeDefined();
   });
 
-  it('cobre os quatro grupos do contrato', () => {
+  it('cobre os grupos do contrato', () => {
     const tags = new Set(operations.map((op) => op.tag));
-    expect([...tags].sort()).toEqual(['access-events', 'auth', 'authorizations', 'credentials', 'users']);
+    expect([...tags].sort()).toEqual(['access-events', 'auth', 'authorizations', 'credentials', 'locations', 'users']);
   });
 
   it('tem operationId unico e um card de implementacao em cada rota', () => {
@@ -57,6 +57,7 @@ describe('documento OpenAPI v1', () => {
     for (const operationId of [
       'login',
       'getCurrentUser',
+      'updateCurrentUser',
       'listUsers',
       'createUser',
       'getUser',
@@ -65,6 +66,8 @@ describe('documento OpenAPI v1', () => {
       'listMyAuthorizations',
       'listMyAccessEvents',
       'listAccessEvents',
+      'listLocations',
+      'createLocation',
       'validateQrCredential',
       'requestQrAccess',
     ]) {
@@ -76,6 +79,7 @@ describe('documento OpenAPI v1', () => {
     for (const operationId of [
       'login',
       'getCurrentUser',
+      'updateCurrentUser',
       'listUsers',
       'createUser',
       'getUser',
@@ -84,6 +88,8 @@ describe('documento OpenAPI v1', () => {
       'listMyAuthorizations',
       'listMyAccessEvents',
       'listAccessEvents',
+      'listLocations',
+      'createLocation',
       'validateQrCredential',
       'requestQrAccess',
     ]) {
