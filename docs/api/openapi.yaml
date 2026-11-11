@@ -28,6 +28,8 @@ tags:
     description: Solicitacao de acesso por QR e historico de tentativas
   - name: credentials
     description: Validacao criptografica de credenciais QR
+  - name: locations
+    description: Locais de acesso e seus raios de geofence
 paths:
   /credentials/qr/validate:
     post:
@@ -112,6 +114,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /me:
+    patch:
+      operationId: updateCurrentUser
+      tags:
+        - auth
+      summary: Atualizar meu perfil
+      description: Atualiza so o proprio cadastro (nome). Papel/perfil, id, e-mail e situacao ativa nao podem ser alterados por esta rota; o usuario vem do JWT.
+      x-story: US-14
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCurrentUserRequest"
+            example:
+              name: Maria Souza
+      responses:
+        "200":
+          description: Usuario atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
@@ -766,6 +801,90 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
+  /locations:
+    get:
+      operationId: listLocations
+      tags:
+        - locations
+      summary: Listar locais de acesso ativos
+      description: Somente locais ativos, em ordem alfabetica. Qualquer perfil logado consulta.
+      x-story: US-39
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            default: 1
+            type: integer
+            minimum: 1
+          description: Pagina, comecando em 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            default: 20
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Itens por pagina (max. 100)
+      responses:
+        "200":
+          description: Pagina de locais
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocationPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    post:
+      operationId: createLocation
+      tags:
+        - locations
+      summary: Cadastrar local de acesso
+      description: |-
+        So ADMIN. `radiusMeters` aceita de 1 a 100 (teto da DT-23); omitido, usa 100. Latitude e longitude em graus decimais.
+
+        Restrito ao perfil ADMIN.
+      x-story: US-39
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLocationRequest"
+            example:
+              name: Edificio Aurora - Recepcao
+              description: Av. Central, 1200
+              latitude: -23.1857
+              longitude: -45.8846
+              radiusMeters: 100
+      responses:
+        "201":
+          description: Local criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 components:
   schemas:
     AccessDecision:
@@ -1007,6 +1126,37 @@ components:
         - startsAt
         - endsAt
         - maxUses
+    CreateLocationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        description:
+          type: string
+          minLength: 1
+          maxLength: 200
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+          description: Latitude em graus decimais
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+          description: Longitude em graus decimais
+        radiusMeters:
+          default: 100
+          description: Raio de acesso em metros (1 a 100, teto da DT-23)
+          type: integer
+          minimum: 1
+          maximum: 100
+      required:
+        - name
+        - latitude
+        - longitude
     CreateUserRequest:
       type: object
       properties:
@@ -1083,6 +1233,74 @@ components:
       required:
         - latitude
         - longitude
+    Location:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador (UUID)
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - "null"
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+        radiusMeters:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Raio de acesso em metros (1 a 100)
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+          description: Data/hora ISO 8601
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data/hora ISO 8601
+      required:
+        - id
+        - name
+        - description
+        - latitude
+        - longitude
+        - radiusMeters
+        - isActive
+        - createdAt
+        - updatedAt
+    LocationPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Location"
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+          description: Total de itens considerando os filtros
+      required:
+        - items
+        - page
+        - pageSize
+        - total
     LocationSummary:
       type: object
       properties:
@@ -1159,6 +1377,15 @@ components:
         - RESIDENT
         - VISITOR
       description: "Perfil: ADMIN (administrador), RESIDENT (condomino), VISITOR (visitante)"
+    UpdateCurrentUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+      description: "Atualizacao do proprio perfil: envie o nome (ao menos um campo)"
+      minProperties: 1
     UpdateUserRequest:
       type: object
       properties:

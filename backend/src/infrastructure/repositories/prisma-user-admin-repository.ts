@@ -6,7 +6,7 @@ import type {
   UserListFilters,
   UserUpdateOptions,
 } from '../../domain/ports/user-admin-repository.js';
-import type { UserRecord } from '../../domain/ports/user-repository.js';
+import type { UserProfileChanges, UserRecord } from '../../domain/ports/user-repository.js';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 import { USER_SELECT } from './prisma-user-repository.js';
 
@@ -28,6 +28,10 @@ export class PrismaUserAdminRepository implements UserAdminRepository {
 
   findById(id: string): Promise<UserRecord | null> {
     return this.prisma.user.findUnique({ where: { id }, select: USER_SELECT });
+  }
+
+  updateProfile(id: string, changes: UserProfileChanges): Promise<UserRecord | null> {
+    return this.update(id, changes);
   }
 
   async list(filters: UserListFilters): Promise<{ items: UserRecord[]; total: number }> {

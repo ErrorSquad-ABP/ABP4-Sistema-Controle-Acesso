@@ -11,6 +11,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     required this.surface,
     required this.text,
     required this.textSecondary,
+    required this.textSecondaryStrong,
     required this.hairline,
     required this.success,
     required this.successSoft,
@@ -32,6 +33,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
     surface: Color(0xFFFFFFFF),
     text: Color(0xFF0A0A0A),
     textSecondary: Color(0xFF6E6E6E),
+    // O secundário sobre o trilho hairline claro ficaria em 4,2:1; este tom
+    // mantém o mesmo papel acima de AA.
+    textSecondaryStrong: Color(0xFF525252),
     hairline: Color(0xFFE8E8E8),
     success: _success,
     successSoft: _successSoft,
@@ -46,6 +50,8 @@ class AppPalette extends ThemeExtension<AppPalette> {
     surface: Color(0xFF161616),
     text: Color(0xFFFAFAFA),
     textSecondary: Color(0xFFA3A3A3),
+    // No escuro o secundário já passa AA sobre o fundo do trilho.
+    textSecondaryStrong: Color(0xFFA3A3A3),
     hairline: Color(0xFF262626),
     success: _success,
     successSoft: _successSoft,
@@ -59,6 +65,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
   final Color surface;
   final Color text;
   final Color textSecondary;
+
+  /// Secundário com contraste AA sobre superfícies claras (trilhos e chips).
+  final Color textSecondaryStrong;
   final Color hairline;
   final Color success;
   final Color successSoft;
@@ -76,6 +85,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     Color? surface,
     Color? text,
     Color? textSecondary,
+    Color? textSecondaryStrong,
     Color? hairline,
     Color? success,
     Color? successSoft,
@@ -89,6 +99,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
       surface: surface ?? this.surface,
       text: text ?? this.text,
       textSecondary: textSecondary ?? this.textSecondary,
+      textSecondaryStrong: textSecondaryStrong ?? this.textSecondaryStrong,
       hairline: hairline ?? this.hairline,
       success: success ?? this.success,
       successSoft: successSoft ?? this.successSoft,
@@ -109,6 +120,11 @@ class AppPalette extends ThemeExtension<AppPalette> {
       surface: Color.lerp(surface, other.surface, t)!,
       text: Color.lerp(text, other.text, t)!,
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      textSecondaryStrong: Color.lerp(
+        textSecondaryStrong,
+        other.textSecondaryStrong,
+        t,
+      )!,
       hairline: Color.lerp(hairline, other.hairline, t)!,
       success: Color.lerp(success, other.success, t)!,
       successSoft: Color.lerp(successSoft, other.successSoft, t)!,

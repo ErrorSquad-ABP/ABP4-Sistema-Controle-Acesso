@@ -31,6 +31,7 @@ const TAGS = [
   { name: 'authorizations', description: 'Liberacoes de acesso: pessoa + local + janela + usos' },
   { name: 'access-events', description: 'Solicitacao de acesso por QR e historico de tentativas' },
   { name: 'credentials', description: 'Validacao criptografica de credenciais QR' },
+  { name: 'locations', description: 'Locais de acesso e seus raios de geofence' },
 ];
 
 const DESCRIPTION = `Contrato REST v1 do Sistema de Controle de Acesso (ErrorSquad · FATEC).

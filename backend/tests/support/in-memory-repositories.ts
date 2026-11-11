@@ -1,11 +1,15 @@
 import { UnauthorizedError } from '../../src/domain/errors/domain-error.js';
-import type { UserRepository } from '../../src/domain/ports/user-repository.js';
+import type { UserProfileChanges, UserRepository } from '../../src/domain/ports/user-repository.js';
 import type { UserRecord } from '../../src/domain/ports/user-repository.js';
 import type { TokenClaims, TokenService } from '../../src/domain/ports/token-service.js';
 import type { Clock } from '../../src/domain/ports/clock.js';
 
 export class InMemoryUserRepository implements UserRepository {
-  constructor(private readonly users: UserRecord[] = []) {}
+  private readonly users: UserRecord[];
+
+  constructor(users: UserRecord[] = []) {
+    this.users = users.map((user) => ({ ...user }));
+  }
 
   async findByEmail(email: string): Promise<UserRecord | null> {
     return this.users.find((user) => user.email === email.toLowerCase()) ?? null;
@@ -13,6 +17,20 @@ export class InMemoryUserRepository implements UserRepository {
 
   async findById(id: string): Promise<UserRecord | null> {
     return this.users.find((user) => user.id === id) ?? null;
+  }
+
+  async updateProfile(id: string, changes: UserProfileChanges): Promise<UserRecord | null> {
+    const index = this.users.findIndex((user) => user.id === id);
+    const current = this.users[index];
+    if (index < 0 || !current) return null;
+
+    const updated: UserRecord = {
+      ...current,
+      name: changes.name ?? current.name,
+      updatedAt: new Date(),
+    };
+    this.users[index] = updated;
+    return updated;
   }
 }
 

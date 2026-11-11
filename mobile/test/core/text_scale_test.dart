@@ -50,7 +50,7 @@ void main() {
     // O indicador gira para sempre: `pumpAndSettle` não terminaria.
     await tester.pump();
 
-    expect(find.text('Verificando sua sessão…'), findsOneWidget);
+    expect(find.text('Carregando suas autorizações…'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

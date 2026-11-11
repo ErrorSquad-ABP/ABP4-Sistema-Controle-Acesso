@@ -21,6 +21,11 @@ void main() {
   late FakeAccessGateway access;
   late FakeRequestIds ids;
 
+  // Instrução do Figma para a tela de leitura.
+  final instruction = find.text(
+    'Aponte a câmera para o QR Code exibido no terminal',
+  );
+
   setUp(() {
     location = FakeLocationGateway();
     scanner = FakeQrScannerGateway();
@@ -73,7 +78,7 @@ void main() {
     pending.complete(ScannerPermission.granted);
     await tester.pumpAndSettle();
 
-    expect(find.text('Aponte a câmera para o QR'), findsOneWidget);
+    expect(instruction, findsOneWidget);
     expect(scanner.detect, isNotNull);
   });
 
@@ -82,7 +87,7 @@ void main() {
   ) async {
     await pumpScanner(tester);
 
-    expect(find.textContaining('a até 100 m dele'), findsOneWidget);
+    expect(find.textContaining('a até 100 m do terminal'), findsOneWidget);
     expect(find.textContaining('Nenhum acesso é liberado'), findsNothing);
   });
 
@@ -128,7 +133,7 @@ void main() {
     await tester.tap(find.text('Escanear de novo'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Aponte a câmera para o QR'), findsOneWidget);
+    expect(instruction, findsOneWidget);
     expect(find.text('Acesso negado'), findsNothing);
 
     await scan(tester);
@@ -187,7 +192,7 @@ void main() {
 
     await tester.tap(find.text('Escanear de novo'));
     await tester.pumpAndSettle();
-    expect(find.text('Aponte a câmera para o QR'), findsOneWidget);
+    expect(instruction, findsOneWidget);
   });
 
   testWidgets('QR que não é de terminal avisa sem pedir a posição', (
@@ -233,7 +238,7 @@ void main() {
     await tester.tap(find.text('Permitir novamente'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Aponte a câmera para o QR'), findsOneWidget);
+    expect(instruction, findsOneWidget);
     expect(find.byType(FeedbackBanner), findsNothing);
   });
 

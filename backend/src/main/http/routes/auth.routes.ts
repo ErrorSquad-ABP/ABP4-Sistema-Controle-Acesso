@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { ServiceUnavailableError } from '../../../domain/errors/domain-error.js';
 import type { Container } from '../../composition-root.js';
 import { LoginRequest, LoginResponse } from '../contract/schemas/auth.schemas.js';
-import { User } from '../contract/schemas/users.schemas.js';
+import { UpdateCurrentUserRequest, User } from '../contract/schemas/users.schemas.js';
 import { requireAuth } from '../middlewares/auth.js';
 import { createAuthenticatedRateLimit, createLoginRateLimit } from '../middlewares/rate-limit.js';
 
@@ -21,6 +21,14 @@ export function authRoutes(container: Container): Router {
 
   router.get('/auth/me', authenticatedRateLimit, requireAuth(container), (_req, res) => {
     res.status(200).json(User.parse(res.locals.user));
+  });
+
+  router.patch('/me', authenticatedRateLimit, requireAuth(container), async (req, res) => {
+    const body = UpdateCurrentUserRequest.parse(req.body ?? {});
+    const update = container.useCases.updateCurrentUser;
+    if (!update) throw new ServiceUnavailableError('Perfil indisponivel sem banco configurado');
+
+    res.status(200).json(User.parse(await update.execute(res.locals.user.id, body)));
   });
 
   return router;

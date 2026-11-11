@@ -18,6 +18,7 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 |---|---|---|---|
 | auth | `POST /auth/login` | público | US-14 |
 | auth | `GET /auth/me` | logado | US-14 |
+| auth | `PATCH /me` | logado (só o próprio perfil) | US-14 |
 | users | `GET /users` · `POST /users` | ADMIN | US-15 |
 | users | `GET` · `PATCH` · `DELETE /users/{id}` | ADMIN | US-15 |
 | authorizations | `GET /me/authorizations` | logado | US-18 |
@@ -28,8 +29,10 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 | credentials | `POST /credentials/qr/validate` | logado | US-19 (roteamento depende da US-14) |
 | access-events | `GET /me/access-events` | logado | US-21 |
 | access-events | `GET /access-events` | ADMIN | US-21 |
+| locations | `GET /locations` | logado | US-39 |
+| locations | `POST /locations` | ADMIN | US-39 |
 
-**Todas as rotas do contrato v1 têm implementação**: `POST /auth/login`, `GET /auth/me`, o CRUD de usuários (`GET`/`POST /users`, `GET`/`PATCH`/`DELETE /users/{id}`), `GET /me/authorizations`, as quatro rotas administrativas de autorizações (`GET`/`POST /authorizations`, `GET /authorizations/{id}`, `POST /authorizations/{id}/cancel`), `POST /credentials/qr/validate` e as três rotas de `access-events` (`POST /access-events/qr` exige `DATABASE_URL`). Só o login é público; as demais exigem identidade real, e `users`, a listagem global de eventos e as rotas administrativas de autorizações exigem ADMIN. O roteador stub ([`api-v1.routes.ts`](../../backend/src/main/http/routes/api-v1.routes.ts)) segue montado como rede de segurança para operação nova do contrato sem caso de uso, mas hoje nenhuma operação cai nele: não há rota respondendo `501`.
+**Todas as rotas do contrato v1 têm implementação**: `POST /auth/login`, `GET /auth/me`, `PATCH /me`, o CRUD de usuários (`GET`/`POST /users`, `GET`/`PATCH`/`DELETE /users/{id}`), `GET /me/authorizations`, as quatro rotas administrativas de autorizações (`GET`/`POST /authorizations`, `GET /authorizations/{id}`, `POST /authorizations/{id}/cancel`), `POST /credentials/qr/validate`, as três rotas de `access-events` (`POST /access-events/qr` exige `DATABASE_URL`) e as duas de `locations` (`POST /locations` exige `DATABASE_URL`). Só o login é público; as demais exigem identidade real, e `users`, a listagem global de eventos, as rotas administrativas de autorizações e o cadastro de locais exigem ADMIN. O roteador stub ([`api-v1.routes.ts`](../../backend/src/main/http/routes/api-v1.routes.ts)) segue montado como rede de segurança para operação nova do contrato sem caso de uso, mas hoje nenhuma operação cai nele: não há rota respondendo `501`.
 
 ## Convenções
 
@@ -38,6 +41,8 @@ Localmente: `cd backend && npm run dev` e abra <http://localhost:3000/docs>. Em 
 - **Datas**: ISO 8601. Na entrada aceita offset (`2026-10-20T14:00:00-03:00`); na resposta sempre UTC (`Z`).
 - **Erros**: `{ "error": { "code", "message", "details?" } }` — tabela de códigos em [`caso-de-uso-modelo.md`](../architecture/caso-de-uso-modelo.md#erros-do-domínio-ao-http). Banco não configurado nas rotas de auth/usuários/autorizações/histórico → `503 SERVICE_UNAVAILABLE`; excesso de requisições → `429 TOO_MANY_REQUESTS`.
 - **Usuários**: e-mail normalizado para minúsculas e único (`409 CONFLICT` se já existir); senha guardada como hash scrypt com salt aleatório e nunca devolvida. `DELETE /users/{id}` é exclusão lógica (`active=false`): o histórico de acessos fica preservado.
+- **Meu perfil**: `PATCH /me` altera só o nome; id, papel/perfil, e-mail e situação ativa são ignorados (não há como trocá-los por esta rota). A resposta tem o mesmo shape de `GET /auth/me`.
+- **Locais**: `GET /locations` devolve só os ativos, em ordem alfabética. `POST /locations` (ADMIN) exige `name`, `latitude`, `longitude` e aceita `description`; `radiusMeters` fica em 1–100 (padrão 100), o mesmo teto da CHECK da DT-23.
 - **Minhas autorizações**: o `userId` vem do token, nunca da query. `status` filtra a situação calculada — `CANCELED` (cancelada), `SCHEDULED` (antes do início), `EXPIRED` (fim alcançado ou usos esgotados) e `ACTIVE`; `remainingUses = max(0, maxUses - usedCount)`; ordem `startsAt desc, id desc`.
 - **Listas**: `{ items, page, pageSize, total }`; `page` começa em 1, `pageSize` padrão 20 (máx. 100).
 - **Pedido de acesso QR**: o contrato exige `qrToken` (lido do QR), `terminalId`, `position` e, opcionalmente, `requestId`; o app envia desde a US-29; câmera/GPS físicos seguem pendentes. O usuário vem do JWT. O token é o assinado da US-19 (`v1.<terminal>.<iat>.<ttl>.<hmac>`, validade de 25 s); divergência de terminal ou assinatura nega com `INVALID_CREDENTIAL`, e token vencido com `CREDENTIAL_EXPIRED`. Geofence usa as coordenadas do local mapeado e `min(radiusMeters, 100)`: raios menores continuam restritivos, acima de 100 m sempre nega. A DT-23 acrescenta uma CHECK de 1 a 100 m no banco, implantada em 10/11; o futuro cadastro da US-39 deve validar esse intervalo antes de persistir. Evidência, implantação e limites em [`dt-23.md`](../entrega/evidencias/dt-23.md).

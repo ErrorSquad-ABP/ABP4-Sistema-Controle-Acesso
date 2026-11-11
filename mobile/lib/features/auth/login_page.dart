@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/feedback_banner.dart';
 import 'auth_contract.dart';
@@ -119,197 +120,255 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ),
       };
 
+  /// Campo do Figma: rotulo 11 acima, 8 de respiro e o campo de 56 com
+  /// hairline, icone de 20 a 16 da borda e 12 ate o texto.
+  InputDecoration _decoration({
+    required String hint,
+    required IconData icon,
+    Widget? suffix,
+  }) => InputDecoration(
+    hintText: hint,
+    contentPadding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+    prefixIcon: Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.sm, right: 12),
+      child: Icon(icon, size: 20),
+    ),
+    prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+    suffixIcon: suffix,
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final text = theme.textTheme;
+    final palette = context.palette;
+    // No claro o selo se funde ao fundo (#FAFAFA sobre #FAFAFA); no escuro e o
+    // bloco claro com o icone escuro do frame.
+    final dark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.screen),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: (constraints.maxHeight - AppSpacing.xl).clamp(
-                  0,
-                  double.infinity,
+        child: CustomScrollView(
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                // 64 acima e 40 abaixo como no frame; 24 nas laterais.
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screen,
+                  64,
+                  AppSpacing.screen,
+                  40,
                 ),
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 440),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: AppSpacing.lg),
-                      const Icon(
-                        Icons.verified_user_outlined,
-                        size: AppSpacing.lg,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        'CONTROLE DE ACESSO',
-                        style: text.labelSmall,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      Text('ACESSO CORPORATIVO', style: text.labelSmall),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text('Bem-vindo de volta', style: text.displaySmall),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'Entre para ver suas liberações',
-                        style: text.bodyMedium,
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      AutofillGroup(
-                        child: Form(
-                          key: _form,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // O rótulo visível do Figma fica fora do campo;
-                              // o leitor de tela o recebe pelo Semantics.
-                              ExcludeSemantics(
-                                child: Text('E-MAIL', style: text.labelSmall),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 64,
+                            height: 64,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: dark ? palette.text : palette.background,
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.card,
                               ),
-                              const SizedBox(height: AppSpacing.xs),
-                              Semantics(
-                                label: 'E-mail',
-                                child: TextFormField(
-                                  controller: _email,
-                                  enabled: !_loading,
-                                  keyboardType: TextInputType.emailAddress,
-                                  textInputAction: TextInputAction.next,
-                                  autofillHints: const [AutofillHints.username],
-                                  autocorrect: false,
-                                  validator: LoginValidation.email,
-                                  decoration: const InputDecoration(
-                                    hintText: 'maria.souza@exemplo.com',
-                                    prefixIcon: Icon(Icons.mail_outline),
-                                  ),
+                            ),
+                            child: Icon(
+                              Icons.verified_user_outlined,
+                              size: AppSpacing.lg,
+                              color: dark ? palette.background : palette.text,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'CONTROLE DE ACESSO',
+                          style: text.labelSmall,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        Text('ACESSO CORPORATIVO', style: text.labelSmall),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text('Bem-vindo de volta', style: text.displaySmall),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Entre para ver suas liberações',
+                          style: text.bodyMedium,
+                        ),
+                        const SizedBox(height: 40),
+                        AutofillGroup(
+                          child: Form(
+                            key: _form,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // O rotulo visivel do Figma fica fora do
+                                // campo; o leitor de tela o recebe pelo
+                                // Semantics.
+                                ExcludeSemantics(
+                                  child: Text('E-MAIL', style: text.labelSmall),
                                 ),
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              ExcludeSemantics(
-                                child: Text('SENHA', style: text.labelSmall),
-                              ),
-                              const SizedBox(height: AppSpacing.xs),
-                              Semantics(
-                                label: 'Senha',
-                                child: TextFormField(
-                                  controller: _password,
-                                  enabled: !_loading,
-                                  obscureText: _obscure,
-                                  autocorrect: false,
-                                  enableSuggestions: false,
-                                  autofillHints: const [AutofillHints.password],
-                                  textInputAction: TextInputAction.done,
-                                  onFieldSubmitted: (_) => _submit(),
-                                  validator: LoginValidation.password,
-                                  decoration: InputDecoration(
-                                    hintText: 'Sua senha',
-                                    prefixIcon: const Icon(Icons.lock_outline),
-                                    suffixIcon: IconButton(
-                                      tooltip: _obscure
-                                          ? 'Mostrar senha'
-                                          : 'Ocultar senha',
-                                      onPressed: _loading
-                                          ? null
-                                          : () => setState(
-                                              () => _obscure = !_obscure,
-                                            ),
-                                      icon: Icon(
-                                        _obscure
-                                            ? Icons.visibility_outlined
-                                            : Icons.visibility_off_outlined,
-                                      ),
+                                const SizedBox(height: AppSpacing.xs),
+                                Semantics(
+                                  label: 'E-mail',
+                                  child: TextFormField(
+                                    controller: _email,
+                                    enabled: !_loading,
+                                    keyboardType: TextInputType.emailAddress,
+                                    textInputAction: TextInputAction.next,
+                                    autofillHints: const [
+                                      AutofillHints.username,
+                                    ],
+                                    autocorrect: false,
+                                    validator: LoginValidation.email,
+                                    decoration: _decoration(
+                                      hint: 'maria.souza@exemplo.com',
+                                      icon: Icons.mail_outline,
                                     ),
                                   ),
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              if (_message != null) ...[
-                                FeedbackBanner(
-                                  tone: _message!.$1,
-                                  message: _message!.$2,
                                 ),
                                 const SizedBox(height: AppSpacing.md),
-                              ],
-                              FilledButton(
-                                onPressed: _loading ? null : _submit,
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        _loading ? 'Entrando…' : 'Entrar',
+                                ExcludeSemantics(
+                                  child: Text('SENHA', style: text.labelSmall),
+                                ),
+                                const SizedBox(height: AppSpacing.xs),
+                                Semantics(
+                                  label: 'Senha',
+                                  child: TextFormField(
+                                    controller: _password,
+                                    enabled: !_loading,
+                                    obscureText: _obscure,
+                                    autocorrect: false,
+                                    enableSuggestions: false,
+                                    autofillHints: const [
+                                      AutofillHints.password,
+                                    ],
+                                    textInputAction: TextInputAction.done,
+                                    onFieldSubmitted: (_) => _submit(),
+                                    validator: LoginValidation.password,
+                                    decoration: _decoration(
+                                      hint: 'Sua senha',
+                                      icon: Icons.lock_outline,
+                                      suffix: IconButton(
+                                        tooltip: _obscure
+                                            ? 'Mostrar senha'
+                                            : 'Ocultar senha',
+                                        onPressed: _loading
+                                            ? null
+                                            : () => setState(
+                                                () => _obscure = !_obscure,
+                                              ),
+                                        icon: Icon(
+                                          _obscure
+                                              ? Icons.visibility_outlined
+                                              : Icons.visibility_off_outlined,
+                                          size: 20,
+                                        ),
                                       ),
                                     ),
-                                    if (_loading)
-                                      const SizedBox.square(
-                                        dimension: 24,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.md),
+                                if (_message != null) ...[
+                                  FeedbackBanner(
+                                    tone: _message!.$1,
+                                    message: _message!.$2,
+                                  ),
+                                  const SizedBox(height: AppSpacing.md),
+                                ],
+                                FilledButton(
+                                  onPressed: _loading ? null : _submit,
+                                  style: FilledButton.styleFrom(
+                                    padding: const EdgeInsets.only(
+                                      left: AppSpacing.md,
+                                      right: AppSpacing.xs,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          _loading ? 'Entrando…' : 'Entrar',
                                         ),
-                                      )
-                                    else
+                                      ),
                                       Container(
-                                        padding: const EdgeInsets.all(
-                                          AppSpacing.xs,
-                                        ),
+                                        width: 40,
+                                        height: 40,
+                                        alignment: Alignment.center,
                                         decoration: BoxDecoration(
                                           color: theme.colorScheme.onPrimary,
                                           shape: BoxShape.circle,
                                         ),
-                                        child: Icon(
-                                          Icons.arrow_forward,
-                                          size: 20,
-                                          color: theme.colorScheme.primary,
-                                        ),
+                                        child: _loading
+                                            ? const SizedBox.square(
+                                                dimension: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
+                                            : Icon(
+                                                Icons.arrow_forward,
+                                                size: 20,
+                                                color:
+                                                    theme.colorScheme.primary,
+                                              ),
                                       ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: AppSpacing.xs),
-                              TextButton(
-                                onPressed: _loading
-                                    ? null
-                                    : () => showDialog<void>(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: const Text('Recuperar acesso'),
-                                          content: const Text(
-                                            'Entre em contato com a administração para recuperar seu acesso.',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.of(context).pop(),
-                                              child: const Text('Entendi'),
+                                const SizedBox(height: AppSpacing.xs),
+                                TextButton(
+                                  onPressed: _loading
+                                      ? null
+                                      : () => showDialog<void>(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text(
+                                              'Recuperar acesso',
                                             ),
-                                          ],
+                                            content: const Text(
+                                              'Entre em contato com a '
+                                              'administração para recuperar '
+                                              'seu acesso.',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.of(context).pop(),
+                                                child: const Text('Entendi'),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                child: const Text('Esqueci minha senha'),
-                              ),
-                            ],
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: palette.text,
+                                    minimumSize: const Size(0, AppSpacing.xl),
+                                    textStyle: text.bodySmall,
+                                  ),
+                                  child: const Text('Esqueci minha senha'),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      Text(
-                        'ERRORSQUAD · FATEC',
-                        style: text.labelSmall,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                    ],
-                  ),
+                      ],
+                    ),
+                    Text(
+                      'ERRORSQUAD · FATEC',
+                      style: text.labelSmall,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

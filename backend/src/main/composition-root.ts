@@ -1,6 +1,7 @@
 import { CheckHealthUseCase } from '../application/health/check-health.use-case.js';
 import { GetCurrentUserUseCase } from '../application/auth/get-current-user.use-case.js';
 import { LoginUseCase } from '../application/auth/login.use-case.js';
+import { UpdateCurrentUserUseCase } from '../application/auth/update-current-user.use-case.js';
 import { ListMyAuthorizationsUseCase } from '../application/authorizations/list-my-authorizations.use-case.js';
 import { CancelAuthorizationUseCase, CreateAuthorizationUseCase, GetAuthorizationUseCase, ListAuthorizationsUseCase } from '../application/authorizations/admin-use-cases.js';
 import { CreateUserUseCase } from '../application/users/create-user.use-case.js';
@@ -10,11 +11,14 @@ import { ListUsersUseCase } from '../application/users/list-users.use-case.js';
 import { UpdateUserUseCase } from '../application/users/update-user.use-case.js';
 import { ListAccessEventsUseCase } from '../application/access-events/list-access-events.use-case.js';
 import { ListMyAccessEventsUseCase } from '../application/access-events/list-my-access-events.use-case.js';
+import { CreateLocationUseCase } from '../application/locations/create-location.use-case.js';
+import { ListLocationsUseCase } from '../application/locations/list-locations.use-case.js';
 import { RequestQrAccessUseCase } from '../application/access/request-qr-access.use-case.js';
 import { PublishCommandUseCase } from '../application/terminal/publish-command.use-case.js';
 import type { AccessEventRepository } from '../domain/ports/access-event-repository.js';
 import type { AuthorizationRepository } from '../domain/ports/authorization-repository.js';
 import type { DatabaseProbe } from '../domain/ports/database-probe.js';
+import type { LocationRepository } from '../domain/ports/location-repository.js';
 import type { TokenService } from '../domain/ports/token-service.js';
 import type { UserAdminRepository } from '../domain/ports/user-admin-repository.js';
 import type { UserRepository } from '../domain/ports/user-repository.js';
@@ -28,6 +32,7 @@ import { LazyMqttMessageBus } from '../infrastructure/mqtt/lazy-mqtt-message-bus
 import { ValidateQrCredentialUseCase } from '../application/terminal/qr-credential.use-cases.js';
 import { PrismaAccessEventRepository } from '../infrastructure/repositories/prisma-access-event-repository.js';
 import { PrismaAuthorizationRepository } from '../infrastructure/repositories/prisma-authorization-repository.js';
+import { PrismaLocationRepository } from '../infrastructure/repositories/prisma-location-repository.js';
 import { PrismaUserAdminRepository } from '../infrastructure/repositories/prisma-user-admin-repository.js';
 import { PrismaUserRepository } from '../infrastructure/repositories/prisma-user-repository.js';
 import { createLogger, type Logger } from '../shared/logger.js';
@@ -51,12 +56,14 @@ export interface Container {
     userAdmin: UserAdminRepository | undefined;
     authorizations: AuthorizationRepository | undefined;
     accessEvents: AccessEventRepository | undefined;
+    locations: LocationRepository | undefined;
   };
   useCases: {
     checkHealth: CheckHealthUseCase;
     validateQrCredential: ValidateQrCredentialUseCase;
     login: LoginUseCase | undefined;
     getCurrentUser: GetCurrentUserUseCase | undefined;
+    updateCurrentUser: UpdateCurrentUserUseCase | undefined;
     listUsers: ListUsersUseCase | undefined;
     createUser: CreateUserUseCase | undefined;
     getUser: GetUserUseCase | undefined;
@@ -69,6 +76,8 @@ export interface Container {
     cancelAuthorization: CancelAuthorizationUseCase | undefined;
     listMyAccessEvents: ListMyAccessEventsUseCase | undefined;
     listAccessEvents: ListAccessEventsUseCase | undefined;
+    listLocations: ListLocationsUseCase | undefined;
+    createLocation: CreateLocationUseCase | undefined;
     /** Decisao real por QR; ausente sem banco, e a rota responde 503. */
     requestQrAccess: RequestQrAccessUseCase | undefined;
   };
@@ -83,6 +92,7 @@ export interface ContainerOverrides {
   userAdminRepository?: UserAdminRepository;
   authorizationRepository?: AuthorizationRepository;
   accessEventRepository?: AccessEventRepository;
+  locationRepository?: LocationRepository;
   tokenService?: TokenService;
 }
 
@@ -104,7 +114,8 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
     !overrides.userRepository ||
     !overrides.accessEventRepository ||
     !overrides.userAdminRepository ||
-    !overrides.authorizationRepository;
+    !overrides.authorizationRepository ||
+    !overrides.locationRepository;
   // Limites do orcamento por instancia serverless (DT-14); o padrao do pg seria 10.
   const prisma =
     needsPrisma && env.DATABASE_URL
@@ -125,6 +136,9 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
   const accessEvents =
     overrides.accessEventRepository ??
     (prisma ? new PrismaAccessEventRepository(prisma) : undefined);
+  const locations =
+    overrides.locationRepository ??
+    (prisma ? new PrismaLocationRepository(prisma) : undefined);
   const ids = new CryptoIdGenerator();
   // Sem a deduplicacao MQTT: a API nao recebe mensagens do broker (DT-14).
   const access = buildAccessRuntime(env, { clock, qr: validateQrCredential, ids }, API_CONNECTIONS.access, logger);
@@ -146,7 +160,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
     trustProxy: env.TRUST_PROXY,
     corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS,
     tokens,
-    repositories: { users, userAdmin, authorizations, accessEvents },
+    repositories: { users, userAdmin, authorizations, accessEvents, locations },
     close: async () => {
       await accessBus?.close();
       await access?.pool.end();
@@ -163,6 +177,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
       validateQrCredential,
       login: users ? new LoginUseCase(users, tokens) : undefined,
       getCurrentUser: users ? new GetCurrentUserUseCase(users) : undefined,
+      updateCurrentUser: users ? new UpdateCurrentUserUseCase(users) : undefined,
       listUsers: userAdmin ? new ListUsersUseCase(userAdmin) : undefined,
       createUser: userAdmin ? new CreateUserUseCase(userAdmin) : undefined,
       getUser: userAdmin ? new GetUserUseCase(userAdmin) : undefined,
@@ -177,6 +192,8 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
       cancelAuthorization: authorizations ? new CancelAuthorizationUseCase(authorizations, clock) : undefined,
       listMyAccessEvents: accessEvents ? new ListMyAccessEventsUseCase(accessEvents) : undefined,
       listAccessEvents: accessEvents ? new ListAccessEventsUseCase(accessEvents) : undefined,
+      listLocations: locations ? new ListLocationsUseCase(locations) : undefined,
+      createLocation: locations ? new CreateLocationUseCase(locations) : undefined,
       requestQrAccess:
         access && accessBus
           ? new RequestQrAccessUseCase(
