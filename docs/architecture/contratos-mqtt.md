@@ -66,6 +66,12 @@ Mensagem com `v` desconhecida, `terminalId` diferente do tópico ou campo faltan
 
 `type` é `nfc_read` na v1; `uid` é hexadecimal maiúsculo (4 a 20 caracteres). O backend decide; o terminal só aguarda o comando.
 
+Na US-23, o RC522 físico produz UIDs de 4, 7 ou 10 bytes (8, 14 ou 20
+caracteres, preservando zeros iniciais). Uma apresentação gera uma tentativa;
+a mesma tag só rearma após 500 ms de ausência. O firmware publica com QoS 1
+e sem retain, esperando PUBACK. Sem rede ou hora confiável, não cria fila
+offline nem renova timestamps: é preciso retirar e reapresentar a tag.
+
 O `timestamp` deve ter idade **menor que 30 s**, com tolerância de até **5 s no futuro**. O parser e o caso de uso rejeitam tentativas fora dessa janela (`stale`), sem decidir nem publicar comando. A fila não renova o prazo; o terminal precisa manter seu relógio UTC sincronizado.
 
 ### Heartbeat e LWT — `terminals/{id}/status`
@@ -120,6 +126,12 @@ O `timestamp` deve ter idade **menor que 30 s**, com tolerância de até **5 s n
 
 - `status`: `executed` (comando cumprido), `rejected` (recusado, com `reason`) ou `expired` (chegou vencido).
 - O ACK **não concede acesso**: só confirma que o terminal executou, recusou ou ignorou um comando. O backend correlaciona pelo `commandId`; ACK de comando desconhecido é logado e ignorado.
+
+O exemplo físico da US-23 inicia em **modo de bancada, somente feedback**
+(`DOOR_ENABLED=0`) enquanto o modelo/alimentação do servo não forem confirmados.
+Nesse modo, `open` executa LED/display/buzzer habilitado e o ACK `executed`
+confirma esse feedback, **não abertura física**. Não usar esse perfil de bancada
+como evidência de atuação da cancela. O perfil TFT/Wokwi mantém o ciclo completo.
 
 ## Ids e idempotência
 

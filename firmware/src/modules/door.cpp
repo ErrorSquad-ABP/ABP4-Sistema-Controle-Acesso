@@ -48,20 +48,26 @@ void apply(door_machine::State state) {
 namespace terminal_door {
 
 void begin() {
+#if DOOR_ENABLED
   // Sem attach no boot: o servo so recebe pulso enquanto a cancela se move.
   pinMode(DOOR_SERVO_PIN, OUTPUT);
   digitalWrite(DOOR_SERVO_PIN, LOW);
   machine.reset(millis());
   apply(machine.state());
+#else
+  Serial.println("[door] servo desabilitado: somente feedback de decisao");
+#endif
 }
 
 bool requestOpen() {
+  if (!DOOR_ENABLED) return false;
   if (!machine.requestOpen(millis())) return false;
   apply(machine.state());
   return true;
 }
 
 void update() {
+  if (!DOOR_ENABLED) return;
   if (machine.update(millis())) apply(machine.state());
 }
 

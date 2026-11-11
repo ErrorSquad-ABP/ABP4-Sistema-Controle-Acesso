@@ -2,11 +2,12 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <PubSubClient.h>
+#include <MQTTClient.h>
 #include <WiFi.h>
 
 #include "clock_policy.h"
 #include "iso8601.h"
+#include "nfc_scan.h"
 #include "retry_interval.h"
 #include "terminal_settings.h"
 
@@ -26,7 +27,7 @@ WiFiClientSecure transport;
 #else
 WiFiClient transport;
 #endif
-PubSubClient client(transport);
+MQTTClient client(512);
 RetryInterval wifiRetry(WIFI_RETRY_MS);
 RetryInterval mqttRetry(MQTT_RETRY_MS);
 
@@ -35,10 +36,19 @@ terminal_mqtt::Actuator actuator = nullptr;
 terminal_mqtt::Clock clockSource = nullptr;
 qr_token::State qrState;
 
+// Nao publicar QoS 1 de dentro do callback: a espera pelo PUBACK pode
+// reentrar no cliente. Guardar comandos e processar fora de client.loop().
+char commandQueue[8][513] = {};
+unsigned int commandLengths[8] = {};
+uint8_t queueHead = 0;
+uint8_t queueCount = 0;
+
 // Antes disto o SNTP nao respondeu: sem hora confiavel nao da para aprovar um
 // prazo, entao o comando e recusado (fail-closed) em vez de aberto.
 constexpr unsigned int kPayloadCapacity = 512;
 constexpr size_t kAckCapacity = 320;
+char pendingAck[kAckCapacity] = {};
+size_t pendingAckLength = 0;
 
 uint64_t clockNow() { return clockSource == nullptr ? 0 : clockSource(); }
 
@@ -74,7 +84,7 @@ void makeMessageId(char* out, size_t size) {
   out[position] = '\0';
 }
 
-void publishAck(const terminal_command::Ack& ack) {
+void queueAck(const terminal_command::Ack& ack) {
   char messageId[37];
   makeMessageId(messageId, sizeof messageId);
 
@@ -90,15 +100,11 @@ void publishAck(const terminal_command::Ack& ack) {
   document["status"] = ack.status;
   if (ack.reason != nullptr) document["reason"] = ack.reason;
 
-  char payload[kAckCapacity];
-  const size_t length = serializeJson(document, payload, sizeof payload);
-  if (length == 0 || length >= sizeof payload) {
+  pendingAckLength = serializeJson(document, pendingAck, sizeof pendingAck);
+  if (pendingAckLength == 0 || pendingAckLength >= sizeof pendingAck) {
+    pendingAckLength = 0;
     Serial.println("[mqtt] ack excedeu o buffer; descartado");
     return;
-  }
-  if (!client.publish(terminal_settings::acksTopic, reinterpret_cast<const uint8_t*>(payload),
-                      static_cast<unsigned int>(length), false)) {
-    Serial.println("[mqtt] falha ao publicar ack");
   }
 }
 
@@ -141,7 +147,7 @@ void readCommand(const uint8_t* payload, unsigned int length) {
     return;
   }
   Serial.printf("[mqtt] comando %s: %s\n", ack->commandId, ack->status);
-  publishAck(*ack);
+  queueAck(*ack);
 }
 
 void readQr(const uint8_t* payload, unsigned int length) {
@@ -169,12 +175,21 @@ void readQr(const uint8_t* payload, unsigned int length) {
                 static_cast<unsigned long long>(expiresAt));
 }
 
-void onMessage(char* topic, uint8_t* payload, unsigned int length) {
+void onMessage(MQTTClient*, char* topic, char* payload, int length) {
+  if (length <= 0 || length > static_cast<int>(kPayloadCapacity)) return;
   if (strcmp(topic, terminal_settings::commandsTopic) == 0) {
-    readCommand(payload, length);
+    if (queueCount == 8) {
+      Serial.println("[mqtt] fila de comandos cheia; comando descartado");
+      return;
+    }
+    const uint8_t slot = (queueHead + queueCount) % 8;
+    memcpy(commandQueue[slot], payload, length);
+    commandLengths[slot] = static_cast<unsigned int>(length);
+    ++queueCount;
     return;
   }
-  if (strcmp(topic, terminal_settings::qrTopic) == 0) readQr(payload, length);
+  if (strcmp(topic, terminal_settings::qrTopic) == 0)
+    readQr(reinterpret_cast<const uint8_t*>(payload), static_cast<unsigned int>(length));
 }
 
 void startWiFi() {
@@ -205,15 +220,16 @@ void begin() {
   transport.setCACert(mqtt_ca::kRootPem);
   transport.setHandshakeTimeout(MQTT_HANDSHAKE_TIMEOUT_SECONDS);
 #endif
-  client.setServer(MQTT_HOST, MQTT_PORT);
-  client.setSocketTimeout(MQTT_SOCKET_TIMEOUT_SECONDS);
-  client.setBufferSize(kPayloadCapacity);
-  client.setCallback(onMessage);
+  client.begin(MQTT_HOST, MQTT_PORT, transport);
+  client.setTimeout(MQTT_SOCKET_TIMEOUT_SECONDS * 1000);
+  client.onMessageAdvanced(onMessage);
   handler.configure(terminal_settings::id, actuator);
   if (wifiRetry.ready(millis())) startWiFi();
 }
 
-void update(bool allowReconnect) {
+void update(bool allowBlocking) {
+  // QoS 1 e manutencao MQTT podem esperar pela rede; nunca atrasar o servo.
+  if (!allowBlocking) return;
   const uint32_t now = millis();
   if (WiFi.status() != WL_CONNECTED) {
     client.disconnect();
@@ -226,7 +242,6 @@ void update(bool allowReconnect) {
   }
 
   if (!client.connected()) {
-    if (!allowReconnect) return;
 #if MQTT_USE_TLS
     // Sem hora UTC confiavel todo certificado parece vencido ou ainda invalido:
     // esperar o SNTP sem gastar tentativa nem segurar o loop num handshake inutil.
@@ -249,16 +264,16 @@ void update(bool allowReconnect) {
         : client.connect(terminal_settings::id, MQTT_USERNAME, MQTT_PASSWORD);
     if (!established) {
 #if MQTT_USE_TLS
-      // O PubSubClient so informa estado -2; o motivo real (certificado, hostname,
-      // handshake) vem do transporte. Nao imprime credenciais nem payload.
+      // O motivo TLS (certificado, hostname, handshake) vem do transporte,
+      // separado do erro MQTT. Nao imprime credenciais nem payload.
       char tlsError[96] = {};
       const int tlsCode = transport.lastError(tlsError, sizeof tlsError);
       Serial.printf("[mqtt] conexao falhou (estado=%d, tls=%d %s); nova tentativa depois\n",
-                    client.state(), tlsCode, tlsError);
+                    static_cast<int>(client.lastError()), tlsCode, tlsError);
       transport.stop();  // Libera o contexto mbedTLS antes da proxima tentativa.
 #else
       Serial.printf("[mqtt] conexao falhou (estado=%d); nova tentativa depois\n",
-                    client.state());
+                    static_cast<int>(client.lastError()));
 #endif
       return;
     }
@@ -269,7 +284,7 @@ void update(bool allowReconnect) {
       transport.stop();
       return;
     }
-    // subscribe() confirma o envio; o broker dev precisa aceitar a inscricao.
+    // MQTTClient espera SUBACK; so anunciamos conectado apos as inscricoes.
     Serial.println("[mqtt] conectado e inscrito nos comandos");
 #if MQTT_USE_TLS
     // Medidas para a evidencia da DT-06: custo do handshake (bloqueia o loop) e heap livre.
@@ -279,6 +294,23 @@ void update(bool allowReconnect) {
 #endif
   }
   client.loop();
+  if (pendingAckLength != 0) {
+    if (!client.publish(terminal_settings::acksTopic, pendingAck,
+                        static_cast<int>(pendingAckLength), false, 1)) {
+      Serial.println("[mqtt] falha ao publicar ack");
+    }
+    pendingAckLength = 0;
+    if (!client.connected()) return;
+  }
+  if (queueCount != 0) {
+    // Retirar antes de publicar ACK: publicacoes podem receber novos comandos.
+    char payload[513];
+    const unsigned int length = commandLengths[queueHead];
+    memcpy(payload, commandQueue[queueHead], length);
+    queueHead = (queueHead + 1) % 8;
+    --queueCount;
+    readCommand(reinterpret_cast<const uint8_t*>(payload), length);
+  }
 }
 
 bool connected() {
@@ -286,5 +318,27 @@ bool connected() {
 }
 
 qr_token::State qr() { return qrState; }
+
+bool publishNfc(const char* uid) {
+  const uint64_t now = clockNow();
+  if (!connected() || !clock_policy::reliable(now) || !nfc_scan::validUid(uid)) return false;
+  char messageId[37];
+  char timestamp[32] = {};
+  makeMessageId(messageId, sizeof messageId);
+  iso8601::fromEpoch(now, timestamp, sizeof timestamp);
+  JsonDocument document;
+  document["v"] = 1;
+  document["messageId"] = messageId;
+  document["terminalId"] = terminal_settings::id;
+  document["timestamp"] = timestamp;
+  document["type"] = "nfc_read";
+  document["uid"] = uid;
+  char payload[320];
+  const size_t length = serializeJson(document, payload, sizeof payload);
+  if (length == 0 || length >= sizeof payload) return false;
+  // Sem retain, sem fila offline ou renovacao artificial do timestamp (US-25).
+  return client.publish(terminal_settings::accessEventsTopic, payload,
+                        static_cast<int>(length), false, 1);
+}
 
 }  // namespace terminal_mqtt

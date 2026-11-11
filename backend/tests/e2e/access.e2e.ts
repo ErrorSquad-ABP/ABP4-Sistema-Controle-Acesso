@@ -1,4 +1,4 @@
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -263,6 +263,9 @@ beforeAll(async () => {
     user: 'abp4',
     password: 'local-e2e',
     persistent: true,
+    // Cluster descartavel do E2E: fsync do initdb pode exceder o hook no Windows.
+    // Nao e configuracao do PostgreSQL da aplicacao nem altera sua durabilidade.
+    initdbFlags: ['--no-sync'],
     onLog: () => {},
     onError: () => {},
     postgresFlags: ['-h', '127.0.0.1'],
@@ -349,6 +352,9 @@ beforeAll(async () => {
       return;
     }
     if (topic.endsWith('/qr')) {
+      // Outros testes anunciam terminais isolados; o QR deles nao pode ser
+      // reutilizado por freshQr() como se pertencesse ao terminal principal.
+      if (message.terminalId !== TERMINAL) return;
       qrMessages.push({ token: message.token ?? '', expiresAt: message.expiresAt ?? '' });
       return;
     }
@@ -781,6 +787,37 @@ describe('DT-03: terminal, evento e payload de negativa', () => {
     expect(event.decision).toBe('GRANTED');
     expect(event.locationId).toBe('a1000000-0000-4000-8000-000000000003');
     expect(event.authorizationId).toBe('a1000000-0000-4000-8000-000000000004');
+  });
+});
+
+describe('US-23: decisoes NFC negativas com broker e banco reais', () => {
+  it.each(['desconhecida', 'revogada'] as const)('tag %s recebe deny sem consumir autorizacao', async (kind) => {
+    const uid = kind === 'revogada' ? '11223344556677' : '11223344';
+    const credentialId = randomUUID();
+    if (kind === 'revogada') {
+      const inserted = await pool.query(
+        `INSERT INTO "Credential" (id, "userId", type, "valueHash", "revokedAt", "updatedAt")
+         SELECT $1, "userId", 'NFC', $2, now(), now()
+         FROM "Credential" WHERE type='NFC' LIMIT 1`,
+        [credentialId, createHash('sha256').update(uid).digest('hex')],
+      );
+      expect(inserted.rowCount).toBe(1);
+    }
+    const before = (await pool.query('SELECT sum("usedCount")::int AS uses FROM "Authorization"')).rows[0].uses;
+    const messageId = randomUUID();
+    await observer.publishAsync(`terminals/${TERMINAL}/access-events`, JSON.stringify({
+      v: 1, messageId, terminalId: TERMINAL, timestamp: new Date().toISOString(),
+      type: 'nfc_read', uid,
+    }), { qos: 1, retain: false });
+
+    const command = await waitCommandAck(messageId);
+    expect(command?.payload.action).toBe('deny');
+    expect(command?.ackStatus).toBe('executed');
+    const event = (await pool.query('SELECT * FROM "AccessEvent" WHERE id=$1', [messageId])).rows[0];
+    expect(event).toMatchObject({ method: 'NFC', decision: 'DENIED', reason: 'INVALID_CREDENTIAL' });
+    expect(event.credentialId).toBe(kind === 'revogada' ? credentialId : null);
+    const after = (await pool.query('SELECT sum("usedCount")::int AS uses FROM "Authorization"')).rows[0].uses;
+    expect(after).toBe(before);
   });
 });
 

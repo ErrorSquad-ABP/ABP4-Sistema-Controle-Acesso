@@ -2,6 +2,7 @@
 
 #include "clock_time.h"
 #include "clock_policy.h"
+#include "terminal_settings.h"
 #include "modules/display.h"
 #include "modules/door.h"
 #include "modules/feedback.h"
@@ -11,10 +12,18 @@
 
 namespace {
 
+bool publishTag(const char* uid) {
+  const bool sent = terminal_mqtt::publishNfc(uid);
+  if (sent) terminal_display::showReading();
+  return sent;
+}
+
 // O backend decide; aqui so se executa a acao ja validada e se devolve o ACK.
 bool handleCommand(terminal_command::Action action) {
   if (action == terminal_command::Action::open) {
+#if DOOR_ENABLED
     if (!terminal_door::requestOpen()) return false;
+#endif
     terminal_feedback::playGranted();
     terminal_display::showGranted();
     return true;
@@ -28,9 +37,10 @@ bool handleCommand(terminal_command::Action action) {
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("[terminal] iniciando atuacao (US-08)");
+  Serial.println("[terminal] iniciando NFC e feedback de decisao (US-23)");
   clock_time::begin();
   terminal_display::begin();
+  terminal_nfc::setPublisher(publishTag);
   terminal_nfc::begin();
   terminal_gps::begin();
   terminal_feedback::begin();
@@ -48,7 +58,7 @@ void loop() {
   terminal_display::showQr(terminal_mqtt::qr(), now, clock_policy::reliable(now));
   terminal_display::showDoor(terminal_door::state());
   terminal_display::update();
-  terminal_nfc::update();
+  if (terminal_door::state() == door_machine::State::idle) terminal_nfc::update();
   terminal_gps::update();
   delay(10);  // Cede tempo ao scheduler do ESP32, sem esperar conexao de rede.
 }

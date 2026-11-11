@@ -6,7 +6,7 @@
 #include <string.h>
 
 #include "Arduino.h"
-#include "PubSubClient.h"
+#include "MQTTClient.h"
 #include "WiFiClientSecure.h"
 #include "modules/mqtt.h"
 #include "mqtt_ca.h"
@@ -68,6 +68,12 @@ int main() {
   assert(terminal_mqtt::connected());
   assert(broker.subscriptions == 2);
   assert(tls.insecureCalls == 0);
+
+  // A troca de cliente preserva a publicacao NFC QoS 1 tambem no transporte TLS.
+  assert(terminal_mqtt::publishNfc("04A1B2C3"));
+  assert(broker.publishedQos == 1);
+  assert(!broker.publishedRetained);
+  assert(strcmp(broker.publishedTopic, "terminals/terminal-dev-01/access-events") == 0);
 
   // Relogio que volta a ficar nao confiavel (ex.: reinicio parcial) bloqueia nova conexao.
   broker.online = false;
