@@ -25,7 +25,7 @@ docker compose -f infra/docker-compose.dev.yml logs mosquitto
 docker compose -f infra/docker-compose.dev.yml exec postgres pg_isready -U abp4
 ```
 
-Esperado: os dois serviços `running`, o Mosquitto registrando que escuta na porta 1883 (interna do container) e o `pg_isready` respondendo `accepting connections`. Do host, acesse-os em `localhost:1884` (MQTT) e `localhost:5436` (PostgreSQL). Os valores de conexão locais (usuário/senha/banco `abp4`) servem só para dev — em produção valem Neon + HiveMQ Cloud.
+Esperado: os dois serviços `running`, o Mosquitto registrando que escuta na porta 1883 (interna do container) e o `pg_isready` respondendo `accepting connections`. Do host, acesse-os em `localhost:1884` (MQTT) e `localhost:5436` (PostgreSQL). Os valores de conexão locais (usuário/senha/banco `abp4`) servem só para dev — em produção valem Neon + EMQX Cloud.
 
 ## 2) Backend
 
@@ -86,7 +86,14 @@ flutter run        # emulador/aparelho Android, contra o backend de produção
 
 Conferindo: abre a tela de abertura ("Verificando sua sessão…") e segue para o login ou para a Home em Figtree, no tema claro ou escuro conforme o sistema. Antes de abrir PR rode `flutter analyze && flutter test`. Detalhes (estrutura, tema, rotas e sessão) em [`mobile/README.md`](../../mobile/README.md).
 
-Sem Android SDK, `flutter run -d chrome` abre as telas, mas **o login real não funciona no navegador**: o backend ainda não responde CORS (DT-08). O alvo é Android; para testar o login use emulador ou aparelho. O CORS no backend é pré-requisito da US-38.
+Sem Android SDK, `flutter run -d chrome` abre as telas. O navegador só deixa o app ler a resposta do backend se a origem estiver liberada (CORS, DT-08): suba o backend local com `CORS_ALLOWED_ORIGINS=http://localhost:5000` e rode o app com porta fixa, apontando para ele:
+
+```bash
+cd mobile
+flutter run -d chrome --web-port 5000 --dart-define=API_BASE_URL=http://localhost:3000
+```
+
+O backend de produção só responde às origens da allowlist da Vercel; sem a origem do seu Chrome nela, o login real falha no navegador. O alvo do app é Android, onde CORS não se aplica. Regras e origens em [`docs/api/README.md`](../api/README.md#cors).
 
 ## 4) Firmware
 

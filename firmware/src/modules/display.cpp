@@ -1,7 +1,9 @@
-#include "display.h"
+// TFT do perfil legado. O perfil fisico usa status ou QR no OLED, conforme config.
 #include "terminal_settings.h"
 
-#if TERMINAL_LEGACY_TFT
+#if TERMINAL_LEGACY_TFT && !TERMINAL_DISPLAY_OLED
+
+#include "display.h"
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
@@ -187,4 +189,4 @@ void update() {
 }
 
 }  // namespace terminal_display
-#endif
+#endif  // TERMINAL_LEGACY_TFT && !TERMINAL_DISPLAY_OLED

@@ -123,7 +123,9 @@ do Docker nem `localhost`. Ajuste/regrave se o IP mudar. No perfil físico
 
 Preserve a pinagem do modelo. O exemplo inicia buzzer/LCD desligados para outras
 montagens. Nesta bancada, `open` confirma feedback, não abertura física.
-OLED/LCD mostram status NFC; não exibirão QR neste perfil.
+OLED/LCD mostram status NFC por padrão (`TERMINAL_DISPLAY_OLED=0`). A opção
+`TERMINAL_DISPLAY_OLED=1` da US-29 seleciona QR no OLED em vez do status OLED/LCD.
+As duas implementações são exclusivas; a integração não altera sua pinagem.
 
 No terminal PlatformIO:
 
@@ -225,5 +227,8 @@ Resultados observados e IDs correlacionados: [evidência US-23](../entrega/evide
 Para a review, anexar vídeo curto de negação/liberação e logs com `commandId`/ACK,
 sem `.env`, `config.h`, senha Wi-Fi, UID completo ou hash da credencial.
 
-Fora do escopo: TLS de produção no firmware, retry/persistência offline (US-25),
-GPS/heartbeat (US-24) e comprovação de movimento físico do servo nesta bancada.
+TLS de produção foi integrado pela DT-06 e preservado junto do MQTT QoS 1:
+`MQTT_USE_TLS=1` exige CA válido e hora sincronizada. Este roteiro usa Mosquitto
+local sem TLS e não substitui a validação de certificados em produção.
+Seguem fora do escopo: retry/persistência offline (US-25), GPS/heartbeat (US-24)
+e comprovação de movimento físico do servo nesta bancada.

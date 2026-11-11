@@ -119,7 +119,7 @@ async function login(email: string, password: string): Promise<string> {
 }
 
 async function freshQr(): Promise<{ token: string; expiresAt: string }> {
-  // O worker publica o QR assinado no ciclo de 10 s para terminais online.
+  // O worker publica o QR assinado no ciclo de 20 s para terminais online.
   await observer.publishAsync(
     `terminals/${TERMINAL}/status`,
     JSON.stringify({
@@ -143,9 +143,8 @@ async function freshQr(): Promise<{ token: string; expiresAt: string }> {
 
 function expiredQrToken(): string {
   const issuedAt = Math.floor(Date.now() / 1000) - 600;
-  const expiresAt = issuedAt + 10;
-  const payload = `v1.${TERMINAL}.${issuedAt}.${expiresAt}`;
-  return `${payload}.${createHmac('sha256', QR_SECRET).update(payload).digest('base64url')}`;
+  const payload = `v1.${TERMINAL}.${issuedAt}.25`;
+  return `${payload}.${createHmac('sha256', QR_SECRET).update(payload).digest().subarray(0, 12).toString('base64url')}`;
 }
 
 /** QR assinado sem publicar `status`: prova que a entrega nao depende de presenca. */

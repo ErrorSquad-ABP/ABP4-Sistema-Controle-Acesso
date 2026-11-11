@@ -4,7 +4,11 @@ import type { CommandStore } from '../../domain/ports/command-store.js';
 import type { IdGenerator } from '../../domain/ports/id-generator.js';
 import type { MessageBus } from '../../domain/ports/message-bus.js';
 import type { AccessEventMessage, CommandMessage } from '../../domain/terminal/messages.js';
-import type { EventDeduplicator } from '../../domain/ports/event-deduplicator.js';
+import {
+  DeduplicationBusyError,
+  type Deduplicated,
+  type EventDeduplicator,
+} from '../../domain/ports/event-deduplicator.js';
 import { isFreshAccessEvent } from '../../domain/terminal/event-freshness.js';
 import { StaleEventError } from '../../domain/errors/domain-error.js';
 import type { Logger } from '../../shared/logger.js';
@@ -12,6 +16,7 @@ import { PublishCommandUseCase } from './publish-command.use-case.js';
 
 export type HandleAccessEventOutput =
   | { status: 'duplicate' }
+  | { status: 'busy' }
   | { status: 'stale' }
   | { status: 'commanded'; command: CommandMessage }
   | { status: 'expired'; command: CommandMessage };
@@ -33,7 +38,22 @@ export class HandleAccessEventUseCase {
       this.logger.warn('tentativa fora da janela de frescor', { messageId: event.messageId });
       return { status: 'stale' };
     }
-    const result = await this.seen.run(event.messageId, () => this.process(event));
+    let result: Deduplicated<HandleAccessEventOutput>;
+    try {
+      result = await this.seen.run(event.messageId, () => this.process(event));
+    } catch (err) {
+      // Contencao normal de QoS 1: outra replica ja processa o mesmo messageId.
+      // Nao e falha do worker; nao pode virar log de erro.
+      if (err instanceof DeduplicationBusyError) {
+        this.logger.warn('reserva de deduplicacao ocupada; tentativa descartada', {
+          messageId: event.messageId,
+          terminalId: event.terminalId,
+          postgresCode: err.postgresCode,
+        });
+        return { status: 'busy' };
+      }
+      throw err;
+    }
     if (result.duplicate) {
       this.logger.warn('tentativa duplicada descartada', { messageId: event.messageId });
       return { status: 'duplicate' };

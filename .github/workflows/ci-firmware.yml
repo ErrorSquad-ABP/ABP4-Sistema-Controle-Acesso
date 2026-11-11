@@ -27,13 +27,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
 
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.platformio
           key: pio-${{ runner.os }}-${{ hashFiles('firmware/platformio.ini') }}
@@ -62,6 +62,8 @@ jobs:
           "$RUNNER_TEMP/abp4-test-layout"
           g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_qr_token.cpp -o "$RUNNER_TEMP/abp4-test-qr"
           "$RUNNER_TEMP/abp4-test-qr"
+          g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_qr_version.cpp -o "$RUNNER_TEMP/abp4-test-qr-version"
+          "$RUNNER_TEMP/abp4-test-qr-version"
           # DT-19: o token do QR precisa caber inteiro na versao 8 do encoder real.
           # A lib de terceiros nao compila com -Werror; so o teste nosso exige.
           gcc -std=c99 -O2 -I .pio/libdeps/esp32dev/QRCode/src \
@@ -91,9 +93,52 @@ jobs:
           g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_nfc.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-nfc"
           "$RUNNER_TEMP/abp4-test-mqtt-nfc"
 
+      # DT-06: TLS ligado, com o fake de tests/fakes antes de include/ (o mqtt_ca.h de teste
+      # substitui o PEM real).
+      - name: Testes host (MQTT com TLS)
+        run: |
+          JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
+          g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=1 -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_tls.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-tls"
+          "$RUNNER_TEMP/abp4-test-mqtt-tls"
+
+      - name: Testes host (reconexao durante ciclo da porta)
+        run: |
+          JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
+          for tls in 0 1; do
+            g++ -std=c++11 -Wall -Wextra -Werror -DTERMINAL_LEGACY_TFT=1 -DMQTT_USE_TLS=$tls -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_door_timing.cpp src/main.cpp src/modules/mqtt.cpp src/modules/door.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-door"
+            for phase in opening open closing; do
+              "$RUNNER_TEMP/abp4-test-mqtt-door" "$phase"
+            done
+          done
+
+      # setInsecure() aceita qualquer certificado: nao pode existir no firmware.
+      - name: Proibir setInsecure no firmware
+        run: |
+          if grep -rn "setInsecure" src include; then
+            echo "setInsecure() desliga a validacao do certificado (DT-06)" >&2
+            exit 1
+          fi
+
       # config.h tem segredos (WiFi/broker) e nao e versionado; no CI compila com o exemplo.
       - name: Preparar config.h a partir do exemplo
         run: cp include/config.example.h include/config.h
 
       - name: Build
         run: pio run -e esp32dev -e esp32dev-wokwi
+
+      # DT-06: o caminho de producao (WiFiClientSecure + CA embutido) tambem precisa compilar.
+      - name: Build com TLS
+        run: pio run -e esp32dev
+        env:
+          PLATFORMIO_BUILD_FLAGS: -DMQTT_USE_TLS=1
+
+      - name: Build legado com TLS
+        run: pio run -e esp32dev-wokwi
+        env:
+          PLATFORMIO_BUILD_FLAGS: -DMQTT_USE_TLS=1 -DTERMINAL_LEGACY_TFT=1
+
+      # DT-06/US-29: a variante OLED (TERMINAL_DISPLAY_OLED=1) precisa compilar.
+      - name: Build com TLS e OLED
+        run: pio run
+        env:
+          PLATFORMIO_BUILD_FLAGS: -DMQTT_USE_TLS=1 -DTERMINAL_DISPLAY_OLED=1

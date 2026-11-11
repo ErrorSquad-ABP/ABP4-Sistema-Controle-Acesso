@@ -16,6 +16,15 @@
 #define MQTT_SOCKET_TIMEOUT_SECONDS 1
 #define MQTT_TCP_TIMEOUT_SECONDS 1
 
+// DT-06: 0 = texto claro (Mosquitto dev/Wokwi); 1 = TLS com validacao de cadeia,
+// validade e hostname contra o CA de include/mqtt_ca.h. Producao exige 1, com o
+// host do broker de producao (EMQX Cloud Serverless), porta 8883 e usuario/senha (so no config.h local).
+// O handshake bloqueia o loop ate este teto (core 2.x: segundos).
+#ifndef MQTT_USE_TLS
+#define MQTT_USE_TLS 0
+#endif
+#define MQTT_HANDSHAKE_TIMEOUT_SECONDS 5
+
 // Matriz de transporte da arquitetura; payloads v1 pertencem a US-04.
 #define MQTT_TOPIC_PREFIX "terminals/" TERMINAL_ID
 #define MQTT_TOPIC_QR MQTT_TOPIC_PREFIX "/qr"
@@ -77,6 +86,11 @@
 #define DOOR_SERVO_OPEN 180
 #define DOOR_SERVO_STOP 90
 #define DOOR_SERVO_CLOSE 0
+// Faixa do pulso (us) mapeada em 0..180. Com 1000..2000, o STOP (90) vira 1500 us,
+// o neutro do servo continuo. Com a faixa antiga (500..2400) o STOP saia em 1450 us
+// e o servo girava devagar sozinho. Se ainda arrastar, ajuste o trimpot do servo.
+#define DOOR_SERVO_MIN_US 1000
+#define DOOR_SERVO_MAX_US 2000
 #define DOOR_MOVE_MS 1800U
 #define DOOR_HOLD_OPEN_MS 3000U
 
@@ -89,3 +103,11 @@
 #define TFT_RST_PIN 25
 #define TFT_MOSI_PIN 32
 #define TFT_SCK_PIN 33
+
+// Display: 0 = status OLED/LCD no perfil fisico, ou TFT no perfil legado.
+// 1 = QR compacto no OLED (US-29), em vez do status OLED/LCD.
+// O guard permite habilitar a variante por -DTERMINAL_DISPLAY_OLED=1 no build.
+#ifndef TERMINAL_DISPLAY_OLED
+#define TERMINAL_DISPLAY_OLED 0
+#endif
+#define OLED_I2C_ADDRESS OLED_ADDRESS

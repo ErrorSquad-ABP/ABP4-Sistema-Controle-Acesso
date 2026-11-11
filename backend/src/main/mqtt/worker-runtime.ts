@@ -20,7 +20,9 @@ import { connectBusOrExit } from './connect-bus.js';
 import { scheduleDedupPurge, type DedupPurgeReport } from './dedup-retention.js';
 import { systemScheduler } from './keep-alive.js';
 
-const QR_INTERVAL_MS = 10_000;
+// Troca antes de vencer: cada QR vale 25 s e um novo chega a cada 20 s, entao a
+// tela nunca fica sem QR valido enquanto o proximo esta a caminho.
+const QR_INTERVAL_MS = 20_000;
 
 export interface WorkerRuntime {
   /** Ultimo expurgo da deduplicacao; `undefined` no modo demo ou antes da primeira execucao. */
@@ -38,9 +40,9 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
   const qr = new ValidateQrCredentialUseCase(clock, new HmacQrTokenSigner(env.QR_TOKEN_SECRET));
   const real = env.ACCESS_MODE === 'real';
   const access = real
-    ? buildAccessRuntime(env, { clock, qr, ids: new CryptoIdGenerator() }, WORKER_CONNECTIONS.access)
+    ? buildAccessRuntime(env, { clock, qr, ids: new CryptoIdGenerator() }, WORKER_CONNECTIONS.access, logger)
     : undefined;
-  const dedup = real ? buildEventDeduplication(env, WORKER_CONNECTIONS.events) : undefined;
+  const dedup = real ? buildEventDeduplication(env, WORKER_CONNECTIONS.events, logger) : undefined;
 
   let decider: AccessDecider;
   try {
@@ -66,7 +68,7 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
     logger,
   );
 
-  // Terminais vistos online recebem um QR assinado a cada 10 s.
+  // Terminais vistos online recebem um QR assinado a cada 20 s (validade de 25 s).
   const onlineTerminals = new Set<string>();
   const { router, publishQr, dispatchPending } = buildMqttConsumer(
     bus,

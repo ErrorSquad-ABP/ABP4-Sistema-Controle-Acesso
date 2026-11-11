@@ -8,6 +8,7 @@ import type { AccessDecider } from '../../src/domain/ports/access-decider.js';
 import type { AccessEventMessage, AckMessage } from '../../src/domain/terminal/messages.js';
 import { QR_TTL_MS } from '../../src/domain/terminal/messages.js';
 import { parsePayload } from '../../src/infrastructure/mqtt/payload-parser.js';
+import { DeduplicationBusyError } from '../../src/domain/ports/event-deduplicator.js';
 import { PendingCommands } from '../../src/domain/terminal/pending-commands.js';
 import { SeenMessages } from '../../src/domain/terminal/seen-messages.js';
 import {
@@ -165,6 +166,27 @@ describe('terminal use cases', () => {
       expect(second).toEqual({ status: 'duplicate' });
       expect(bus.published).toHaveLength(1);
     });
+
+    it('trata reserva ocupada como contencao normal, sem decidir nem publicar', async () => {
+      const logger = { ...silentLogger, warn: vi.fn() };
+      const decide = vi.fn();
+      const contended = {
+        async run<T>(_id: string, _work: () => Promise<T>): Promise<never> {
+          throw new DeduplicationBusyError('55P03');
+        },
+      };
+      const useCase = new HandleAccessEventUseCase(
+        { decide }, bus, clock, new SequentialIds(), contended, pending, logger,
+      );
+
+      expect(await useCase.execute(event)).toEqual({ status: 'busy' });
+      expect(decide).not.toHaveBeenCalled();
+      expect(bus.published).toHaveLength(0);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'reserva de deduplicacao ocupada; tentativa descartada',
+        expect.objectContaining({ messageId: UUID_A, postgresCode: '55P03' }),
+      );
+    });
   });
 
   describe('HandleAckUseCase', () => {
@@ -234,9 +256,9 @@ describe('terminal use cases', () => {
         v: 1,
         terminalId: TERMINAL,
         timestamp: '2026-10-19T19:30:00.000Z',
-        expiresAt: '2026-10-19T19:30:10.000Z',
+        expiresAt: '2026-10-19T19:30:25.000Z',
       });
-      expect(message.token).toMatch(/^v1\.[a-z0-9-]+\.[0-9]+\.[0-9]+\.[A-Za-z0-9_-]{43}$/);
+      expect(message.token).toMatch(/^v1\.[a-z0-9-]+\.[0-9]+\.25\.[A-Za-z0-9_-]{16}$/);
       const validation = validateCredential.execute(message.token, message.terminalId);
       expect(validation.valid).toBe(true);
       if (!validation.valid) throw new Error('credencial assinada deveria ser valida');
@@ -256,9 +278,21 @@ describe('terminal use cases', () => {
     it('valida token assinado e emite apenas os claims necessarios', () => {
       const credential = issue().execute(TERMINAL);
       expect(validate().execute(credential.token, TERMINAL)).toMatchObject({ valid: true });
-      const [version, terminal, issuedAt, expiresAt] = credential.token.split('.');
+      const [version, terminal, , ttl] = credential.token.split('.');
       expect({ version, terminal }).toEqual({ version: 'v1', terminal: TERMINAL });
-      expect(Number(expiresAt) - Number(issuedAt)).toBe(QR_TTL_MS / 1000);
+      expect(Number(ttl)).toBe(QR_TTL_MS / 1000);
+    });
+
+    it('cabe no QR versao 3 (29x29, ate 53 bytes) com o id do terminal de desenvolvimento', () => {
+      const credential = issue().execute('terminal-dev-01');
+      expect(Buffer.byteLength(credential.token, 'utf8')).toBeLessThanOrEqual(53);
+    });
+
+    it('rejeita ttl diferente do contrato', () => {
+      const issued = Math.floor(NOW.getTime() / 1000);
+      const payload = `v1.${TERMINAL}.${issued}.3600`;
+      const token = `${payload}.${signer.sign(payload)}`;
+      expect(validate().execute(token, TERMINAL)).toEqual({ valid: false, reason: 'invalid' });
     });
 
     it('cabe no QR do terminal (152 bytes) com o maior terminal permitido', () => {
@@ -295,7 +329,7 @@ describe('terminal use cases', () => {
     it('rejeita token ainda nao emitido', () => {
       const signerNow = new HmacQrTokenSigner('a'.repeat(64));
       const issued = Math.floor(NOW.getTime() / 1000) + 1;
-      const payload = `v1.${TERMINAL}.${issued}.${issued + QR_TTL_MS / 1000}`;
+      const payload = `v1.${TERMINAL}.${issued}.${QR_TTL_MS / 1000}`;
       const token = `${payload}.${signerNow.sign(payload)}`;
       expect(validate().execute(token, TERMINAL)).toEqual({ valid: false, reason: 'invalid' });
     });

@@ -1,7 +1,7 @@
 #include "display.h"
 #include "terminal_settings.h"
 
-#if !TERMINAL_LEGACY_TFT
+#if !TERMINAL_LEGACY_TFT && !TERMINAL_DISPLAY_OLED
 #include <Adafruit_SSD1306.h>
 #include <Arduino.h>
 #include <Wire.h>

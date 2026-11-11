@@ -26,11 +26,13 @@ Stories do backlog com **Sprint alvo S3** e com **S2/S3** no [`product-backlog.m
 
 **US-20 (antecipada)**: fechada na Sprint 2 pelo PR #42; a linha da US-20 na tabela fica só como registro do plano original, não como escopo novo.
 
+**Atualização em 10/11/2026 (fechamento da S2):** esta tabela preserva o plano original. **US-20** e **US-32** foram antecipadas e concluídas na S2; **US-28 e US-29** entram na S3 como carry-over explícito (US-29 está no PR #55, aberto em review, sem câmera/GPS reais). US-24, US-28, US-30, US-31, US-33, US-34, US-35, US-36, US-38 e US-39 estão na lista Sprint 3; US-23/25 seguem em andamento; **DT-12 e DT-22** estão bloqueadas por bancada. O teto de 100 m (DT-23) e a pinagem/Dependabot (DT-24) foram concluídos em 10/11. Escopo final continua sujeito à Planning 3.
+
 **US-38**: além do build web, troca os ícones padrão do Flutter (web e Android) por uma identidade única, com o nome público "Controle de Acesso".
 
 Resumo por épico: **E2** acrescenta a validação por geofence e o histórico completo · **E3** entrega NFC, GPS/heartbeat e a resiliência do terminal · **E4** fecha o admin no app com acessibilidade para o público idoso (RNF04) · **E5** escreve a qualidade (E2E no CI, revisão de segurança, hardware real) · **E6** consolida arquitetura e diagramas.
 
-A **US-36** (relatório ABNT e apresentação final) é da janela de entrega final (S4), fora do escopo desta sprint. A Review 3 fecha a Sprint 3 conforme o cronograma oficial.
+A **US-36** (relatório ABNT e apresentação final) é da janela de entrega final, após a Review 3 — o projeto tem três sprints, não uma quarta. A Review 3 fecha a Sprint 3 conforme o cronograma oficial.
 
 ## Sprint Goal
 

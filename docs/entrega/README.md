@@ -1,14 +1,23 @@
 # Entrega — índice das evidências
 
-Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como reproduzir e os PRs/commits envolvidos. Nome no formato `dt-XX.md` ou `us-XX-slug.md`. O documento da Review 1 está em [`review-1.md`](review-1.md).
+Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como reproduzir e os PRs/commits envolvidos. Nome no formato `dt-XX.md` ou `us-XX-slug.md`. Os documentos de Review estão em [`review-1.md`](review-1.md) e [`review-2.md`](review-2.md).
+
+## Estado atual e conferência do Trello
+
+`auditoria-estado-atual.md` registra o recorte de **02/11/2026** (`66fe44a`). O fechamento da Sprint 2 está em [`review-2.md`](review-2.md), com 11/13 histórias da S2, 28 PRs e 48/63 cards concluídos em 10/11. A auditoria é histórica; o review é o retrato do fechamento.
 
 | Evidência | Card | Conteúdo | PR |
 |---|---|---|---|
+| [`dt-23.md`](evidencias/dt-23.md) | DT-23 | teto QR de 100 m e CHECK do raio no banco; migration e API implantadas em produção | #56 |
+| [`dt-24.md`](evidencias/dt-24.md) | DT-24 | Actions por SHA oficial e Dependabot semanal; integrados e validados no CI | #56 |
 | [`dt-01-02-03.md`](evidencias/dt-01-02-03.md) | DT-01 · DT-02 · DT-03 | decisão real no worker, dedup persistente e mapeamento terminal→local, integrados sobre a `main` | #32 (origem no #31) |
+| [`dt-06.md`](evidencias/dt-06.md) | DT-06 | TLS no firmware com CA embutido e validação de certificado; validado no ESP32 real contra o EMQX | #53 |
 | [`dt-10-build-android-ci.md`](evidencias/dt-10-build-android-ci.md) | DT-10 | APK Android gerado, conferido e instalado no CI mobile | #35 |
+| [`dt-08.md`](evidencias/dt-08.md) | DT-08 | CORS por allowlist exata (`CORS_ALLOWED_ORIGINS`), preflight `204` e origens documentadas; API implantada, prova com origem real pendente da US-38 | #54 |
 | [`dt-13.md`](evidencias/dt-13.md) | DT-13 | outbox de comando (`publishedAt`) com relay independente do terminal | #37 |
 | [`dt-14.md`](evidencias/dt-14.md) | DT-14 | orçamento de conexões por pool e medição da rajada concorrente | #44 |
 | [`dt-15.md`](evidencias/dt-15.md) | DT-15 | retenção de 24 h da deduplicação com expurgo em lotes e resultado no `/healthz` | #48 |
+| [`dt-16.md`](evidencias/dt-16.md) | DT-16 | prazos da reserva de deduplicação no servidor e falhas das pools no log sem segredos | #51 |
 | [`dt-17.md`](evidencias/dt-17.md) | DT-17 | candidatas de autorização restritas na consulta e no lock | #41 |
 | [`dt-18.md`](evidencias/dt-18.md) | DT-18 | retenção de `TerminalCommand` com expurgo em lotes | #40 |
 | [`dt-19.md`](evidencias/dt-19.md) | DT-19 | limite do token QR no firmware alinhado ao backend | #39 |
@@ -20,6 +29,7 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 | [`us-10-scanner.md`](evidencias/us-10-scanner.md) | US-10 | scanner QR, geolocalização e textos em pt-BR | #20 |
 | [`us-20.md`](evidencias/us-20.md) | US-20 | decisão de acesso QR e geofence de 100 m | #42 |
 | [`us-23-nfc-rc522.md`](evidencias/us-23-nfc-rc522.md) | US-23 | RC522 físico, MQTT QoS 1, decisão/ACK e feedback; roteiro de teste e resultados automáticos | a abrir |
+| [`us-29.md`](evidencias/us-29.md) | US-29 | scanner QR que pede o acesso ao backend e mostra o resultado liberado/negado; câmera e GPS reais pendentes | — |
 | [`us-26-mqtt-servo.md`](evidencias/us-26-mqtt-servo.md) | US-26 | comando de abertura do servo via MQTT (herdado da US-08) | #19 · #25 |
 
 ## Matriz de requisitos

@@ -6,8 +6,8 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/app_spacing.dart';
 import '../auth/session_controller.dart';
 
-/// Tela inicial, acessada após o login (US-27). As autorizações do usuário
-/// entram na US-28 e o acesso por leitura de QR na US-29.
+/// Tela inicial, acessada após o login (US-27). Leva ao scanner, que pede o
+/// acesso por QR (US-29). As autorizações do usuário entram na US-28.
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
@@ -83,8 +83,8 @@ class HomePage extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Lê o QR e registra a posição. A liberação do acesso entra na '
-                    'US-29.',
+                    'Aponte para o QR do terminal para pedir acesso. Sua posição '
+                    'é enviada para conferir a distância.',
                     style: textTheme.bodySmall,
                   ),
                   const SizedBox(height: AppSpacing.xl),

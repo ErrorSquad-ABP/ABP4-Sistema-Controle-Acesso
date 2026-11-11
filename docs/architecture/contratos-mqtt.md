@@ -16,7 +16,7 @@ O pedido de acesso por QR **não** passa por MQTT: o app o envia à API por HTTP
 | `terminals/{id}/commands` | backend → terminal | 1 | não | comando de abertura ou negação |
 | `terminals/{id}/acks` | terminal → backend | 1 | não | ACK de execução |
 
-- O QR usa QoS 0 porque renova a cada 10 s: perder um token é irrelevante, o próximo chega logo.
+- O QR usa QoS 0 porque renova a cada 20 s: perder um token é irrelevante, o próximo chega logo.
 - O `status` é retido para que um consumidor que entra depois veja o último estado conhecido (online ou offline).
 - Comandos nunca são retidos: um comando antigo entregue a um terminal que reconecta seria perigoso.
 - O backend assina `terminals/+/access-events`, `terminals/+/status` e `terminals/+/acks`.
@@ -49,7 +49,7 @@ Mensagem com `v` desconhecida, `terminalId` diferente do tópico ou campo faltan
 }
 ```
 
-`token` é emitido pelo backend como `v1.<terminalId>.<iat>.<exp>.<assinatura>`, com `iat`/`exp` em segundos Unix e assinatura `base64url(HMAC-SHA-256)` sobre os quatro primeiros campos. O formato é compacto de propósito: o QR do terminal é versão 8 / ECC_LOW (152 bytes) e precisa caber até com `terminalId` de 64 caracteres. A chave vem de `QR_TOKEN_SECRET`, compartilhada pelos processos HTTP e MQTT; ela nunca segue na mensagem. `timestamp` é o instante `iat`, e `expiresAt` da mensagem é o mesmo instante de expiração assinado no token (`iat` + 10 s). O terminal só exibe o token. A validação criptográfica rejeita assinatura inválida, terminal divergente, timestamps incoerentes e token expirado; ela não concede acesso.
+`token` é emitido pelo backend como `v1.<terminalId>.<iat>.<ttl>.<assinatura>`, com `iat` em segundos Unix, `ttl` = 25 (segundos) e assinatura `base64url` dos 12 primeiros bytes (96 bits) do `HMAC-SHA-256` sobre os quatro primeiros campos. O formato é compacto de propósito: com `terminal-dev-01` o token tem 49 bytes e cabe no QR versão 3 (29×29), que o OLED 128×64 desenha em escala 2; o maior `terminalId` (64 caracteres) ainda cabe na versão 8 / ECC_LOW. A chave vem de `QR_TOKEN_SECRET`, compartilhada pelos processos HTTP e MQTT; ela nunca segue na mensagem. `timestamp` é o instante `iat`, e `expiresAt` da mensagem é o mesmo instante de expiração assinado no token (`iat` + `ttl`). O terminal só exibe o token. A validação criptográfica rejeita assinatura inválida, terminal divergente, timestamps incoerentes e token expirado; ela não concede acesso.
 
 ### Tentativa de acesso — `terminals/{id}/access-events`
 
@@ -145,6 +145,16 @@ QoS 1 pode entregar a mesma mensagem mais de uma vez; por isso a dedup por `mess
 
 No modo real, `ProcessedAccessMessage` registra tentativas concluídas sem limite FIFO de 1.000 IDs. Uma reserva transacional PostgreSQL serializa o mesmo ID entre instâncias; qualquer falha faz rollback, e a queda da conexão libera a reserva. A marca só é confirmada após decisão e processamento do comando. A migration deve ser aplicada antes de iniciar o worker (`npm run db:migrate:deploy`); o boot verifica a tabela. As marcas ficam **24 h** e saem em lotes uma vez por dia (DT-15): como o frescor descarta a mensagem com mais de 30 s antes da deduplicação, nenhuma retransmissão aceita chega a uma marca já expurgada ([regras](modelo-dados.md#retencao-da-deduplicacao)).
 
+A reserva tem prazos aplicados **no servidor**, só dentro da transação (`set_config(..., true)`, equivalente a `SET LOCAL`), DT-16:
+
+| Prazo | Valor | Em caso de estouro |
+|---|---|---|
+| `lock_timeout` (espera pelo advisory lock) | **3 s** | a duplicata bloqueada desiste com `reserva da deduplicacao excedeu o prazo`; `ROLLBACK` e a conexão volta para a pool |
+| `statement_timeout` (cada consulta da reserva) | **3,5 s** | mesmo tratamento; fica abaixo do `query_timeout` de 4 s do cliente para o servidor abortar primeiro |
+| `idle_in_transaction_session_timeout` (transação parada durante o callback) | **20 s** | o servidor encerra a sessão e solta o lock; a conexão é descartada e outra réplica pode processar a mesma mensagem |
+
+Se o cliente desistir antes (`Query read timeout`), a conexão é descartada sem `ROLLBACK`, que ficaria na fila atrás da consulta pendente; fechar o socket libera o cliente, mas o PostgreSQL só percebe a desconexão quando tenta escrever nela — quem limita a consulta pendente é o `statement_timeout` de 3,5 s. Em nenhum desses casos a marca é gravada: a mensagem não fica como processada. A duplicata bloqueada é contenção normal de QoS 1, não falha do worker: o caso de uso devolve `busy` e registra `warn` com `messageId` e `terminalId`, sem log de erro. Valores em `DEFAULT_DEDUP_TIMEOUTS` ([`postgres-event-deduplicator.ts`](../../backend/src/infrastructure/database/postgres-event-deduplicator.ts)).
+
 A decisão e o comando já persistidos são reutilizados nas retentativas, com o mesmo `commandId` e prazo original. MQTT e PostgreSQL não compartilham transação: uma queda após publicar e antes de confirmar a marca pode retransmitir o mesmo comando; a deduplicação do terminal por `commandId` continua obrigatória. O modo demo mantém o adapter volátil, sem garantia de dedup após restart. ACKs continuam correlacionados de forma persistente por `TerminalCommand`.
 
 `TerminalCommand` funciona como outbox (DT-13): `publishedAt` fica `NULL` até a primeira tentativa de entrega ao broker. Se a publicação falhar (ex.: a API sem broker no pedido QR), a decisão continua válida — o pedido responde `GRANTED` e a autorização não é consumida de novo. O worker roda um relay no boot e a cada `COMMAND_RELAY_INTERVAL_MS` (padrão **5 s**), **independente da presença do terminal, dentro da janela de operação configurada** (DT-21): o firmware da main não publica `status` nem tentativa de acesso antes da leitura, então presença de terminal não serve de gate para a recuperação; a janela é o que evita manter o Neon acordado 24/7. O relay publica as intenções pendentes ainda no prazo, com o mesmo `commandId` e `expiresAt`, após uma folga de 1,5 s desde a decisão para não disputar com o publicador original. Nunca publica comando vencido nem abertura para terminal ou local inativo. O resumo do ciclo inclui `backlog` (lote de 50 cheio: pode haver mais pendentes); um `count(*)` por ciclo foi descartado para não dobrar o custo no Neon.
@@ -169,5 +179,8 @@ A `v` só sobe em mudança incompatível (campo removido ou com outro significad
 
 | | Dev | Prod |
 |---|---|---|
-| Broker | Mosquitto do compose, `mqtt://localhost:1884`, sem TLS e sem credenciais | HiveMQ Cloud, `mqtts://…:8883`, usuário e senha |
+| Broker | Mosquitto do compose, `mqtt://localhost:1884`, sem TLS e sem credenciais | EMQX Cloud Serverless, `mqtts://…:8883` (só TLS), usuário e senha |
 | Variáveis | `MQTT_URL` (default já aponta para o dev) | `MQTT_URL`, `MQTT_USERNAME`, `MQTT_PASSWORD` |
+| Terminal (firmware) | `MQTT_USE_TLS 0`, texto claro | `MQTT_USE_TLS 1` (DT-06): `WiFiClientSecure` com o CA de `firmware/include/mqtt_ca.h`, validando cadeia, validade e hostname; só conecta com hora UTC confiável; certificado recusado = sem conexão, sem inscrição, porta fechada |
+
+O TLS do terminal não altera tópicos, payloads, QoS nem `v`: é só o transporte. Detalhes e diagnóstico em [`firmware/README.md`](../../firmware/README.md).

@@ -24,6 +24,8 @@ RNF06 exige banco em nuvem; RP11 pede deploy automatizado; RP12 pede containers 
 
 > **Adendo (19/10/2026) — entrada e CD da API:** a Vercel passou a rodar Express sem configuração, então o adaptador `api/index.ts` previsto acima não é necessário: o app é exportado por `backend/src/index.ts` e o deploy sai pelo `cd-backend.yml` (Vercel CLI no GitHub Actions, com o Root Directory `backend` no projeto). O `/health` público também verifica a conexão com o Neon (`database`). Passo a passo em [`../../guides/deploy.md`](../../guides/deploy.md).
 
+> **Adendo (05/11/2026) — broker de produção:** a HiveMQ encerrou o plano Serverless (sem novos clusters desde 30/09/2026; clusters apagados em 31/12/2026), então o **HiveMQ Cloud deixa de ser o broker**. Entra o **EMQX Cloud Serverless** (o plano B acima): plano gratuito sem cartão, só TLS na porta 8883 e autenticação obrigatória, no projeto ABP4, `us-east-1`. A cadeia termina na DigiCert Global Root G2, que o Node (backend) já confia e que o firmware embute em `firmware/include/mqtt_ca.h` (DT-06). Mantém a decisão de transporte do adendo de 18/10; só o provedor muda. Limites: 1 M de minutos de sessão e 1 GB de tráfego por mês, limite de gasto em US$ 0 (ao acabar a cota o deployment é suspenso, sem cobrança). Evidência em [`../../entrega/evidencias/dt-06.md`](../../entrega/evidencias/dt-06.md).
+
 - O Docker segue obrigatório no desenvolvimento (compose) e continua disponível como caminho alternativo de deploy, atendendo RP12.
 
 ## Limites dos planos gratuitos (verificados em 16/10/2026)

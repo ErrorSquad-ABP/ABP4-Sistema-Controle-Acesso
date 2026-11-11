@@ -17,7 +17,7 @@ Branch `feat/us-10-scanner-geo`, PR #20, commit de merge `b1b7550`.
 - Feedback de sucesso/erro com `successSoft`/`errorSoft` e texto `onSoft` (AA).
 - Material em pt-BR (`flutter_localizations`, `supportedLocales`, `locale`).
 - Rota `/scan`, entrada na Home e modo demonstração explícito no login (sem autenticar).
-- Nenhuma liberação de acesso ou chamada ao backend (fronteira da US-29).
+- Nenhuma liberação de acesso ou chamada ao backend (fronteira da US-29, entregue depois: [`us-29.md`](us-29.md)).
 
 ## Limites
 

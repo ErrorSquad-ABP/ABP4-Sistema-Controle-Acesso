@@ -11,9 +11,22 @@
 #include "retry_interval.h"
 #include "terminal_settings.h"
 
+#if MQTT_USE_TLS
+#include <WiFiClientSecure.h>
+
+#include "mqtt_ca.h"
+// O core 2.0.17 ja recusa a conexao sem CA (ssl_client.cpp); recusar tambem na
+// compilacao evita um firmware de producao que nunca conecta.
+static_assert(sizeof(mqtt_ca::kRootPem) > 64, "MQTT_USE_TLS=1 exige um CA em include/mqtt_ca.h");
+#endif
+
 namespace {
 
+#if MQTT_USE_TLS
+WiFiClientSecure transport;
+#else
 WiFiClient transport;
+#endif
 MQTTClient client(512);
 RetryInterval wifiRetry(WIFI_RETRY_MS);
 RetryInterval mqttRetry(MQTT_RETRY_MS);
@@ -203,6 +216,12 @@ void begin() {
   WiFi.setAutoReconnect(false);  // Uma unica politica de retentativas, abaixo.
   // Arduino-ESP32 2.x: setTimeout recebe segundos e tambem limita connect().
   transport.setTimeout(MQTT_TCP_TIMEOUT_SECONDS);
+#if MQTT_USE_TLS
+  // O CA vale para toda conexao (inclusive reconexoes); a validacao nunca e desligada
+  // (o CI proibe o metodo que aceita qualquer certificado).
+  transport.setCACert(mqtt_ca::kRootPem);
+  transport.setHandshakeTimeout(MQTT_HANDSHAKE_TIMEOUT_SECONDS);
+#endif
   client.begin(MQTT_HOST, MQTT_PORT, transport);
   client.setTimeout(MQTT_SOCKET_TIMEOUT_SECONDS * 1000);
   client.onMessageAdvanced(onMessage);
@@ -210,7 +229,7 @@ void begin() {
   if (wifiRetry.ready(millis())) startWiFi();
 }
 
-void update() {
+void update(bool allowReconnect) {
   const uint32_t now = millis();
   if (WiFi.status() != WL_CONNECTED) {
     client.disconnect();
@@ -223,15 +242,40 @@ void update() {
   }
 
   if (!client.connected()) {
+    if (!allowReconnect) return;
+#if MQTT_USE_TLS
+    // Sem hora UTC confiavel todo certificado parece vencido ou ainda invalido:
+    // esperar o SNTP sem gastar tentativa nem segurar o loop num handshake inutil.
+    static bool waitingForClock = false;
+    if (!clock_policy::reliable(clockNow())) {
+      if (!waitingForClock) Serial.println("[mqtt] tls aguardando hora (sntp)");
+      waitingForClock = true;
+      return;
+    }
+    waitingForClock = false;
+#endif
     if (!mqttRetry.ready(now)) return;
 
+#if MQTT_USE_TLS
+    const uint32_t connectStartedAt = millis();
+#endif
     // Credenciais vazias no Mosquitto dev; nao enviar username vazio.
     const bool established = MQTT_USERNAME[0] == '\0'
         ? client.connect(terminal_settings::id)
         : client.connect(terminal_settings::id, MQTT_USERNAME, MQTT_PASSWORD);
     if (!established) {
+#if MQTT_USE_TLS
+      // O motivo TLS (certificado, hostname, handshake) vem do transporte,
+      // separado do erro MQTT. Nao imprime credenciais nem payload.
+      char tlsError[96] = {};
+      const int tlsCode = transport.lastError(tlsError, sizeof tlsError);
+      Serial.printf("[mqtt] conexao falhou (estado=%d, tls=%d %s); nova tentativa depois\n",
+                    static_cast<int>(client.lastError()), tlsCode, tlsError);
+      transport.stop();  // Libera o contexto mbedTLS antes da proxima tentativa.
+#else
       Serial.printf("[mqtt] conexao falhou (estado=%d); nova tentativa depois\n",
                     static_cast<int>(client.lastError()));
+#endif
       return;
     }
     if (!client.subscribe(terminal_settings::commandsTopic, 1) ||
@@ -243,6 +287,12 @@ void update() {
     }
     // MQTTClient espera SUBACK; so anunciamos conectado apos as inscricoes.
     Serial.println("[mqtt] conectado e inscrito nos comandos");
+#if MQTT_USE_TLS
+    // Medidas para a evidencia da DT-06: custo do handshake (bloqueia o loop) e heap livre.
+    Serial.printf("[mqtt] tls ok em %u ms, heap livre %u B\n",
+                  static_cast<unsigned>(millis() - connectStartedAt),
+                  static_cast<unsigned>(ESP.getFreeHeap()));
+#endif
   }
   client.loop();
   if (queueCount != 0) {

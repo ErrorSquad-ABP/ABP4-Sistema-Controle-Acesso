@@ -11,6 +11,7 @@ struct TestBroker {
   bool publishResult = true;
   bool online = false;
   int connectCalls = 0;
+  uint32_t connectDelayMs = 0;
   int loopCalls = 0;
   int subscriptions = 0;
   const char* subscribedTopics[8] = {};
@@ -39,6 +40,7 @@ class MQTTClient {
   bool connect(const char* clientId) {
     broker.clientId = clientId;
     ++broker.connectCalls;
+    testNow += broker.connectDelayMs;
     broker.online = broker.connectResult;
     return broker.online;
   }

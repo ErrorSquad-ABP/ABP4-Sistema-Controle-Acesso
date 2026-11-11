@@ -43,9 +43,13 @@ habilite somente após confirmar piezo passivo compatível ou driver apropriado.
 OLED SSD1306 usa **TwoWire(1), SDA 21 / SCL 22**, endereço `0x3C`.
 LCD 1602 opcional usa **Wire, SDA 16 / SCL 17**, endereço `0x27`;
 `LCD_ENABLED=0` por segurança. Habilite apenas com módulo compatível em 3,3 V
-ou conversor bidirecional se os pull-ups forem para 5 V. Esses displays mostram
-**status NFC, não QR**: o QR v8 completo com quiet zone precisa de 114×114 px
-com escala 2. A US-22 continua disponível no perfil TFT, não no OLED 128×64.
+ou conversor bidirecional se os pull-ups forem para 5 V. No perfil físico padrão
+(`TERMINAL_DISPLAY_OLED=0`), esses displays mostram **status NFC**.
+A variante `TERMINAL_DISPLAY_OLED=1` da US-29 mostra QR compacto no OLED,
+com seleção da menor versão, margem completa por padrão e ajustes pela serial.
+Nesse modo, o OLED usa `Wire` e o LCD de status não é inicializado. LEDs/buzzer
+e NFC continuam ativos. O TFT só é inicializado no perfil legado com
+`TERMINAL_DISPLAY_OLED=0`: nunca há dois drivers disputando `terminal_display`.
 
 ```powershell
 # Montagem física NFC (padrão)
@@ -89,6 +93,7 @@ válido, sem repetir um `commandId` já atendido, e responde o ACK em
 platformio.ini              ESP32 DevKit / Arduino; versões fixadas
 include/config.example.h    WiFi, broker, tópicos, pinos e tempos (modelo)
 include/config.h            cópia local, ignorada no Git
+include/mqtt_ca.h           CA raiz (público) usado no TLS com o broker de produção
 include/terminal_settings.h configuração compartilhada pelos módulos
 include/retry_interval.h    intervalo de retentativas, sem dependência de Arduino
 include/clock_time.h        relógio UTC via SNTP
@@ -115,12 +120,17 @@ Valores em `include/config.example.h` (nada secreto ali; segredos ficam no
 
 | Função | Pino/valor | Comportamento |
 |---|---|---|
-| Servo (rotação contínua) | 14 | 180 abre, 90 para, 0 fecha; 1800 ms de movimento e 3000 ms aberto |
+| Servo (rotação contínua) | 14 | 180 abre, 90 para, 0 fecha; 1800 ms de movimento e 3000 ms aberto. Pulso em 1000–2000 µs (90 = 1500 µs, o neutro); parado, o pino fica sem pulso para o servo não arrastar |
 | LED vermelho | 5 | ânodo comum: LOW acende |
 | LED verde | 18 | ânodo comum: LOW acende |
 | Buzzer | 19 | 440/659 Hz no liberado; 220 Hz no negado |
 | TFT CS / DC / RST | 27 / 26 / 25 | ILI9341 240x320 por SPI por software |
 | TFT MOSI / SCK | 32 / 33 | dados e clock do SPI por software |
+| OLED SDA / SCL (opcional) | 21 / 22 | SSD1306 128x64 em `0x3C`, ligado com `TERMINAL_DISPLAY_OLED 1`; mostra só o QR, na maior escala inteira que cabe |
+
+Com o OLED, a serial aceita teclas de bancada para achar a leitura mais fácil
+no celular: `i` inverte as cores, `c` alterna o brilho e `s` alterna entre a
+escala máxima e a escala 1 com margem completa de 4 módulos.
 
 ## Fluxo do comando
 
@@ -222,11 +232,50 @@ Não troque por broker público nem exponha o Mosquitto na internet. O Mosquitto
 de desenvolvimento aceita conexões anônimas e não usa TLS; restrinja a porta pelo
 firewall à máquina/rede de desenvolvimento.
 
+## TLS com o broker de produção (DT-06)
+
+O padrão do `config.example.h` é `MQTT_USE_TLS 0` (texto claro, Mosquitto dev e
+Wokwi). Em produção o terminal fala TLS com o broker EMQX Cloud Serverless:
+
+1. No `config.h` local, defina `MQTT_USE_TLS 1`, `MQTT_HOST` (host do deployment,
+   página Overview), `MQTT_PORT 8883`, `MQTT_USERNAME` e `MQTT_PASSWORD` (usuário
+   criado em *Access Control → Authentication*). Credenciais ficam só no
+   `config.h`, ignorado pelo Git.
+2. O CA vem de [`include/mqtt_ca.h`](include/mqtt_ca.h): **DigiCert Global Root G2**
+   (raiz pública, válida até 2038-01-15, SHA-256 `CB:3C:CB:B7:…:B1:CB:5F` conferido no
+   commit; é o `emqxsl-ca.crt` do link "CA Certificate" do Overview). É um certificado
+   público, por isso versionado. Antes de usar outro broker, confira a cadeia dele:
+
+   ```bash
+   openssl s_client -showcerts -servername <host> -connect <host>:8883 </dev/null
+   ```
+
+   Se a raiz da cadeia não for a DigiCert Global Root G2, troque o PEM; o terminal
+   falha fechado até lá.
+3. O `WiFiClientSecure` valida cadeia, validade e hostname. `setInsecure()` não existe
+   no firmware e o CI falha se aparecer.
+4. A conexão só é tentada com **hora UTC confiável** (SNTP): sem ela todo certificado
+   parece vencido. A serial mostra `[mqtt] tls aguardando hora (sntp)` uma vez.
+5. Certificado recusado, hostname diferente ou handshake lento: a conexão falha, o
+   transporte é liberado, a serial informa o motivo do TLS e a retentativa segue
+   `MQTT_RETRY_MS`. Sem conexão não há inscrição: nenhum comando chega e a porta não abre.
+6. O handshake **bloqueia o `loop()`** até `MQTT_HANDSHAKE_TIMEOUT_SECONDS`
+   (5 s; no core 2.x o valor é em segundos), mas só inicia com a porta em `idle`.
+   A porta é atualizada antes da rede; abertura, espera aberta e fechamento adiam
+   a reconexão. Uma conexão viva continua atendida. Ao conectar, a serial mostra
+   `[mqtt] tls ok em <N> ms, heap livre <M> B`.
+
+A porta 8883 é convenção: a regra é "CA obrigatório". Com `MQTT_USE_TLS 1` e um
+`mqtt_ca.h` sem PEM, a compilação falha (`static_assert`).
+
 ### Diagnóstico
 
 - Sem conexão WiFi: confira SSID/senha no `config.h`; no Wokwi use `Wokwi-GUEST`.
 - MQTT falhando: confira Docker, porta `1884`, gateway e host. No hardware
   físico, use o IP local do computador, não `localhost` nem `host.wokwi.internal`.
+- TLS: `tls aguardando hora` = SNTP sem resposta; `estado=-2` com `tls=-9984 X509 -
+  Certificate verification failed` (observado no ESP32 em 06/11/2026) = CA errado
+  ou hostname diferente do certificado; `tls=-1`/timeout = rede ou handshake acima do teto.
 - ACK `rejected` com `clock_unsynced`: o SNTP não respondeu. O firmware **não
   abre** sem hora confiável; verifique a saída para a internet do simulador ou o
   servidor configurado em `NTP_SERVER_PRIMARY`.
@@ -259,6 +308,8 @@ Os testes host rodam sem Arduino, com tempo e periféricos simulados:
 | `test_clock_policy` | janela de hora confiável (epoch zero, antes e depois de 2025-01-01) |
 | `test_mqtt` | módulo MQTT real com doubles: offline, retentativas, inscrição, reconexão |
 | `test_mqtt_command` | JSON v1 de ponta a ponta: ACK publicado, dedup, prazo, `deny`, recusas e QR |
+| `test_mqtt_tls` | TLS (DT-06): CA configurado, sem `setInsecure`, sem conexão sem hora confiável, certificado recusado libera o transporte e não inscreve (compilar com `-DMQTT_USE_TLS=1`) |
+| `test_mqtt_door_timing` | `main` + MQTT + porta reais; queda nas três fases não inicia reconexão antes da parada do servo (TLS desligado e ligado) |
 
 Linux/CI, a partir de `firmware/`:
 
@@ -278,6 +329,11 @@ g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_clock_policy.cpp -o /
 JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
 g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt && /tmp/t-mqtt
 g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_command.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt-command && /tmp/t-mqtt-command
+g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=1 -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_tls.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt-tls && /tmp/t-mqtt-tls
+for tls in 0 1; do
+  g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=$tls -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_door_timing.cpp src/main.cpp src/modules/mqtt.cpp src/modules/door.cpp -o /tmp/t-mqtt-door
+  for phase in opening open closing; do /tmp/t-mqtt-door "$phase"; done
+done
 ```
 
 No Windows, um compilador C++ host instalado (g++/Clang) ou
@@ -302,6 +358,11 @@ conexão do simulador ao broker nem o movimento real do servo.
 - Heartbeat/LWT (`terminals/{id}/status`) e GPS continuam pendentes (US-24).
   NFC está implementado no perfil físico pela US-23; permanece desabilitado
   no perfil TFT legado, cujos pinos conflitam com o RC522.
+- O TLS (DT-06) foi validado no ESP32 contra o EMQX em 06/11/2026 (conexão e
+  negativos de CA/hostname). O servo não girou nessa bancada e o ACK não foi
+  observado; a correção de timing da reconexão foi validada só em host/build
+  ([`evidencias/dt-06.md`](../docs/entrega/evidencias/dt-06.md)). Sem mTLS nem
+  rotação automática de CA.
 - O QR exibido é o token cru recebido do backend; assinatura e validação de
   credencial entram na US-19/US-20.
 - O prazo do comando depende de SNTP: sem hora confiável o terminal recusa em vez

@@ -88,7 +88,8 @@ como se todos tivessem sido demonstrados na montagem real.
    pull-ups de 5 V diretamente ao ESP32. Não alimente RC522 com 5 V.
 2. Migre o `config.h` local para o novo exemplo sem expor senhas. Configure
    WiFi, IP/porta do broker e um `TERMINAL_ID` cadastrado no backend. Use broker
-   dev na LAN; este firmware não implementa transporte TLS para produção.
+   dev na LAN. O caminho TLS da DT-06 também foi integrado; esta bancada local
+   não comprova por si só a validação de certificados do broker de produção.
 3. Suba Postgres/Mosquitto, aplique migrations e seed de desenvolvimento conforme
    `backend/README.md`; inicie o worker com **`ACCESS_MODE=real`**. Não use o
    decisor demo permissivo para comprovar validação de credenciais.
@@ -115,4 +116,5 @@ Registrar separadamente data, placa, configuração não secreta, comandos/ACKs
 e eventos observados. Não publicar senhas ou UIDs completos nos logs da evidência.
 Build e testes automatizados não substituem esse roteiro físico. Retry offline
 persistente é US-25; heartbeat/GPS é US-24. QR em tela pequena permanece uma
-limitação explícita do perfil físico, sem regressão do perfil TFT da US-22.
+limitação do modo padrão de status; a variante de QR compacto no OLED da US-29
+e o perfil TFT da US-22 são preservados como drivers de display exclusivos.
