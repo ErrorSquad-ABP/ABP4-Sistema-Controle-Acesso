@@ -35,6 +35,22 @@ void begin() {
 
 void update() {
 #if NFC_ENABLED
+  static uint32_t nextCheck = 0;
+  if (static_cast<int32_t>(millis() - nextCheck) >= 0) {
+    nextCheck = millis() + 2000U;
+    const uint8_t version = reader.PCD_ReadRegister(MFRC522::VersionReg);
+    bool responding = version != 0 && version != 0xFF;
+    if (responding && !available) {
+      reader.PCD_Init();
+      const uint8_t initializedVersion = reader.PCD_ReadRegister(MFRC522::VersionReg);
+      responding = initializedVersion != 0 && initializedVersion != 0xFF;
+    }
+    if (responding != available) {
+      available = responding;
+      Serial.println(responding ? "[nfc] RC522 voltou a responder"
+                                : "[nfc] RC522 parou de responder (SPI/energia)");
+    }
+  }
   if (!available || !poll.ready(millis())) return;
   uint8_t atqa[2];
   uint8_t size = sizeof atqa;
@@ -43,7 +59,6 @@ void update() {
     presentation.absent(millis(), NFC_REMOVAL_MS);
     return;
   }
-  // Colisao/erro nao comprova remocao: nao rearmar a mesma apresentacao.
   presentation.present(millis());
   if (status != MFRC522::STATUS_OK && status != MFRC522::STATUS_COLLISION) return;
   if (!reader.PICC_ReadCardSerial()) return;

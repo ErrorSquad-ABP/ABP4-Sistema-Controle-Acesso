@@ -19,11 +19,41 @@ bool publish(const char* uid) {
 }
 void tick(uint32_t now) { testNow = now; terminal_nfc::update(); }
 
-int main(int argc, char**) {
-  if (argc > 1) testReader.version = 0xFF;
+int main(int argc, char** argv) {
+  const bool heldTag = argc > 1 && strcmp(argv[1], "held-tag") == 0;
+  const bool recovering = argc > 1 && strcmp(argv[1], "recover-reader") == 0;
+  if (argc > 1 && !heldTag && !recovering) testReader.version = 0xFF;
   terminal_nfc::setPublisher(publish);
   terminal_nfc::begin();
   assert(SPI.sck == 18 && SPI.miso == 19 && SPI.mosi == 23 && SPI.ss == 32);
+  if (recovering) {
+    tick(0);
+    testReader.version = 0;
+    tick(2000);
+    assert(publishes == 1);
+    testReader.version = 0x92;
+    tick(4000);
+    assert(testReader.initializations == 2);
+    assert(publishes == 1);
+    testReader.present = false;
+    tick(4500); tick(5000);
+    testReader.present = true;
+    tick(5100);
+    assert(publishes == 2);
+    puts("nfc: queda de alimentacao reinicializa leitor sem duplicar apresentacao OK");
+    return 0;
+  }
+  if (heldTag) {
+    tick(0); tick(1000); tick(1100);
+    assert(publishes == 1);
+    testReader.present = false;
+    tick(1200);
+    testReader.present = true;
+    tick(1300);
+    assert(publishes == 1);
+    puts("nfc: tag em HALT nao conta como ausente e remocao breve nao rearma OK");
+    return 0;
+  }
   if (argc > 1) {
     tick(0); tick(1000);
     assert(testReader.wakeups == 0 && publishes == 0);

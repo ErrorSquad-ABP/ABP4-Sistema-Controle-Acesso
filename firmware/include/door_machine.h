@@ -11,8 +11,7 @@ struct Timing {
   uint32_t holdOpenMs;
 };
 
-// Maquina de estados com tempo injetado: o servo e de rotacao continua, entao a
-// posicao vem da duracao do pulso, nunca de uma posicao angular lida de volta.
+// O tempo estima o movimento; nao ha sensor confirmando a posicao fisica.
 class Machine {
  public:
   explicit Machine(const Timing& timing) : timing_(timing) {}

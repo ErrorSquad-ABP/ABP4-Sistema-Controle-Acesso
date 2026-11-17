@@ -24,7 +24,8 @@ constexpr int kHeight = 64;
 // na horizontal a margem real e bem maior; na vertical sobra o que a escala deixar.
 constexpr int kMinMarginPx = 2;
 
-Adafruit_SSD1306 oled(kWidth, kHeight, &Wire, -1);
+TwoWire oledBus(1);
+Adafruit_SSD1306 oled(kWidth, kHeight, &oledBus, -1);
 bool ready = false;
 
 QRCode qr;
@@ -109,12 +110,15 @@ bool pollKeys() {
 
 }  // namespace
 
-namespace terminal_display {
+namespace terminal_oled_qr {
 
 void begin() {
-  Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
-  Wire.setClock(400000);
-  ready = oled.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDRESS);
+  oledBus.begin(OLED_SDA_PIN, OLED_SCL_PIN);
+  oledBus.setClock(400000);
+  oledBus.setTimeOut(50);
+  oledBus.beginTransmission(OLED_I2C_ADDRESS);
+  ready = oledBus.endTransmission() == 0 &&
+          oled.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDRESS, true, false);
   if (!ready) {
     Serial.println("[display] oled nao respondeu no I2C; confira SDA/SCL e o endereco");
     return;
@@ -126,13 +130,6 @@ void begin() {
   oled.display();
   drawnScreen = Screen::waiting;
 }
-
-// No OLED os avisos de acesso e da cancela nao aparecem: a tela fica so com o QR.
-// LEDs e buzzer continuam sinalizando liberado/negado.
-void showReading() {}
-void showGranted() {}
-void showDenied() {}
-void showDoor(door_machine::State) {}
 
 void showQr(const qr_token::State& state, uint64_t nowEpoch, bool clockValid) {
   qrVisible = qr_token::visible(state, nowEpoch, clockValid);
@@ -165,6 +162,6 @@ void update() {
   oled.display();
 }
 
-}  // namespace terminal_display
+}  // namespace terminal_oled_qr
 
 #endif  // TERMINAL_DISPLAY_OLED
