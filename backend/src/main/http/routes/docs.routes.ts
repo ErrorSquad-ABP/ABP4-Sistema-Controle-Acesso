@@ -30,6 +30,7 @@ export function docsRoutes(): Router {
     res.status(200).json(document);
   });
   router.get('/docs', (_req, res) => {
+    res.setHeader('Content-Security-Policy', "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; script-src https://cdn.jsdelivr.net 'unsafe-inline'; style-src https://cdn.jsdelivr.net 'unsafe-inline'; img-src data: https://cdn.jsdelivr.net; connect-src 'self'");
     res.status(200).type('html').send(DOCS_HTML);
   });
   return router;

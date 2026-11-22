@@ -31,7 +31,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | ID | Requisito | Status | Evidência / lacuna |
 |---|---|---|---|
 | RNF01 | Dispositivo IoT + backend Node/TS + API REST + app móvel | Atendido | Monorepo `firmware/`, `backend/`, `mobile/` |
-| RNF02 | Autenticação, proteção de dados e comunicação segura | Parcial | JWT, rate limit, HTTPS na Vercel, Keystore no app, broker de produção com TLS; firmware com TLS e validação de certificado (DT-06, `MQTT_USE_TLS 1`), comprovado em teste host, build e no ESP32 real contra o EMQX (conexão, CA errado e host por IP recusados, 06/11/2026) ([`dt-06.md`](evidencias/dt-06.md)) |
+| RNF02 | Autenticação, proteção de dados e comunicação segura | Parcial | JWT HS256 (segredo de produção obrigatório, TTL padrão 1 h), QR HMAC com TTL 25 s, Keystore, HTTPS e MQTT TLS com validação no ESP32 (DT-06), CORS por allowlist (DT-08) e headers HTTP; riscos aceitos: rate limit local por processo, ausência de revogação JWT e replay visual QR na janela de 25 s. Auditorias de dependência e histórico ainda sem resultado conclusivo neste ambiente. ([`us-33.md`](evidencias/us-33.md)) |
 | RNF03 | Funcionamento com retry/persistência sob falha de conexão | Parcial | Outbox de comandos com retry (DT-13, #37); resiliência do firmware (US-25, alvo S3) em andamento |
 | RNF04 | Interface simples, acessível ao público idoso | Parcial | Fonte 2x sem estouro e rótulos acessíveis (US-27, #43); telas de admin com acessibilidade são US-31 (S3) |
 | RNF05 | Modularidade e separação de responsabilidades | Atendido | Clean Architecture com regra de camadas verificada no lint (`backend/src/{domain,application,infrastructure,main}`) |
@@ -67,7 +67,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 3. **RF02**: cadastro de local não existe em API nem tela.
 4. **RF10/RF11/RF14**: NFC e GPS do terminal (US-23 em Em andamento; US-24 na lista Sprint 2). Backend NFC já existe para simulação.
 5. **RF17**: registrar tentativa NFC depende de US-23.
-6. **RNF02**: o TLS do firmware (DT-06) foi validado no ESP32 real contra o EMQX, com os testes negativos de certificado; pendentes o servo (`LEDC is not initialized`) e a observação do ACK ([`evidencias/dt-06.md`](evidencias/dt-06.md)).
+6. **RNF02**: revisão complementar da US-33, incluindo headers, riscos JWT/QR/rate limit e auditorias incompletas, em [`evidencias/us-33.md`](evidencias/us-33.md). O TLS do firmware (DT-06) foi validado no ESP32 real contra o EMQX, com os testes negativos de certificado; pendentes o servo (`LEDC is not initialized`) e a observação do ACK ([`evidencias/dt-06.md`](evidencias/dt-06.md)).
 7. **RNF07**: estratégia e orçamento documentados em [`evidencias/dt-22.md`](evidencias/dt-22.md); falta medir corrente no hardware (US-34).
 8. **RF03**: confirmar com o professor/PO se "horário inicial/final" exige janela diária dentro do período — hoje é um intervalo contínuo.
 9. **RF13**: teto de 100 m implantado em produção em 10/11 (#56): migration aplicada, CHECK de 1–100 m confirmada e pré-check sem cadastros inválidos. Falta a US-39 validar o intervalo no cadastro.
