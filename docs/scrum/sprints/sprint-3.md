@@ -44,7 +44,9 @@ Preenchido na Planning 3: cards puxados, donos, pontos, critérios de aceite ref
 
 | US | Título | Dono | Pontos | Status |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| US-35 | Diagramas e docs de arquitetura finais | Felipe (revisão: João) | — | Em review |
+
+**US-35**: casos de uso, componentes, implantação dev/prod e sequências QR/NFC em Mermaid, ligados a partir de [`visao-geral.md`](../../architecture/visao-geral.md) ([evidência](../../entrega/evidencias/us-35.md)). Corte: a US-24 não está na `main`, então heartbeat/LWT e GPS do terminal aparecem tracejados como pendentes. Pontos ficam "—" porque não houve estimativa colaborativa registrada.
 
 ## Burndown simples
 

@@ -6,6 +6,8 @@ Esse é o **desenho alvo**, não a declaração de que todo o fluxo está operac
 
 **Atualização de 11/11/2026:** o app envia o pedido de acesso e tem as 12 telas do Figma; o NFC RC522 foi integrado (US-23) com evidência física inicial; o worker no Render foi observado no ar com `mqtt conectado` no EMQX TLS; a API está em `a0625d7`. Continuam pendentes o servo/cancela física, o GPS/heartbeat (US-24), a resiliência offline (US-25) e o fluxo completo app → terminal real.
 
+**Atualização de 23/11/2026:** os diagramas finais de casos de uso, componentes, implantação e sequências QR/NFC estão na seção [Diagramas de arquitetura](#diagramas-de-arquitetura) (US-35). Na `main`, o GPS e o heartbeat do terminal (US-24) seguem pendentes, e por isso aparecem tracejados nos diagramas.
+
 ## Diagrama
 
 O modelo relacional persistido pelo backend está em [`modelo-dados.md`](modelo-dados.md).
@@ -22,6 +24,19 @@ flowchart LR
   M -. dev .- MD[Mosquitto · docker compose]
   M -. prod .- MP[EMQX Cloud · MQTT TLS]
 ```
+
+### Diagramas de arquitetura
+
+Todos em Mermaid, versionados neste diretório e conferidos contra o código da `main` em 23/11/2026 (US-35):
+
+| Documento | Diagramas |
+|---|---|
+| [`casos-de-uso.md`](casos-de-uso.md) | Casos de uso com administrador, condômino, visitante e terminal, e a rota ou tópico de cada um |
+| [`componentes-implantacao.md`](componentes-implantacao.md) | Componentes (app, API, worker, broker, banco, terminal) e implantação em dev e em produção |
+| [`sequencias.md`](sequencias.md) | Sequências da rotação do QR, do acesso por QR e do acesso por NFC, com frescor de 30 s, dedup, outbox/relay e ACK |
+| [`modelo-dados.md`](modelo-dados.md) | Modelo relacional |
+| [`contratos-mqtt.md`](contratos-mqtt.md) | Tópicos, payloads, QoS e LWT |
+| [`caso-de-uso-modelo.md`](caso-de-uso-modelo.md) | Camadas do backend e a regra de dependência |
 
 **Transporte**: app ↔ API por **HTTPS REST**; terminal ↔ backend por **MQTT bidirecional**. Na S1 o processo MQTT do backend roda localmente (US-04); na S2 o mesmo processo foi preparado para o Render (US-37, PR #26) e, em 11/11, o serviço foi observado **LIVE** com `mqtt conectado` no EMQX TLS 8883 e `/healthz` ok ([`us-37.md`](../entrega/evidencias/us-37.md)). A Vercel hospeda só a API.
 

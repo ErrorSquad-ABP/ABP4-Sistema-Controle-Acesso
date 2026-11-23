@@ -53,7 +53,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | RP04 | Aplicativo móvel (nativo ou híbrido) | Atendido | Flutter (Android como alvo principal) |
 | RP05 | Arquitetura cliente-servidor | Atendido | App, API, worker e terminal com papéis separados |
 | RP06 | Desenvolvimento incremental por sprint | Atendido | S1 13/13 e S2 com entregas parciais registradas |
-| RP07 | Documentação de arquitetura, diagramas e comunicação | Parcial | `docs/architecture/` com visão geral, contratos MQTT, modelo de dados e ADR; falta diagrama de casos de uso |
+| RP07 | Documentação de arquitetura, diagramas e comunicação | Atendido | `docs/architecture/` em Mermaid: [casos de uso](../architecture/casos-de-uso.md), [componentes e implantação dev/prod](../architecture/componentes-implantacao.md), [sequências QR/NFC](../architecture/sequencias.md), modelo de dados, contratos MQTT e ADR, ligados a partir da [visão geral](../architecture/visao-geral.md) (US-35, [evidência](evidencias/us-35.md)) |
 | RP08 | Escopo viável, com simulações | Atendido | Wokwi e simulador Node |
 | RP09 | Pipeline CI/CD | Atendido | GitHub Actions |
 | RP10 | Testes no pipeline (obrigatório) | Atendido | RNF10 |
@@ -69,7 +69,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 5. **RF03**: confirmar com o professor/PO se "horário inicial/final" exige janela diária dentro do período — hoje é um intervalo contínuo.
 6. **RNF04**: telas de administração e histórico entregues, sem auditoria de acessibilidade registrada.
 7. **RNF08/RNF11**: checks obrigatórios e proteção da `main` não foram revalidados nesta rodada.
-8. **Entrega final**: demonstração visual do QR no display (US-22), diagramas (US-35) e relatório ABNT/apresentação (US-36) seguem abertos; APK de release em loja não entrou (a execução usou APK debug).
+8. **Entrega final**: demonstração visual do QR no display (US-22) e relatório ABNT/apresentação (US-36) seguem abertos; os diagramas finais (US-35) entraram em 23/11; APK de release em loja não entrou (a execução usou APK debug).
 
 Pendências transversais: o worker no Render foi observado **LIVE** em 11/11, com `mqtt conectado` no EMQX TLS e `/healthz` ok, mas sem medição de continuidade ([`us-37.md`](evidencias/us-37.md)); DT-11 foi fechada pela DT-24, com pinagem por SHA e Dependabot integrados em 10/11 (#56) ([evidência](evidencias/dt-24.md)). A API respondeu com banco ok em 02/11 (versão `6b6aa26`), após uma primeira resposta 503, e em 11/11 (`a0625d7`); isso não é prova de operação contínua nem de fluxo físico completo.
 
