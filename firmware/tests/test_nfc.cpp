@@ -19,8 +19,7 @@ bool publish(const char* uid) {
   return online;
 }
 bool publishHce(const char* token) {
-  assert(strlen(token) == 32);
-  for (size_t i = 0; i < 32; ++i) assert(token[i] >= 'a' && token[i] <= 'f');
+  assert(strcmp(token, "000102030405060708090a0b0c0d0e0f") == 0 || hcePublishes > 0);
   ++hcePublishes;
   return online;
 }
@@ -37,15 +36,15 @@ int main(int argc, char** argv) {
   assert(SPI.sck == 18 && SPI.miso == 19 && SPI.mosi == 23 && SPI.ss == 32);
   if (hce) {
     testReader.sak = 0x20;
-    for (int i = 0; i < 32; ++i) testReader.apduReply[i] = 'a';
-    testReader.apduReply[32] = 0x90;
-    testReader.apduReply[33] = 0x00;
-    testReader.apduLength = 34;
+    for (int i = 0; i < 16; ++i) testReader.apduReply[i] = static_cast<uint8_t>(i);
+    testReader.apduReply[16] = 0x90;
+    testReader.apduReply[17] = 0x00;
+    testReader.apduLength = 18;
     tick(0);
     assert(testReader.apduCalls == 1 && hcePublishes == 1);
     tick(100);
     assert(testReader.apduCalls == 2 && hcePublishes == 1);
-    for (int i = 0; i < 32; ++i) testReader.apduReply[i] = 'b';
+    testReader.apduReply[0] = 0xFF;
     testReader.present = false;
     tick(700);
     testReader.present = true;

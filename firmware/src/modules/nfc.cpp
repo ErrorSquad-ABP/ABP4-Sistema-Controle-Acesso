@@ -20,30 +20,44 @@ bool available = false;
 
 constexpr uint8_t kSelectAid[] = {0x00, 0xA4, 0x04, 0x00, 0x08, 0xF0, 0x41,
                                   0x42, 0x50, 0x34, 0x44, 0x4D, 0x01, 0x00};
-constexpr size_t kHceTokenBytes = 32;
+constexpr size_t kHceTokenBytes = 16;
+constexpr char kHex[] = "0123456789abcdef";
 
 bool readHceToken(MFRC522Extended::TagInfo& tag, char* token, size_t capacity) {
-  if (capacity < kHceTokenBytes + 1) return false;
+  if (capacity < kHceTokenBytes * 2 + 1) return false;
   // O leitor precisa de folga depois do ATS e de ganho maximo para o celular.
   reader.PCD_SetAntennaGain(reader.RxGain_max);
   delay(10);
-  uint8_t reply[40] = {};
-  uint8_t length = sizeof reply;
-  uint8_t apdu[sizeof kSelectAid];
-  memcpy(apdu, kSelectAid, sizeof kSelectAid);
-  const MFRC522::StatusCode status =
-      reader.TCL_Transceive(&tag, apdu, sizeof apdu, reply, &length);
-  if (status != MFRC522::STATUS_OK || length != kHceTokenBytes + 2 ||
-      reply[kHceTokenBytes] != 0x90 || reply[kHceTokenBytes + 1] != 0x00) {
-    return false;
+  MFRC522::StatusCode status = MFRC522::STATUS_ERROR;
+  uint8_t length = 0;
+  uint8_t lastStatusWord[2] = {};
+  for (uint8_t attempt = 1; attempt <= 3; ++attempt) {
+    uint8_t reply[40] = {};
+    length = sizeof reply;
+    uint8_t apdu[sizeof kSelectAid];
+    memcpy(apdu, kSelectAid, sizeof kSelectAid);
+    status = reader.TCL_Transceive(&tag, apdu, sizeof apdu, reply, &length);
+    if (status == MFRC522::STATUS_OK && length == kHceTokenBytes + 2 &&
+        reply[kHceTokenBytes] == 0x90 && reply[kHceTokenBytes + 1] == 0x00) {
+      for (size_t i = 0; i < kHceTokenBytes; ++i) {
+        token[i * 2] = kHex[reply[i] >> 4];
+        token[i * 2 + 1] = kHex[reply[i] & 0x0F];
+      }
+      token[kHceTokenBytes * 2] = '\0';
+      return true;
+    }
+    lastStatusWord[0] = reply[0];
+    lastStatusWord[1] = length > 1 ? reply[1] : 0;
+    delay(30);
   }
-  for (size_t i = 0; i < kHceTokenBytes; ++i) {
-    const char c = static_cast<char>(reply[i]);
-    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return false;
-    token[i] = c;
+  static uint32_t lastLog = 0;
+  if (millis() - lastLog >= 2000U) {
+    lastLog = millis();
+    Serial.printf("[nfc] APDU falhou status=%u len=%u sw=%02X%02X\n",
+                  static_cast<unsigned>(status), static_cast<unsigned>(length),
+                  lastStatusWord[0], lastStatusWord[1]);
   }
-  token[kHceTokenBytes] = '\0';
-  return true;
+  return false;
 }
 #endif
 }  // namespace
@@ -59,6 +73,7 @@ void begin() {
   const uint8_t version = reader.PCD_ReadRegister(MFRC522::VersionReg);
   available = version != 0 && version != 0xFF;
   reader.PCD_AntennaOn();
+  reader.PCD_SetAntennaGain(reader.RxGain_max);
   Serial.printf("[nfc] RC522 %s version=0x%02X tx=0x%02X\n",
                 available ? "pronto" : "indisponivel; confira SPI/alimentacao", version,
                 reader.PCD_ReadRegister(MFRC522::TxControlReg));
@@ -98,6 +113,7 @@ void update() {
     if (millis() - lastField >= 5000U && millis() - lastReinit >= 5000U) {
       reader.PCD_Init();
       reader.PCD_AntennaOn();
+      reader.PCD_SetAntennaGain(reader.RxGain_max);
       lastReinit = millis();
       Serial.println("[nfc] reinit RC522 (campo sem resposta)");
     }
@@ -121,7 +137,7 @@ void update() {
   if ((tag.uid.sak & 0x20) != 0) {
     // Cartao ISO-DEP: primeiro tenta o app HCE; sem prova valida nao publica nada.
     if (reader.PICC_RequestATS(&tag.ats) == MFRC522::STATUS_OK) {
-      char token[kHceTokenBytes + 1] = {};
+      char token[kHceTokenBytes * 2 + 1] = {};
       const bool read = readHceToken(tag, token, sizeof token);
       reader.TCL_Deselect(&tag);
       reader.PCD_StopCrypto1();
