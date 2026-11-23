@@ -185,7 +185,8 @@ class ScannerController extends Notifier<ScannerState> {
     if (!ref.mounted || qrValue.isEmpty || state is! ScannerScanning) return;
 
     final terminalId = terminalIdFromQrToken(qrValue);
-    if (terminalId == null) {
+    final terminalCode = terminalId == null ? terminalCodeFromQrToken(qrValue) : null;
+    if (terminalId == null && terminalCode == null) {
       state = const ScannerFailure(ScannerMessages.invalidQr);
       return;
     }
@@ -209,6 +210,7 @@ class ScannerController extends Notifier<ScannerState> {
     _pending = QrAccessRequest(
       qrToken: qrValue,
       terminalId: terminalId,
+      terminalCode: terminalCode,
       position: point,
       requestId: ref.read(requestIdFactoryProvider)(),
     );

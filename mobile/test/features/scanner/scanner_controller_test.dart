@@ -134,11 +134,27 @@ void main() {
       final request = access.requests.single;
       expect(request.qrToken, validQr);
       expect(request.terminalId, 'terminal-01');
+      expect(request.terminalCode, isNull);
       expect(request.position.latitude, -23.55052);
       expect(request.position.longitude, -46.633308);
       expect(request.position.accuracyMeters, 12.5);
       expect(request.requestId, 'id-1');
       expect(location.positionReads, 1);
+    });
+
+    test('QR compacto envia terminalCode, não terminalId e a posição', () async {
+      const compact = '00482439167562615602613664743089338165947';
+      await scanning();
+      await controller().onQrDetected(compact);
+
+      final request = access.requests.single;
+      expect(request.qrToken, compact);
+      expect(request.terminalCode, 1);
+      expect(request.terminalId, isNull);
+      expect(request.position.latitude, -23.55052);
+      expect(request.requestId, 'id-1');
+      expect(request.toJson().containsKey('terminalId'), isFalse);
+      expect(request.toJson()['terminalCode'], 1);
     });
 
     test('espaços ao redor do QR não vão para o backend', () async {

@@ -66,11 +66,11 @@ export class ValidateQrCredentialUseCase {
     const invalid = { valid: false, reason: 'invalid' } as const;
     if (typeof token !== 'string' || typeof terminalId !== 'string') return invalid;
     const compact = decodeCompactQrToken(token);
-    if (compact || terminalCode !== undefined) {
-      if (!compact || terminalCode === undefined) return invalid;
-      const payload = compactPayload(compact.code, terminalId, compact.issuedAt);
+    if (compact) {
+      if (terminalCode === undefined) return invalid;
       if (compact.code !== terminalCode) return invalid;
       if (!TERMINAL.test(terminalId)) return invalid;
+      const payload = compactPayload(compact.code, terminalId, compact.issuedAt);
       if (!this.signer.verify(payload, compact.signature)) return invalid;
       return this.checkWindow(compact.issuedAt, terminalId, COMPACT_QR_TTL_SECONDS);
     }
