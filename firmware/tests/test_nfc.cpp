@@ -11,21 +11,55 @@ TestSerial Serial;
 TestSPI SPI;
 TestReader testReader;
 int publishes = 0;
+int hcePublishes = 0;
 bool online = true;
 bool publish(const char* uid) {
   assert(strcmp(uid, "04A1B2C3") == 0);
   ++publishes;
   return online;
 }
+bool publishHce(const char* token) {
+  assert(strlen(token) == 32);
+  for (size_t i = 0; i < 32; ++i) assert(token[i] >= 'a' && token[i] <= 'f');
+  ++hcePublishes;
+  return online;
+}
 void tick(uint32_t now) { testNow = now; terminal_nfc::update(); }
 
 int main(int argc, char** argv) {
   const bool heldTag = argc > 1 && strcmp(argv[1], "held-tag") == 0;
+  const bool hce = argc > 1 && strcmp(argv[1], "hce") == 0;
   const bool recovering = argc > 1 && strcmp(argv[1], "recover-reader") == 0;
-  if (argc > 1 && !heldTag && !recovering) testReader.version = 0xFF;
+  if (argc > 1 && !heldTag && !recovering && !hce) testReader.version = 0xFF;
   terminal_nfc::setPublisher(publish);
+  terminal_nfc::setHcePublisher(publishHce);
   terminal_nfc::begin();
   assert(SPI.sck == 18 && SPI.miso == 19 && SPI.mosi == 23 && SPI.ss == 32);
+  if (hce) {
+    testReader.sak = 0x20;
+    for (int i = 0; i < 32; ++i) testReader.apduReply[i] = 'a';
+    testReader.apduReply[32] = 0x90;
+    testReader.apduReply[33] = 0x00;
+    testReader.apduLength = 34;
+    tick(0);
+    assert(testReader.apduCalls == 1 && hcePublishes == 1);
+    tick(100);
+    assert(testReader.apduCalls == 2 && hcePublishes == 1);
+    for (int i = 0; i < 32; ++i) testReader.apduReply[i] = 'b';
+    testReader.present = false;
+    tick(700);
+    testReader.present = true;
+    tick(800);
+    assert(hcePublishes == 2);
+    testReader.apduOk = false;
+    testReader.present = false;
+    tick(1400);
+    testReader.present = true;
+    tick(1500);
+    assert(hcePublishes == 2);
+    puts("nfc: prova HCE publicada uma vez por apresentacao e falha fechada OK");
+    return 0;
+  }
   if (recovering) {
     tick(0);
     testReader.version = 0;

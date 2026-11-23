@@ -15,6 +15,8 @@ void update(bool allowBlocking = true);
 bool connected();
 // Confirma PUBACK (QoS 1); nunca decide acesso nem publica sem UTC confiavel.
 bool publishNfc(const char* uid);
+/** Prova efemera do NFC do celular: 32 hex minusculos, mesma fiabilidade da tag. */
+bool publishNfcHce(const char* token);
 
 /** Ultimo QR valido recebido do backend (o display decide se ainda esta visivel). */
 qr_token::State qr();

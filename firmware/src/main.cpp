@@ -18,6 +18,12 @@ bool publishTag(const char* uid) {
   return sent;
 }
 
+bool publishHceToken(const char* token) {
+  const bool sent = terminal_mqtt::publishNfcHce(token);
+  if (sent) terminal_display::showReading();
+  return sent;
+}
+
 // O backend decide; aqui so se executa a acao ja validada e se devolve o ACK.
 bool handleCommand(terminal_command::Action action) {
   if (action == terminal_command::Action::open) {
@@ -41,6 +47,7 @@ void setup() {
   clock_time::begin();
   terminal_display::begin();
   terminal_nfc::setPublisher(publishTag);
+  terminal_nfc::setHcePublisher(publishHceToken);
   terminal_nfc::begin();
   terminal_gps::begin();
   terminal_feedback::begin();

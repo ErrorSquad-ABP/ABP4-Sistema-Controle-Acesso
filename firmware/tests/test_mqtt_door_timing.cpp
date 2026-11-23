@@ -45,6 +45,7 @@ namespace terminal_nfc {
 Publisher publisher = nullptr;
 bool scan = false;
 void setPublisher(Publisher value) { publisher = value; }
+void setHcePublisher(HcePublisher) {}
 void begin() {}
 void update() { if (scan && publisher) publisher("04A1B2C3"); }
 }

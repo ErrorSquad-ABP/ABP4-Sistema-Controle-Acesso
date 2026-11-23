@@ -80,6 +80,7 @@ jobs:
           "$RUNNER_TEMP/abp4-test-nfc-module" missing-reader
           "$RUNNER_TEMP/abp4-test-nfc-module" held-tag
           "$RUNNER_TEMP/abp4-test-nfc-module" recover-reader
+          "$RUNNER_TEMP/abp4-test-nfc-module" hce
           g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src tests/test_feedback_io.cpp src/modules/feedback.cpp -o "$RUNNER_TEMP/abp4-test-feedback-physical"
           "$RUNNER_TEMP/abp4-test-feedback-physical"
           g++ -std=c++11 -Wall -Wextra -Werror -D TERMINAL_LEGACY_TFT=1 -I tests/fakes -I include -I src tests/test_feedback_io.cpp src/modules/feedback.cpp -o "$RUNNER_TEMP/abp4-test-feedback-wokwi"
