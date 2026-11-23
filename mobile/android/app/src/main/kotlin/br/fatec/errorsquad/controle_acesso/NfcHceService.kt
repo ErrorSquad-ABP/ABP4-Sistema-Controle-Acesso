@@ -14,7 +14,11 @@ class NfcHceService : HostApduService() {
         }
         val token = NfcCredentialStore.current() ?: return NO_CREDENTIAL
         if (!Regex("^[0-9a-f]{32}$").matches(token)) return NO_CREDENTIAL
-        return token.toByteArray(Charsets.US_ASCII) + STATUS_OK
+        // Binario: 16 bytes + 9000, o menor frame que o RC522 ja demonstrou ler.
+        val payload = ByteArray(16) {
+            ((Character.digit(token[it * 2], 16) shl 4) or Character.digit(token[it * 2 + 1], 16)).toByte()
+        }
+        return payload + STATUS_OK
     }
 
     override fun onDeactivated(reason: Int) {}
