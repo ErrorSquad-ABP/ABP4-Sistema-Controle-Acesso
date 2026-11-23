@@ -48,8 +48,8 @@ int main() {
   expect(qr_version::smallestFor(18) == 2, "18 bytes pelo limite conservador usam v2");
   expect(qr_version::forText("123456789012345678") == 1, "18 digitos usam o modo numerico");
   expect(qr_version::forText("123456789012345678a") == 2, "texto misto mantem a estimativa por bytes");
-  expect(qr_version::forText("123456789012345678901234567890123456789012") != 1,
-         "42 digitos nao forcam a versao 1");
+  expect(qr_version::forText("123456789012345678901234567890123456789012") == 3,
+         "42 digitos caem na estimativa por bytes, nao no modo compacto");
 
   if (failures == 0) std::printf("test_qr_version: ok\n");
   return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

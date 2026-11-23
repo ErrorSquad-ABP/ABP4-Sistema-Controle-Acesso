@@ -64,5 +64,26 @@ int main() {
   assert(differences(tooLong, tooLongAltered) == 0);
 
   puts("display_qr: maior token renderizado por inteiro no QR v8 OK");
+
+  // QR compacto: 41 digitos precisam entrar inteiros no v1 numerico. Sem esta
+  // checagem, uma troca futura de ECC/payload truncaria o fim em silencio.
+  const char* compact = "00482439167562615602613664743089338165947";
+  const char* compactAltered = "00482439167562615602613664743089338165948";
+  uint8_t compactBuffer[56] = {0};
+  uint8_t alteredBuffer[56] = {0};
+  QRCode compactCode{};
+  QRCode alteredCode{};
+  assert(qrcode_initText(&compactCode, compactBuffer, 1, ECC_LOW, compact) == 0);
+  assert(qrcode_initText(&alteredCode, alteredBuffer, 1, ECC_LOW, compactAltered) == 0);
+  assert(compactCode.mode == MODE_NUMERIC);
+  assert(compactCode.size == 21);
+  int compactDifferences = 0;
+  for (uint8_t y = 0; y < compactCode.size; ++y) {
+    for (uint8_t x = 0; x < compactCode.size; ++x) {
+      if (qrcode_getModule(&compactCode, x, y) != qrcode_getModule(&alteredCode, x, y)) ++compactDifferences;
+    }
+  }
+  assert(compactDifferences > 0);
+  puts("display_qr: 41 digitos entram inteiros no QR v1 numerico");
   return 0;
 }
