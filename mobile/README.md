@@ -48,13 +48,15 @@ Sem `API_BASE_URL`, o app usa o backend de produção (`https://abp-4-sistema-co
 
 `flutter run -d chrome` precisa que o backend libere a origem do navegador (CORS, DT-08). Com o backend local rodando com `CORS_ALLOWED_ORIGINS=http://localhost:5000`, use `flutter run -d chrome --web-port 5000 --dart-define=API_BASE_URL=http://localhost:3000`. O backend de produção só aceita as origens da allowlist dele. O alvo do app é Android, onde CORS não se aplica ([`docs/api/README.md`](../docs/api/README.md#cors)).
 
+No navegador, o app mostra na tela Entrar as limitações da demo web (NFC indisponível; câmera e localização só em HTTPS e com permissão, `WebDemoNotice`) e fica centralizado com largura de celular em telas largas (`WebFrame`). A demo publicada sai do `cd-web.yml`, num projeto próprio da Vercel ([guia de deploy](../docs/guides/deploy.md#demo-web-us-38)).
+
 | Comando | O que faz |
 |---|---|
 | `flutter analyze` | lints (`flutter_lints` + regras extras em `analysis_options.yaml`) |
 | `flutter test` | testes do app, do tema, do login/sessão e do scanner |
 | `dart format lib test` | formatação |
 | `flutter build apk --release` | APK Android (exige Android SDK e JDK 17) |
-| `flutter build web` | build web |
+| `flutter build web --release --dart-define=API_BASE_URL=<API>` | build web, o mesmo que o `cd-web.yml` publica |
 
 O CI (`ci-mobile.yml`) roda em todo PR: `ci-mobile-check` (`flutter pub get`, `flutter analyze`, `flutter test`), `ci-mobile-build-android` e `ci-mobile-install-android`.
 
@@ -77,6 +79,10 @@ Limites:
 - O release ainda é assinado com a chave **debug** (`app/build.gradle.kts`): instala em aparelho, mas não serve para loja. Não há AAB; ele depende de um keystore de release, que deve entrar como secret do repositório antes da publicação.
 - A chave debug muda entre execuções, então instalar por cima de uma build anterior falha com `INSTALL_FAILED_UPDATE_INCOMPATIBLE`: rode `adb uninstall br.fatec.errorsquad.controle_acesso` antes.
 - O emulador comprova instalação e abertura, não câmera nem GPS reais. A validação em aparelho físico segue na **DT-12**.
+
+## Ícones e nome público (US-38)
+
+Ícones web (favicon, 192/512 normal e *maskable*) e launcher Android (PNGs `mipmap-*` e ícone adaptativo com camada monocromática) são gerados a partir de [`design/identidade/marca.svg`](../design/identidade/README.md) por `python design/identidade/gerar_icones.py`; não edite os PNGs à mão. O nome público é **Controle de Acesso** no Android, no `manifest.json`, no `index.html` e no `MaterialApp`.
 
 ## Tema
 

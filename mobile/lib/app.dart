@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
+import 'core/widgets/web_frame.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -21,6 +22,7 @@ class App extends ConsumerWidget {
       darkTheme: AppTheme.dark(),
       themeMode: ref.watch(themeModeProvider),
       routerConfig: ref.watch(appRouterProvider),
+      builder: (context, child) => WebFrame(child: child!),
     );
   }
 }

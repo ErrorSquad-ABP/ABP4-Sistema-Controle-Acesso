@@ -184,3 +184,27 @@ A API é serverless e não mantém conexão MQTT aberta; quem assina os tópicos
 O worker **não** roda migrations nem a seed: migrations rodam no `cd-backend.yml` e a seed é só de desenvolvimento, nunca em produção. Se o processo cair, o Render reinicia e o `mqtt.js` reconecta sozinho. Em `ACCESS_MODE=real`, o decisor é o `DatabaseAccessDecider` sobre o `DecideAccessUseCase` ([`access-composition-root.ts`](../../backend/src/main/access-composition-root.ts)) e os comandos pendentes ficam em `TerminalCommand`, não em memória ([`worker-runtime.ts`](../../backend/src/main/mqtt/worker-runtime.ts)); só o modo demo mantém o adapter volátil.
 
 **Operação remota observada em 11/11/2026:** o serviço `abp4-mqtt-worker` estava **LIVE** no Render, com `mqtt conectado` no EMQX Cloud (TLS 8883) e `/healthz` respondendo `200`; a API na Vercel estava em `a0625d7` com `database: ok`. O que segue **não verificado** é a continuidade (uptime, reconexão após queda e consumo de cota), o número de réplicas e qualquer medição de carga — a observação é pontual. Detalhes e limites em [`us-37.md`](../entrega/evidencias/us-37.md).
+
+## Demo web (US-38)
+
+A demo web é o mesmo app Flutter compilado para o navegador, num **projeto próprio da Vercel**, separado da API. O `cd-web.yml` gera o build com `--dart-define=API_BASE_URL=<API>` em todo PR que mexe em `mobile/` e, na `main`, publica o build pronto (Build Output API, sem compilar nada na Vercel) e faz o smoke test da página e do CORS.
+
+### Configuração única
+
+1. **Projeto na Vercel**, sem integração com o Git (quem publica é o workflow; um deploy automático da Vercel tentaria compilar Flutter e falharia):
+   ```bash
+   npx vercel@64.5.0 login
+   npx vercel@64.5.0 project add controle-acesso-web
+   ```
+   Em **Settings → General**, copie o *Project ID*. Em **Settings → Deployment Protection**, mantenha o domínio de produção público. O domínio sai como `https://controle-acesso-web.vercel.app`, ou outro se o nome estiver ocupado.
+2. **GitHub** (Settings → Secrets and variables → Actions → *Variables*): `VERCEL_WEB_PROJECT_ID` (o Project ID acima) e `WEB_URL` (o domínio de produção, **sem barra final**). O `VERCEL_TOKEN` e o `VERCEL_ORG_ID` são os mesmos da API.
+3. **CORS na API:** no projeto da **API** na Vercel, acrescente o `WEB_URL` a `CORS_ALLOWED_ORIGINS` (ambiente Production), valide a lista com o comando do passo 2 da seção da Vercel acima e faça um novo deploy da API (`cd-backend` por *Run workflow*). A variável só vale nos deploys feitos depois da mudança.
+4. Rode o `cd-web` por *Run workflow* na `main`. O smoke test falha se a página não servir o título "Controle de Acesso" ou se a API não devolver `Access-Control-Allow-Origin` igual ao `WEB_URL`.
+
+### O que o navegador limita
+
+- **NFC** não existe no navegador; o app web declara isso na tela Entrar.
+- **Câmera e localização** só funcionam em HTTPS e depois da permissão do usuário; o projeto responde com `Permissions-Policy: camera=(self), geolocation=(self)`.
+- No computador, o app fica centralizado com largura de celular (`WebFrame`); no Android nada muda.
+
+Para reproduzir o build localmente: `cd mobile && flutter build web --release --dart-define=API_BASE_URL=https://abp-4-sistema-controle-acesso.vercel.app`. Rollback: **Instant Rollback** no projeto da demo, como na API.

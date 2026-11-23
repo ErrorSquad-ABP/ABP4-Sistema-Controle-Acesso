@@ -31,6 +31,7 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 | [`us-23-nfc-rc522.md`](evidencias/us-23-nfc-rc522.md) | US-23 | RC522 físico, MQTT QoS 1, decisão/ACK e feedback; roteiro de teste e resultados automáticos | a abrir |
 | [`us-29.md`](evidencias/us-29.md) | US-29 | scanner QR que pede o acesso ao backend e mostra o resultado liberado/negado; câmera e GPS reais pendentes | — |
 | [`us-26-mqtt-servo.md`](evidencias/us-26-mqtt-servo.md) | US-26 | comando de abertura do servo via MQTT (herdado da US-08) | #19 · #25 |
+| [`us-38.md`](evidencias/us-38.md) | US-38 | identidade única (web, web instalada e launcher Android) gerada de `design/identidade/`, aviso de limitações do navegador e `cd-web.yml`; demo ainda sem URL publicada | — |
 
 ## Matriz de requisitos
 

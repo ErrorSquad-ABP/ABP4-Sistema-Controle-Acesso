@@ -1,0 +1,160 @@
+name: cd-web
+
+# US-38: demo web do app Flutter num projeto proprio da Vercel (separado da API).
+on:
+  # No PR so gera o build: prova que ele e reproduzivel com API_BASE_URL.
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/cd-web.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/cd-web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# PR novo cancela o build anterior; deploy em andamento termina e o proximo espera.
+concurrency:
+  group: cd-web-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  VERCEL_CLI_VERSION: 64.5.0
+  # API de producao; vars.BACKEND_URL troca o alvo sem editar o workflow.
+  API_BASE_URL: ${{ vars.BACKEND_URL || 'https://abp-4-sistema-controle-acesso.vercel.app' }}
+
+jobs:
+  build:
+    name: cd-web-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: 3.47.7
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Build web
+        run: flutter build web --release --dart-define=API_BASE_URL="$API_BASE_URL"
+
+      # A identidade publica nao pode voltar ao padrao do Flutter sem quebrar o build.
+      - name: Conferir identidade do build
+        run: |
+          grep -q '<title>Controle de Acesso</title>' build/web/index.html
+          node -e '
+            const m = require("./build/web/manifest.json");
+            if (m.name !== "Controle de Acesso") throw new Error("manifest.name: " + m.name);
+            const tipos = m.icons.map(i => `${i.sizes}:${i.purpose || "any"}`).sort().join(",");
+            if (tipos !== "192x192:any,192x192:maskable,512x512:any,512x512:maskable") throw new Error("icones: " + tipos);
+          '
+          for f in favicon.png icons/Icon-192.png icons/Icon-512.png icons/Icon-maskable-192.png icons/Icon-maskable-512.png; do
+            test -s "build/web/$f" || { echo "::error::$f ausente"; exit 1; }
+          done
+          echo "Build web para $API_BASE_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: controle-acesso-web
+          path: mobile/build/web
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy:
+    name: cd-web-deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build
+    # Dispatch de outra branch roda so o build: a demo publicada sempre vem da main.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      # Projeto proprio da demo, diferente do VERCEL_PROJECT_ID da API.
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_WEB_PROJECT_ID }}
+      WEB_URL: ${{ vars.WEB_URL }}
+    steps:
+      - name: Validar configuracao do deploy
+        run: |
+          missing=0
+          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID WEB_URL; do
+            if [ -z "${!name}" ]; then echo "::error::$name nao configurado (ver docs/guides/deploy.md#demo-web-us-38)"; missing=1; fi
+          done
+          exit "$missing"
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: controle-acesso-web
+          path: .vercel/output/static
+
+      # Build Output API: o build ja vem pronto, a Vercel so serve os arquivos.
+      - name: Montar saida da Vercel
+        run: |
+          cat > .vercel/output/config.json <<'JSON'
+          {
+            "version": 3,
+            "routes": [
+              {
+                "src": "/(.*)",
+                "headers": {
+                  "Permissions-Policy": "camera=(self), geolocation=(self)",
+                  "X-Content-Type-Options": "nosniff",
+                  "Referrer-Policy": "strict-origin-when-cross-origin"
+                },
+                "continue": true
+              }
+            ]
+          }
+          JSON
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Instalar Vercel CLI
+        run: npm install --global "vercel@${VERCEL_CLI_VERSION}"
+
+      - name: Deploy
+        run: |
+          url="$(vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN")"
+          echo "Deploy: $url"
+
+      - name: Smoke test da demo e do CORS
+        run: |
+          base="${WEB_URL%/}"
+          for attempt in $(seq 1 12); do
+            if curl -fsS --max-time 10 "$base/" | grep -q '<title>Controle de Acesso</title>' \
+              && curl -fsS --max-time 10 "$base/manifest.json" | grep -q '"name": "Controle de Acesso"'; then
+              break
+            fi
+            [ "$attempt" = 12 ] && { echo "::error::$base nao serviu a demo em 60 s"; exit 1; }
+            sleep 5
+          done
+          # DT-08: a API so libera a origem exata da demo; sem isso o login falha no navegador.
+          allow="$(curl -sS --max-time 15 -o /dev/null -D - -X OPTIONS \
+            -H "Origin: $base" -H 'Access-Control-Request-Method: POST' \
+            -H 'Access-Control-Request-Headers: content-type' \
+            "${API_BASE_URL%/}/api/v1/auth/login" | tr -d '\r' | awk -F': ' 'tolower($1)=="access-control-allow-origin"{print $2}')"
+          if [ "$allow" != "$base" ]; then
+            echo "::error::A API nao libera a origem $base (recebido: '${allow}'). Inclua-a em CORS_ALLOWED_ORIGINS do projeto da API."
+            exit 1
+          fi
+          {
+            echo "### Demo web"
+            echo ""
+            echo "- URL: $base"
+            echo "- API: ${API_BASE_URL} (CORS libera a origem da demo)"
+            echo "- Commit: \`${GITHUB_SHA::7}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

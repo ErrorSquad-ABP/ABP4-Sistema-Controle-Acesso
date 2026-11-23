@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="240" height="240" fill="none" stroke="#0A0A0A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Marca "Controle de Acesso": escudo com check, traço de linha do design system.
+       Fonte única da identidade; gerar_icones.py lê os atributos d abaixo. -->
+  <path id="escudo" d="M12 2.75 L19.25 5.5 V11.1 C19.25 15.55 16.2 19.3 12 21.25 C7.8 19.3 4.75 15.55 4.75 11.1 V5.5 Z"/>
+  <path id="check" d="M8.75 12.1 L11 14.35 L15.4 9.85"/>
+</svg>
