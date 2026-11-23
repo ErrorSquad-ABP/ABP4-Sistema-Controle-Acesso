@@ -25,41 +25,120 @@ class MobileScannerGateway implements QrScannerGateway {
     required ValueChanged<String> onDetected,
     required ValueChanged<String> onError,
   }) {
-    return MobileScanner(
-      onDetect: (capture) {
-        for (final barcode in capture.barcodes) {
-          final value = barcode.rawValue?.trim() ?? '';
-          if (value.isNotEmpty) {
-            onDetected(value);
-            return;
-          }
-        }
-      },
-      errorBuilder: (context, error) {
-        final message = _cameraMessage(error.errorCode);
-        // errorBuilder roda durante o build; o controller nao pode mudar de
-        // estado na mesma frame.
-        WidgetsBinding.instance.addPostFrameCallback((_) => onError(message));
-        return Center(
-          child: Icon(
-            Icons.videocam_off_outlined,
-            size: AppSpacing.xl,
-            color: context.palette.textSecondary,
-          ),
-        );
-      },
-    );
+    return _ScannerPreview(onDetected: onDetected, onError: onError);
+  }
+}
+
+/// O display emite luz e o QR e pequeno no OLED: um zoom inicial util e o slider
+/// manual resolvem sem o autoZoom do ML Kit reajustar a camera sozinho.
+class _ScannerPreview extends StatefulWidget {
+  const _ScannerPreview({required this.onDetected, required this.onError});
+
+  final ValueChanged<String> onDetected;
+  final ValueChanged<String> onError;
+
+  @override
+  State<_ScannerPreview> createState() => _ScannerPreviewState();
+}
+
+class _ScannerPreviewState extends State<_ScannerPreview> {
+  final MobileScannerController _controller = MobileScannerController(
+    autoZoom: false,
+  );
+  static const double _initialZoom = 0.35;
+  double _zoom = _initialZoom;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_controller.setZoomScale(_initialZoom));
+    });
   }
 
-  String _cameraMessage(MobileScannerErrorCode code) => switch (code) {
-    MobileScannerErrorCode.permissionDenied =>
-      'Permissão de câmera negada. Libere o acesso nas configurações do '
-          'aparelho.',
-    MobileScannerErrorCode.unsupported =>
-      'Este dispositivo não suporta a leitura de QR.',
-    _ => 'Não foi possível abrir a câmera. Tente novamente.',
-  };
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        MobileScanner(
+          controller: _controller,
+          onDetect: (capture) {
+            for (final barcode in capture.barcodes) {
+              final value = barcode.rawValue?.trim() ?? '';
+              if (value.isNotEmpty) {
+                widget.onDetected(value);
+                return;
+              }
+            }
+          },
+          errorBuilder: (context, error) {
+            final message = _cameraMessage(error.errorCode);
+            // errorBuilder roda durante o build; o controller nao pode mudar de
+            // estado na mesma frame.
+            WidgetsBinding.instance.addPostFrameCallback((_) => widget.onError(message));
+            return Center(
+              child: Icon(
+                Icons.videocam_off_outlined,
+                size: AppSpacing.xl,
+                color: context.palette.textSecondary,
+              ),
+            );
+          },
+        ),
+        Positioned(
+          left: 12,
+          right: 12,
+          bottom: 4,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(left: 12),
+                  child: Icon(Icons.zoom_out, size: 18, color: Colors.white),
+                ),
+                Expanded(
+                  child: Slider(
+                    value: _zoom,
+                    label: 'Zoom',
+                    activeColor: Colors.white,
+                    inactiveColor: Colors.white30,
+                    onChanged: (value) {
+                      setState(() => _zoom = value);
+                      unawaited(_controller.setZoomScale(value));
+                    },
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(right: 12),
+                  child: Icon(Icons.zoom_in, size: 18, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
+
+String _cameraMessage(MobileScannerErrorCode code) => switch (code) {
+  MobileScannerErrorCode.permissionDenied =>
+    'Permissão de câmera negada. Libere o acesso nas configurações do '
+        'aparelho.',
+  MobileScannerErrorCode.unsupported =>
+    'Este dispositivo não suporta a leitura de QR.',
+  _ => 'Não foi possível abrir a câmera. Tente novamente.',
+};
 
 class GeolocatorLocationGateway implements LocationGateway {
   const GeolocatorLocationGateway();

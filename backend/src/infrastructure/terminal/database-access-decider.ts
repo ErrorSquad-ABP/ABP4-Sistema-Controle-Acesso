@@ -7,12 +7,14 @@ export class DatabaseAccessDecider implements AccessDecider {
   constructor(private readonly decideAccess: DecideAccessUseCase) {}
 
   async decide(event: AccessEventMessage): Promise<AccessDecision> {
+    const attempt = event.type === 'nfc_read'
+      ? { uid: event.uid, occurredAt: new Date(event.timestamp) }
+      : { nfcToken: event.credentialToken, occurredAt: new Date(event.timestamp) };
     const record = await this.decideAccess.execute({
       id: event.messageId,
       terminalId: event.terminalId,
       method: 'NFC',
-      uid: event.uid,
-      occurredAt: new Date(event.timestamp),
+      ...attempt,
     });
     return {
       action: record.decision === 'GRANTED' ? 'open' : 'deny',
