@@ -58,7 +58,10 @@ void begin() {
   reader.PCD_Init();
   const uint8_t version = reader.PCD_ReadRegister(MFRC522::VersionReg);
   available = version != 0 && version != 0xFF;
-  Serial.println(available ? "[nfc] RC522 pronto" : "[nfc] RC522 indisponivel; confira SPI/alimentacao");
+  reader.PCD_AntennaOn();
+  Serial.printf("[nfc] RC522 %s version=0x%02X tx=0x%02X\n",
+                available ? "pronto" : "indisponivel; confira SPI/alimentacao", version,
+                reader.PCD_ReadRegister(MFRC522::TxControlReg));
 #else
   Serial.println("[nfc] desabilitado no perfil TFT legado");
 #endif
@@ -76,6 +79,7 @@ void update() {
       const uint8_t initializedVersion = reader.PCD_ReadRegister(MFRC522::VersionReg);
       responding = initializedVersion != 0 && initializedVersion != 0xFF;
     }
+    if (responding) reader.PCD_AntennaOn();
     if (responding != available) {
       available = responding;
       Serial.println(responding ? "[nfc] RC522 voltou a responder"
@@ -86,16 +90,33 @@ void update() {
 
   uint8_t atqa[2] = {};
   uint8_t size = sizeof atqa;
+  static uint32_t lastField = 0;
+  static uint32_t lastReinit = 0;
   const MFRC522::StatusCode status = reader.PICC_WakeupA(atqa, &size);
   if (status == MFRC522::STATUS_TIMEOUT) {
+    // Sem campo por varios segundos: reinicializa o leitor uma vez por janela.
+    if (millis() - lastField >= 5000U && millis() - lastReinit >= 5000U) {
+      reader.PCD_Init();
+      reader.PCD_AntennaOn();
+      lastReinit = millis();
+      Serial.println("[nfc] reinit RC522 (campo sem resposta)");
+    }
     presentation.absent(millis(), NFC_REMOVAL_MS);
     return;
   }
+  lastField = millis();
   presentation.present(millis());
   if (status != MFRC522::STATUS_OK && status != MFRC522::STATUS_COLLISION) return;
 
   MFRC522Extended::TagInfo tag{};
-  if (reader.MFRC522::PICC_Select(&tag.uid) != MFRC522::STATUS_OK) return;
+  const MFRC522::StatusCode selected = reader.MFRC522::PICC_Select(&tag.uid);
+  static MFRC522::StatusCode lastSelected = MFRC522::STATUS_OK;
+  if (selected != lastSelected) {
+    lastSelected = selected;
+    Serial.printf("[nfc] wupa=%u select=%u sak=0x%02X\n", static_cast<unsigned>(status),
+                  static_cast<unsigned>(selected), tag.uid.sak);
+  }
+  if (selected != MFRC522::STATUS_OK) return;
 
   if ((tag.uid.sak & 0x20) != 0) {
     // Cartao ISO-DEP: primeiro tenta o app HCE; sem prova valida nao publica nada.

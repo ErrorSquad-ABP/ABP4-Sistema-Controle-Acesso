@@ -23,7 +23,7 @@ extern TestReader testReader;
 class MFRC522 {
  public:
   enum StatusCode { STATUS_OK, STATUS_TIMEOUT, STATUS_COLLISION, STATUS_ERROR };
-  enum PCD_Register { VersionReg };
+  enum PCD_Register { VersionReg, TxControlReg };
   struct Uid {
     uint8_t size;
     uint8_t sak;
@@ -33,10 +33,10 @@ class MFRC522 {
   MFRC522(int, int) {}
   MFRC522() {}
   void PCD_Init() { ++testReader.initializations; testReader.halted = false; }
+  void PCD_AntennaOn() {}
   void PCD_SetAntennaGain(uint8_t) {}
   static constexpr uint8_t RxGain_max = 0x07 << 4;
-  uint8_t PCD_ReadRegister(PCD_Register) { return testReader.version; }
-  bool PICC_IsNewCardPresent() {
+  uint8_t PCD_ReadRegister(PCD_Register) { return testReader.version; }  bool PICC_IsNewCardPresent() {
     if (!testReader.present) { testReader.halted = false; return false; }
     return !testReader.halted;
   }
