@@ -75,7 +75,7 @@ class PostgresAccessTransaction implements AccessTransaction {
 
   async findTerminal(id: string): Promise<TerminalContext | null> {
     const result = await this.connection.query<{ id: string; active: boolean; location: TerminalContext['location'] }>(
-      `SELECT t.id,t.active,
+      `SELECT t.id,t.active,t."qrCode",
         json_build_object('id',l.id,'name',l.name,'active',l."isActive",'latitude',l.latitude::float8,
         'longitude',l.longitude::float8,'radiusMeters',l."radiusMeters") AS location
         FROM "Terminal" t JOIN "AccessLocation" l ON l.id=t."locationId" WHERE t.id=$1`,
@@ -169,6 +169,18 @@ export class PostgresAccessRepository implements AccessRepository {
       [terminalId],
     );
     return result.rowCount === 1;
+  }
+
+  async findTerminalIdByQrCode(code: number): Promise<string | null> {
+    const result = await this.pool.query<{ id: string }>('SELECT id FROM "Terminal" WHERE "qrCode" = $1', [code]);
+    return result.rows[0]?.id ?? null;
+  }
+
+  async listQrTerminalCodes(): Promise<ReadonlyMap<string, number>> {
+    const result = await this.pool.query<{ id: string; qrCode: number }>(
+      'SELECT id, "qrCode" FROM "Terminal" WHERE "qrCode" IS NOT NULL',
+    );
+    return new Map(result.rows.map((row) => [row.id, row.qrCode]));
   }
 
   async transaction<T>(requestId: string, work: (tx: AccessTransaction) => Promise<T>): Promise<T> {

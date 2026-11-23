@@ -120,8 +120,8 @@ describe('QrAccessRequest', () => {
   });
 
   it('exige terminalId em formato de id de topico MQTT', () => {
-    expect(issuePaths(QrAccessRequest.safeParse({ ...valid, terminalId: undefined }))).toEqual(['terminalId']);
-    expect(issuePaths(QrAccessRequest.safeParse({ ...valid, terminalId: 'Recepcao/1' }))).toEqual(['terminalId']);
+    expect(QrAccessRequest.safeParse({ ...valid, terminalId: undefined }).success).toBe(false);
+    expect(QrAccessRequest.safeParse({ ...valid, terminalId: 'Recepcao/1' }).success).toBe(false);
     expect(QrAccessRequest.safeParse({ ...valid, terminalId: 'a'.repeat(64) }).success).toBe(true);
     expect(QrAccessRequest.safeParse({ ...valid, terminalId: 'a'.repeat(65) }).success).toBe(false);
     expect(QrAccessRequest.safeParse({ ...valid, terminalId: '-terminal' }).success).toBe(false);
@@ -132,6 +132,19 @@ describe('QrAccessRequest', () => {
     expect(issuePaths(result)).toEqual(
       expect.arrayContaining(['qrToken', 'position.latitude', 'position.longitude']),
     );
+  });
+
+  it('aceita terminalCode no lugar de terminalId e exige exatamente uma referencia', () => {
+    const compact = '0'.repeat(40) + '1';
+    const withCode = { qrToken: compact, terminalCode: 1, position: valid.position };
+    expect(QrAccessRequest.safeParse(withCode).success).toBe(true);
+    expect(QrAccessRequest.safeParse({ ...withCode, terminalId: 'aurora-recepcao' }).success).toBe(false);
+    expect(QrAccessRequest.safeParse({ qrToken: compact, position: valid.position }).success).toBe(false);
+    for (const terminalCode of [0, 256, 1.5, '1']) {
+      expect(QrAccessRequest.safeParse({ ...withCode, terminalCode }).success).toBe(false);
+    }
+    expect(QrAccessRequest.safeParse({ ...withCode, qrToken: 'abc' }).success).toBe(false);
+    expect(QrAccessRequest.safeParse({ ...valid, terminalCode: 1 }).success).toBe(false);
   });
 });
 

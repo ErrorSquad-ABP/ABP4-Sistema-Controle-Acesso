@@ -13,8 +13,8 @@ export class PublishQrCodeUseCase {
     private readonly issueCredential: IssueQrCredentialUseCase,
   ) {}
 
-  async execute(input: { terminalId: string }): Promise<QrCodeMessage> {
-    const credential = this.issueCredential.execute(input.terminalId);
+  async execute(input: { terminalId: string; terminalCode?: number | undefined }): Promise<QrCodeMessage> {
+    const credential = this.issueCredential.execute(input.terminalId, input.terminalCode);
     const qr: QrCodeMessage = {
       v: CONTRACT_VERSION,
       messageId: this.ids.uuid(),

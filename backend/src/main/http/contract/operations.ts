@@ -287,12 +287,13 @@ export const operations: readonly Operation[] = [
     tag: 'access-events',
     summary: 'Solicitar acesso com o QR do terminal',
     description:
-      'O app envia o token lido do QR, o terminal e a localizacao; o usuario vem do JWT. A API valida ' +
-      'o token (formato, terminal e validade de 25 s), a autorizacao (janela, usos, local) e a distancia ' +
-      '(ate 100 m); se liberar, envia o comando de abertura ao terminal (se o broker falhar, o worker ' +
-      'entrega o mesmo comando dentro do prazo de 10 s). `terminalId` diferente do ' +
-      'terminal do token -> DENIED com INVALID_CREDENTIAL. Toda tentativa vira um evento: negar ' +
-      'acesso devolve 200 com `decision: DENIED` e o motivo.',
+      'O app envia o token lido do QR e a localizacao; o usuario vem do JWT. O pedido traz `terminalId` ' +
+      '(formato textual v1) OU `terminalCode` (QR compacto de 41 digitos), nunca os dois: o servidor resolve ' +
+      'o codigo curto para o terminal real antes de decidir. A API valida o token (formato, terminal e validade ' +
+      'de 25 s), a autorizacao (janela, usos, local) e a distancia; se liberar, envia o comando de abertura ao ' +
+      'terminal (se o broker falhar, o worker entrega o mesmo comando dentro do prazo de 10 s). Terminal diferente ' +
+      'do token ou codigo sem terminal provisionado -> negativa/404 sem abrir. Toda tentativa vira um evento: ' +
+      'negar acesso devolve 200 com `decision: DENIED` e o motivo.',
     story: 'US-20',
     access: 'authenticated',
     body: QrAccessRequest,

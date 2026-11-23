@@ -63,15 +63,31 @@ export const AccessEventPage = page('AccessEventPage', AccessEvent);
 
 export const QrAccessRequest = named(
   'QrAccessRequest',
-  z.object({
-    qrToken: z.string().min(1).max(2048).describe('Conteudo lido do QR exibido no terminal'),
-    terminalId: TerminalId,
-    // Sem .describe(): ele cria uma copia fora do registry e o $ref se perde.
-    position: GeoPoint,
-    requestId: Id.optional().describe(
-      'Chave de idempotencia da tentativa: repetir o mesmo valor devolve o mesmo evento e o mesmo comando',
-    ),
-  }),
+  z.union([
+    z.object({
+      qrToken: z.string().min(1).max(2048).describe('Conteudo lido do QR exibido no terminal'),
+      terminalId: TerminalId,
+      terminalCode: z.never().optional(),
+      // Sem .describe(): ele cria uma copia fora do registry e o $ref se perde.
+      position: GeoPoint,
+      requestId: Id.optional().describe(
+        'Chave de idempotencia da tentativa: repetir o mesmo valor devolve o mesmo evento e o mesmo comando',
+      ),
+    }),
+    z.object({
+      qrToken: z
+        .string()
+        .regex(/^[0-9]{41}$/)
+        .describe('QR compacto do terminal, com o codigo curto assinado'),
+      terminalId: z.never().optional(),
+      terminalCode: z.number().int().min(1).max(255).describe('Codigo curto provisionado para o terminal'),
+      position: GeoPoint,
+      requestId: Id.optional().describe(
+        'Chave de idempotencia da tentativa: repetir o mesmo valor devolve o mesmo evento e o mesmo comando',
+      ),
+    }),
+  ]),
+  'Pedido de acesso pelo QR do terminal: envia terminalId legado ou terminalCode compacto, nunca os dois',
 );
 
 export const AccessResult = named(
