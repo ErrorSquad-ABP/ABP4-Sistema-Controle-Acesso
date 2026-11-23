@@ -36,17 +36,24 @@ int main(int argc, char** argv) {
     assert(strncmp(testLcd.lines[0], "TERMINAL PRONTO", 14) == 0);
   }
   qr_token::State qr;
-  strcpy(qr.token, "abp4:test-terminal-token");
+  strcpy(qr.token, "00482439167562615602613664743089338165947");
   qr.hasToken = true;
   qr.expiresAt = 2000;
   terminal_display::showQr(qr, 1000, true);
   terminal_display::update();
   if (!missingOled) {
     assert(testOled.bus == 1 && testOled.frames >= 2);
-    int dark = 0;
-    for (int i = 0; i < 128 * 64; ++i) if (testOled.pixels[i] == 0) ++dark;
-    assert(dark > 100 && dark < 64 * 64);
-    assert(testOled.pixels[0] == 1);
+    // QR v1 em escala 2: modulos de (43,11) a (84,52); zona de silencio de 8 px
+    // deixa o quadrado aceso de (35,3) a (92,60). O resto da tela fica apagado,
+    // sem a faixa amarela acesa de ponta a ponta.
+    assert(testOled.pixels[0] == 0);
+    assert(testOled.pixels[2 * 128 + 34] == 0);
+    assert(testOled.pixels[3 * 128 + 35] == 1);
+    assert(testOled.pixels[60 * 128 + 92] == 1);
+    assert(testOled.pixels[60 * 128 + 93] == 0);
+    assert(testOled.pixels[11 * 128 + 43] == 0);
+    assert(testOled.pixels[12 * 128 + 44] == 0);
+    assert(testOled.pixels[4 * 128 + 36] == 1);
   }
   const int frames = testOled.frames;
   terminal_display::showGranted();
