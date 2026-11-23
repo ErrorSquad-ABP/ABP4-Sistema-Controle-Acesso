@@ -64,6 +64,66 @@ void main() {
     });
   });
 
+  group('terminalCodeFromQrToken', () {
+    const compact = '00482439167562615602613664743089338165947';
+
+    test('lê o código curto sem passar por double', () {
+      expect(terminalCodeFromQrToken(compact), 1);
+      expect(terminalCodeFromQrToken('  $compact  '), 1);
+      expect(
+        terminalCodeFromQrToken(
+          ((BigInt.from(255) << 128) | (BigInt.from(1790000000) << 96))
+              .toString()
+              .padLeft(41, '0'),
+        ),
+        255,
+      );
+    });
+
+    for (final (nome, token) in [
+      ('vazio', ''),
+      ('40 dígitos', '1' * 40),
+      ('42 dígitos', '1' * 42),
+      ('zero', '0' * 41),
+      ('acima de 136 bits', '9' * 41),
+      ('dígito alterado para letra', '${'0' * 40}a'),
+      ('formato v1', 'v1.terminal-01.1.11.sig'),
+    ]) {
+      test('recusa $nome', () {
+        expect(terminalCodeFromQrToken(token), isNull);
+      });
+    }
+  });
+
+  group('QrAccessRequest compacto', () {
+    const compact = '00482439167562615602613664743089338165947';
+
+    test('envia terminalCode e não envia terminalId', () {
+      const request = QrAccessRequest(
+        qrToken: compact,
+        terminalCode: 1,
+        position: GeoCoordinate(latitude: 1, longitude: 2),
+        requestId: 'r',
+      );
+      final json = request.toJson();
+      expect(json['terminalCode'], 1);
+      expect(json.containsKey('terminalId'), isFalse);
+      expect(json['qrToken'], compact);
+    });
+
+    test('envia terminalId legado e não envia terminalCode', () {
+      const request = QrAccessRequest(
+        qrToken: 'v1.terminal-01.1.11.sig',
+        terminalId: 'terminal-01',
+        position: GeoCoordinate(latitude: 1, longitude: 2),
+        requestId: 'r',
+      );
+      final json = request.toJson();
+      expect(json['terminalId'], 'terminal-01');
+      expect(json.containsKey('terminalCode'), isFalse);
+    });
+  });
+
   group('QrAccessRequest.toJson', () {
     test('monta o corpo do contrato com a precisão quando existe', () {
       const request = QrAccessRequest(

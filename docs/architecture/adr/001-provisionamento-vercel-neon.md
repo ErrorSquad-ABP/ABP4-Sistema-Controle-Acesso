@@ -26,6 +26,8 @@ RNF06 exige banco em nuvem; RP11 pede deploy automatizado; RP12 pede containers 
 
 > **Adendo (05/11/2026) — broker de produção:** a HiveMQ encerrou o plano Serverless (sem novos clusters desde 30/09/2026; clusters apagados em 31/12/2026), então o **HiveMQ Cloud deixa de ser o broker**. Entra o **EMQX Cloud Serverless** (o plano B acima): plano gratuito sem cartão, só TLS na porta 8883 e autenticação obrigatória, no projeto ABP4, `us-east-1`. A cadeia termina na DigiCert Global Root G2, que o Node (backend) já confia e que o firmware embute em `firmware/include/mqtt_ca.h` (DT-06). Mantém a decisão de transporte do adendo de 18/10; só o provedor muda. Limites: 1 M de minutos de sessão e 1 GB de tráfego por mês, limite de gasto em US$ 0 (ao acabar a cota o deployment é suspenso, sem cobrança). Evidência em [`../../entrega/evidencias/dt-06.md`](../../entrega/evidencias/dt-06.md).
 
+> **Adendo (11/11/2026) — operação remota observada:** o serviço `abp4-mqtt-worker` está **LIVE** no Render, com a linha `mqtt conectado` no EMQX Cloud (TLS 8883) e `/healthz` respondendo `200`; a API na Vercel está em `a0625d7` com `database: ok` no Neon. `QR_TOKEN_SECRET` e `JWT_SECRET` foram rotacionados em 11/11, sem valores versionados. A continuidade (uptime, reconexão e cota) e o número de réplicas **não** foram medidos; o self-ping de 10 min segue como mitigação do spin-down. Evidência em [`../../entrega/evidencias/us-37.md`](../../entrega/evidencias/us-37.md).
+
 - O Docker segue obrigatório no desenvolvimento (compose) e continua disponível como caminho alternativo de deploy, atendendo RP12.
 
 ## Limites dos planos gratuitos (verificados em 16/10/2026)

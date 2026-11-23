@@ -24,6 +24,7 @@ describe('loadEnv', () => {
       RELAY_WINDOW_START: '18:45',
       RELAY_WINDOW_END: '23:05',
       RELAY_WINDOW_TZ: 'America/Sao_Paulo',
+      QR_COMPACT_ENABLED: false,
     });
   });
 

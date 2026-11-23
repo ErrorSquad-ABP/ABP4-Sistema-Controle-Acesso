@@ -270,6 +270,58 @@ describe('terminal use cases', () => {
     });
   });
 
+  describe('QR compact credential', () => {
+    const signer = new HmacQrTokenSigner('a'.repeat(64));
+    const issue = () => new IssueQrCredentialUseCase(clock, new SequentialIds(), signer);
+    const validate = () => new ValidateQrCredentialUseCase(clock, signer);
+    const compact = () => issue().execute(TERMINAL, 1).token;
+
+    it('emite 41 digitos preservando o zero inicial e valida com o codigo esperado', () => {
+      const token = compact();
+      expect(token).toMatch(/^[0-9]{41}$/);
+      expect(token[0]).toBe('0');
+      const result = validate().execute(token, TERMINAL, 1);
+      expect(result).toMatchObject({ valid: true });
+      if (!result.valid) throw new Error('credencial compacta deveria ser valida');
+      expect(new Date(result.claims.issuedAt).toISOString()).toBe('2026-10-19T19:30:00.000Z');
+      expect(result.claims.expiresAt - result.claims.issuedAt).toBe(QR_TTL_MS);
+    });
+
+    it('rejeita terminal, codigo ou referencia divergentes', () => {
+      const token = compact();
+      expect(validate().execute(token, 'terminal-02', 1)).toEqual({ valid: false, reason: 'invalid' });
+      expect(validate().execute(token, TERMINAL, 2)).toEqual({ valid: false, reason: 'invalid' });
+      expect(validate().execute(token, TERMINAL)).toEqual({ valid: false, reason: 'invalid' });
+      expect(validate().execute(compact(), 'terminal-02')).toEqual({ valid: false, reason: 'invalid' });
+    });
+
+    it('rejeita numero fora do formato, acima de 136 bits ou adulterado', () => {
+      expect(validate().execute('9'.repeat(41), TERMINAL, 255)).toEqual({ valid: false, reason: 'invalid' });
+      expect(validate().execute('0'.repeat(41), TERMINAL, 1)).toEqual({ valid: false, reason: 'invalid' });
+      expect(validate().execute(compact().slice(1), TERMINAL, 1)).toEqual({ valid: false, reason: 'invalid' });
+      const altered = (BigInt(compact()) ^ 1n).toString().padStart(41, '0');
+      expect(validate().execute(altered, TERMINAL, 1)).toEqual({ valid: false, reason: 'invalid' });
+    });
+
+    it('rejeita compacto vencido ou emitido no futuro', () => {
+      const { token, expiresAt } = issue().execute(TERMINAL, 1);
+      clock.date = new Date(expiresAt);
+      expect(validate().execute(token, TERMINAL, 1)).toEqual({ valid: false, reason: 'expired' });
+    });
+
+    it('continua emitindo e validando v1 sem codigo', () => {
+      const legacy = issue().execute(TERMINAL).token;
+      expect(legacy.startsWith('v1.')).toBe(true);
+      expect(validate().execute(legacy, TERMINAL).valid).toBe(true);
+    });
+
+    it('recusa codigo fora de 1..255', () => {
+      expect(() => issue().execute(TERMINAL, 0)).toThrow();
+      expect(() => issue().execute(TERMINAL, 256)).toThrow();
+      expect(() => issue().execute(TERMINAL, 1.5)).toThrow();
+    });
+  });
+
   describe('QR credential crypto', () => {
     const signer = new HmacQrTokenSigner('a'.repeat(64));
     const issue = () => new IssueQrCredentialUseCase(clock, new SequentialIds(), signer);

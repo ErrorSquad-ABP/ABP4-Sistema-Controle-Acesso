@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import type { QrTokenSigner } from '../../domain/ports/id-generator.js';
+import { QR_SIGNATURE_BYTES, type QrTokenSigner } from '../../domain/ports/id-generator.js';
 
 /**
  * HMAC-SHA-256 truncado em 96 bits (16 caracteres base64url). O token vale 25 s,
@@ -7,7 +7,6 @@ import type { QrTokenSigner } from '../../domain/ports/id-generator.js';
  * fora de alcance, e o QR encolhe o bastante para caber grande no OLED 128x64.
  * The configured key is never logged.
  */
-export const QR_SIGNATURE_BYTES = 12;
 
 export class HmacQrTokenSigner implements QrTokenSigner {
   constructor(private readonly secret: string) {

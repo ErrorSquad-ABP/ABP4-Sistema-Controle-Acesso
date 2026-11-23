@@ -2,6 +2,12 @@ import type { Clock } from '../../domain/ports/clock.js';
 import type { IdGenerator, QrTokenSigner } from '../../domain/ports/id-generator.js';
 import { QR_TTL_MS } from '../../domain/terminal/messages.js';
 import { TERMINAL_ID_PATTERN } from '../../shared/terminal-id.js';
+import {
+  COMPACT_QR_TTL_SECONDS,
+  compactPayload,
+  decodeCompactQrToken,
+  encodeCompactQrToken,
+} from './compact-qr-token.js';
 
 export interface QrCredentialClaims {
   terminalId: string;
@@ -34,12 +40,16 @@ export class IssueQrCredentialUseCase {
     private readonly signer: QrTokenSigner,
   ) {}
 
-  execute(terminalId: string): { token: string; issuedAt: number; expiresAt: number } {
+  execute(terminalId: string, terminalCode?: number): { token: string; issuedAt: number; expiresAt: number } {
     const issuedAtSeconds = Math.floor(this.clock.now().getTime() / 1000);
     const expiresAtSeconds = issuedAtSeconds + TTL_SECONDS;
     const payload = `v1.${terminalId}.${issuedAtSeconds}.${TTL_SECONDS}`;
+    const token =
+      terminalCode === undefined
+        ? `${payload}.${this.signer.sign(payload)}`
+        : encodeCompactQrToken(terminalCode, issuedAtSeconds, (value) => this.signer.sign(value), terminalId);
     return {
-      token: `${payload}.${this.signer.sign(payload)}`,
+      token,
       issuedAt: issuedAtSeconds * 1000,
       expiresAt: expiresAtSeconds * 1000,
     };
@@ -52,9 +62,19 @@ export class ValidateQrCredentialUseCase {
     private readonly signer: QrTokenSigner,
   ) {}
 
-  execute(token: string, terminalId: string): QrCredentialValidation {
+  execute(token: string, terminalId: string, terminalCode?: number): QrCredentialValidation {
     const invalid = { valid: false, reason: 'invalid' } as const;
     if (typeof token !== 'string' || typeof terminalId !== 'string') return invalid;
+    const compact = decodeCompactQrToken(token);
+    if (compact) {
+      if (terminalCode === undefined) return invalid;
+      if (compact.code !== terminalCode) return invalid;
+      if (!TERMINAL.test(terminalId)) return invalid;
+      const payload = compactPayload(compact.code, terminalId, compact.issuedAt);
+      if (!this.signer.verify(payload, compact.signature)) return invalid;
+      return this.checkWindow(compact.issuedAt, terminalId, COMPACT_QR_TTL_SECONDS);
+    }
+
     const parts = token.split('.');
     if (parts.length !== 5 || parts[0] !== 'v1') return invalid;
 
@@ -66,13 +86,15 @@ export class ValidateQrCredentialUseCase {
     const payload = `v1.${terminal}.${issuedRaw}.${ttlRaw}`;
     if (!this.signer.verify(payload, signature)) return invalid;
 
-    const issuedAt = Number(issuedRaw);
-    const expiresAt = issuedAt + TTL_SECONDS;
+    return this.checkWindow(Number(issuedRaw), terminal, TTL_SECONDS);
+  }
 
+  private checkWindow(issuedAt: number, terminalId: string, ttlSeconds: number): QrCredentialValidation {
+    const invalid = { valid: false, reason: 'invalid' } as const;
+    const expiresAt = issuedAt + ttlSeconds;
     const now = Math.floor(this.clock.now().getTime() / 1000);
     if (issuedAt > now) return invalid;
     if (expiresAt <= now) return { valid: false, reason: 'expired' };
-
     return {
       valid: true,
       claims: { terminalId, issuedAt: issuedAt * 1000, expiresAt: expiresAt * 1000 },

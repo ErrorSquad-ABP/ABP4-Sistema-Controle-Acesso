@@ -6,8 +6,7 @@ import {
   ValidateQrCredentialUseCase,
 } from '../../src/application/terminal/qr-credential.use-cases.js';
 import { PublishCommandUseCase } from '../../src/application/terminal/publish-command.use-case.js';
-import { ServiceUnavailableError } from '../../src/domain/errors/domain-error.js';
-import type { AccessRecord, AccessRepository } from '../../src/domain/ports/access-repository.js';
+import { NotFoundError, ServiceUnavailableError } from '../../src/domain/errors/domain-error.js';import type { AccessRecord, AccessRepository } from '../../src/domain/ports/access-repository.js';
 import type { AckResult, CommandStore } from '../../src/domain/ports/command-store.js';
 import type {
   AckMessage,
@@ -115,6 +114,7 @@ class AccessRepositoryTx {
     return {
       id: TERMINAL,
       active: true,
+      qrCode: 1,
       location: { id: 'local-01', name: 'Recepcao', active: true, latitude: -23, longitude: -45, radiusMeters: 100 },
     };
   }
@@ -154,6 +154,7 @@ class AccessRepositoryTx {
 class InMemoryAccessRepository implements AccessRepository {
   readonly events = new Map<string, AccessRecord>();
   readonly store = new MapCommandStore();
+  readonly codes = new Map<number, string>([[1, TERMINAL]]);
   dispatchable = true;
   private consumed = 0;
 
@@ -161,6 +162,14 @@ class InMemoryAccessRepository implements AccessRepository {
 
   async canDispatch(): Promise<boolean> {
     return this.dispatchable;
+  }
+
+  async findTerminalIdByQrCode(code: number): Promise<string | null> {
+    return this.codes.get(code) ?? null;
+  }
+
+  async listQrTerminalCodes(): Promise<ReadonlyMap<string, number>> {
+    return new Map([...this.codes].map(([code, id]) => [id, code]));
   }
 
   async transaction<T>(_requestId: string, work: (tx: AccessRepositoryTx) => Promise<T>): Promise<T> {
@@ -204,6 +213,7 @@ function setup(clock = new FixedClock(NOW), bus = new RecordingBus()) {
       withinWindow,
     );
   const token = new IssueQrCredentialUseCase(clock, ids, signer).execute(TERMINAL).token;
+  const compactToken = new IssueQrCredentialUseCase(clock, ids, signer).execute(TERMINAL, 1).token;
   const request = {
     requestId: REQUEST_ID,
     userId: USER,
@@ -211,7 +221,14 @@ function setup(clock = new FixedClock(NOW), bus = new RecordingBus()) {
     qrToken: token,
     position: { latitude: -23, longitude: -45 },
   };
-  return { useCase, repository, bus, request, clock, relay };
+  const compactRequest = {
+    requestId: REQUEST_ID,
+    userId: USER,
+    terminalCode: 1,
+    qrToken: compactToken,
+    position: { latitude: -23, longitude: -45 },
+  };
+  return { useCase, repository, bus, request, compactRequest, clock, relay };
 }
 
 function failTransport(bus: RecordingBus): () => void {
@@ -509,5 +526,38 @@ describe('DT-13: relay recupera a publicacao QR apos falha de transporte', () =>
     after(clock, 2_000);
     expect(await relay().execute()).toMatchObject({ claimed: 0, published: 0 });
     expect(bus.published).toHaveLength(0);
+  });
+});
+
+describe('QR compacto: o servidor resolve o terminal pelo codigo', () => {
+  it('libera, registra o terminal real e publica o comando para ele', async () => {
+    const { useCase, repository, bus, compactRequest } = setup();
+
+    const result = await useCase.execute(compactRequest);
+
+    expect(result.decision).toBe('GRANTED');
+    expect(result.event.terminalId).toBe(TERMINAL);
+    expect(repository.consumeCount()).toBe(1);
+    expect(published(bus, 0).terminalId).toBe(TERMINAL);
+  });
+
+  it('repetir o mesmo requestId devolve o mesmo evento sem novo consumo', async () => {
+    const { useCase, repository, compactRequest } = setup();
+
+    const first = await useCase.execute(compactRequest);
+    const second = await useCase.execute(compactRequest);
+
+    expect(second.event.id).toBe(first.event.id);
+    expect(repository.consumeCount()).toBe(1);
+    expect(repository.store.byRequest.size).toBe(1);
+  });
+
+  it('recusa codigo sem terminal provisionado antes de decidir', async () => {
+    const { useCase, repository, compactRequest } = setup();
+
+    await expect(useCase.execute({ ...compactRequest, terminalCode: 99 }))
+      .rejects.toBeInstanceOf(NotFoundError);
+    expect(repository.events.size).toBe(0);
+    expect(repository.consumeCount()).toBe(0);
   });
 });

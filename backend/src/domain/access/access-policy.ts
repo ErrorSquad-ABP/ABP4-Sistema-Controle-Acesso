@@ -6,6 +6,7 @@ export interface AccessUser { id: string; name: string; role: 'ADMIN' | 'RESIDEN
 export interface TerminalContext {
   id: string;
   active: boolean;
+  qrCode?: number | null;
   location: { id: string; name: string; active: boolean; latitude: number; longitude: number; radiusMeters: number };
 }
 export interface AccessAuthorization {

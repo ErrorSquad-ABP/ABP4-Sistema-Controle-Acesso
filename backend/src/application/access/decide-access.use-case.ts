@@ -71,7 +71,7 @@ export class DecideAccessUseCase {
       }
       const qr =
         input.method === 'QR' && input.qrToken
-          ? this.qr.execute(input.qrToken, input.terminalId)
+          ? this.qr.execute(input.qrToken, input.terminalId, terminal?.qrCode ?? undefined)
           : undefined;
       const credentialExpired =
         input.method === 'NFC'

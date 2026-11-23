@@ -136,7 +136,7 @@ void main() {
       (429, AccessFailureReason.tooManyRequests),
       (500, AccessFailureReason.unavailable),
       (503, AccessFailureReason.unavailable),
-      (404, AccessFailureReason.unexpected),
+      (404, AccessFailureReason.invalidRequest),
       (302, AccessFailureReason.unexpected),
       (204, AccessFailureReason.unexpected),
     ]) {

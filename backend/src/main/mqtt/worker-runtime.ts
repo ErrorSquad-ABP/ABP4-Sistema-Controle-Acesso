@@ -70,6 +70,9 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
 
   // Terminais vistos online recebem um QR assinado a cada 20 s (validade de 25 s).
   const onlineTerminals = new Set<string>();
+  const qrCodes = env.QR_COMPACT_ENABLED && access
+    ? await access.repository.listQrTerminalCodes()
+    : new Map<string, number>();
   const { router, publishQr, dispatchPending } = buildMqttConsumer(
     bus,
     logger,
@@ -101,7 +104,7 @@ export async function startWorkerRuntime(env: Env, logger: Logger): Promise<Work
 
   const qrTimer = setInterval(() => {
     for (const terminalId of onlineTerminals) {
-      publishQr.execute({ terminalId }).catch((err: unknown) => {
+      publishQr.execute({ terminalId, terminalCode: qrCodes.get(terminalId) }).catch((err: unknown) => {
         logger.error('falha ao publicar qr', {
           terminalId,
           error: err instanceof Error ? err.message : String(err),

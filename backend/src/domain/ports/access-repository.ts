@@ -48,4 +48,8 @@ export interface AccessRepository {
   ready(): Promise<void>;
   /** Terminal e local ativos agora: impede republicar comando de tentativa antiga. */
   canDispatch(terminalId: string): Promise<boolean>;
+  /** Resolve o codigo curto assinado no QR compacto para o id MQTT do terminal. */
+  findTerminalIdByQrCode(code: number): Promise<string | null>;
+  /** Mapa terminalId -> codigo curto usado na emissao opt-in do QR compacto. */
+  listQrTerminalCodes(): Promise<ReadonlyMap<string, number>>;
 }

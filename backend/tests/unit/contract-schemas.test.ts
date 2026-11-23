@@ -53,6 +53,15 @@ describe('ValidateQrCredentialRequest / Response', () => {
     expect(ValidateQrCredentialRequest.safeParse({ qrToken: '', terminalId: 'terminal-01' }).success).toBe(false);
   });
 
+  it('aceita terminalCode apenas com 41 digitos e nunca as duas referencias', () => {
+    const compact = '0'.repeat(40) + '1';
+    expect(ValidateQrCredentialRequest.safeParse({ qrToken: compact, terminalCode: 1 }).success).toBe(true);
+    expect(ValidateQrCredentialRequest.safeParse({ qrToken: 'token', terminalCode: 1 }).success).toBe(false);
+    expect(ValidateQrCredentialRequest.safeParse({ qrToken: compact, terminalId: 'terminal-01' }).success).toBe(false);
+    expect(ValidateQrCredentialRequest.safeParse({ qrToken: compact, terminalId: 'terminal-01', terminalCode: 1 }).success).toBe(false);
+    expect(ValidateQrCredentialRequest.safeParse({ qrToken: compact, terminalCode: 0 }).success).toBe(false);
+  });
+
   it('resposta positiva inclui apenas terminal e expiracao; negativa nao inclui metadados', () => {
     expect(ValidateQrCredentialResponse.safeParse({ valid: true, terminalId: 'terminal-01', expiresAt: '2026-10-26T12:00:10.000Z' }).success).toBe(true);
     expect(ValidateQrCredentialResponse.safeParse({ valid: false }).success).toBe(true);
@@ -120,8 +129,8 @@ describe('QrAccessRequest', () => {
   });
 
   it('exige terminalId em formato de id de topico MQTT', () => {
-    expect(issuePaths(QrAccessRequest.safeParse({ ...valid, terminalId: undefined }))).toEqual(['terminalId']);
-    expect(issuePaths(QrAccessRequest.safeParse({ ...valid, terminalId: 'Recepcao/1' }))).toEqual(['terminalId']);
+    expect(QrAccessRequest.safeParse({ ...valid, terminalId: undefined }).success).toBe(false);
+    expect(QrAccessRequest.safeParse({ ...valid, terminalId: 'Recepcao/1' }).success).toBe(false);
     expect(QrAccessRequest.safeParse({ ...valid, terminalId: 'a'.repeat(64) }).success).toBe(true);
     expect(QrAccessRequest.safeParse({ ...valid, terminalId: 'a'.repeat(65) }).success).toBe(false);
     expect(QrAccessRequest.safeParse({ ...valid, terminalId: '-terminal' }).success).toBe(false);
@@ -132,6 +141,19 @@ describe('QrAccessRequest', () => {
     expect(issuePaths(result)).toEqual(
       expect.arrayContaining(['qrToken', 'position.latitude', 'position.longitude']),
     );
+  });
+
+  it('aceita terminalCode no lugar de terminalId e exige exatamente uma referencia', () => {
+    const compact = '0'.repeat(40) + '1';
+    const withCode = { qrToken: compact, terminalCode: 1, position: valid.position };
+    expect(QrAccessRequest.safeParse(withCode).success).toBe(true);
+    expect(QrAccessRequest.safeParse({ ...withCode, terminalId: 'aurora-recepcao' }).success).toBe(false);
+    expect(QrAccessRequest.safeParse({ qrToken: compact, position: valid.position }).success).toBe(false);
+    for (const terminalCode of [0, 256, 1.5, '1']) {
+      expect(QrAccessRequest.safeParse({ ...withCode, terminalCode }).success).toBe(false);
+    }
+    expect(QrAccessRequest.safeParse({ ...withCode, qrToken: 'abc' }).success).toBe(false);
+    expect(QrAccessRequest.safeParse({ ...valid, terminalCode: 1 }).success).toBe(false);
   });
 });
 

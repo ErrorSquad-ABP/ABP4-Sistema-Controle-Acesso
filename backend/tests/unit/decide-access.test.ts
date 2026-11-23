@@ -44,6 +44,8 @@ function setup(options: { terminal?: boolean } = {}) {
     transaction: async (_requestId, work) => work(tx),
     ready: vi.fn(),
     canDispatch: vi.fn().mockResolvedValue(true),
+    findTerminalIdByQrCode: vi.fn().mockResolvedValue(null),
+    listQrTerminalCodes: vi.fn().mockResolvedValue(new Map()),
   };
   const clock = new FixedClock(NOW);
   const ids = new SequentialIds();
