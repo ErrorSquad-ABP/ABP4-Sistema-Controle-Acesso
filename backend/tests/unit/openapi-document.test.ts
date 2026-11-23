@@ -113,10 +113,16 @@ describe('documento OpenAPI v1', () => {
     expect(schemas.UpdateUserRequest).toMatchObject({ minProperties: 1 });
   });
 
-  it('pedido de acesso QR exige token, terminal e posicao', () => {
-    expect(document.components?.schemas?.QrAccessRequest).toMatchObject({
-      required: ['qrToken', 'terminalId', 'position'],
-    });
+  it('pedido de acesso QR exige token, uma referencia de terminal e posicao', () => {
+    const schema = document.components?.schemas?.QrAccessRequest as {
+      anyOf?: Array<{ required?: string[] }>;
+    };
+    expect(schema.anyOf).toHaveLength(2);
+    for (const variant of schema.anyOf ?? []) {
+      expect(variant.required).toEqual(expect.arrayContaining(['qrToken', 'position']));
+    }
+    expect(schema.anyOf?.[0]?.required).toEqual(expect.arrayContaining(['terminalId']));
+    expect(schema.anyOf?.[1]?.required).toEqual(expect.arrayContaining(['terminalCode']));
   });
 
   it('validacao QR tem contrato aditivo autenticado e resposta sem decisao de acesso', () => {

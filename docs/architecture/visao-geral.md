@@ -2,7 +2,9 @@
 
 O sistema controla o acesso de pessoas a um edifício em três frentes que conversam por rede: o **Terminal de Acesso** (ESP32) exibe um QR Code rotativo e lê tags NFC, publicando e recebendo comandos por MQTT; o **app móvel** (Flutter) autentica o usuário, escaneia o QR Code e envia a geolocalização; e o **backend** (Node + Express + TypeScript) concentra as regras de acesso, persiste os eventos em PostgreSQL e é a única fonte de decisão — o terminal nunca decide sozinho. Em desenvolvimento o broker é o Mosquitto do `infra/docker-compose.dev.yml` e o banco é o Postgres do mesmo compose; em produção a API roda no Vercel, o worker MQTT no Render, o banco no Neon e o broker é o EMQX Cloud Serverless com TLS (ver [`adr/001-provisionamento-vercel-neon.md`](adr/001-provisionamento-vercel-neon.md)).
 
-Esse é o **desenho alvo**, não a declaração de que todo o fluxo está operacional. Em **02/11/2026**, NFC/GPS do firmware são esqueletos; o terminal não publica heartbeat/status e usa MQTT sem TLS; o app lê QR/posição mas não solicita acesso ao backend (US-29). A decisão NFC no backend existe e é exercitada por terminal simulado. O worker Render não tem deploy comprovado. Conferência em [`../entrega/auditoria-estado-atual.md`](../entrega/auditoria-estado-atual.md).
+Esse é o **desenho alvo**, não a declaração de que todo o fluxo está operacional. Em **02/11/2026**, NFC/GPS do firmware eram esqueletos; o terminal não publicava heartbeat/status e usava MQTT sem TLS; o app lia QR/posição mas não solicitava acesso ao backend (US-29). A decisão NFC no backend existia e era exercitada por terminal simulado; o worker Render não tinha deploy comprovado. Conferência histórica em [`../entrega/auditoria-estado-atual.md`](../entrega/auditoria-estado-atual.md).
+
+**Atualização de 11/11/2026:** o app envia o pedido de acesso e tem as 12 telas do Figma; o NFC RC522 foi integrado (US-23) com evidência física inicial; o worker no Render foi observado no ar com `mqtt conectado` no EMQX TLS; a API está em `a0625d7`. Continuam pendentes o servo/cancela física, o GPS/heartbeat (US-24), a resiliência offline (US-25) e o fluxo completo app → terminal real.
 
 ## Diagrama
 
@@ -21,22 +23,24 @@ flowchart LR
   M -. prod .- MP[EMQX Cloud · MQTT TLS]
 ```
 
-**Transporte**: app ↔ API por **HTTPS REST**; terminal ↔ backend por **MQTT bidirecional**. Na S1 o processo MQTT do backend roda localmente (US-04); na S2 o mesmo processo foi preparado para o Render (US-37, PR #26), sem operação remota comprovada. A Vercel hospeda só a API.
+**Transporte**: app ↔ API por **HTTPS REST**; terminal ↔ backend por **MQTT bidirecional**. Na S1 o processo MQTT do backend roda localmente (US-04); na S2 o mesmo processo foi preparado para o Render (US-37, PR #26) e, em 11/11, o serviço foi observado **LIVE** com `mqtt conectado` no EMQX TLS 8883 e `/healthz` ok ([`us-37.md`](../entrega/evidencias/us-37.md)). A Vercel hospeda só a API.
 
-**O que está mergeado ≠ o que foi observado em deploy** (02/11/2026):
+**O que está mergeado ≠ o que foi observado** — retrato de 02/11/2026, mantido como histórico:
 
-- **API na Vercel**: `/health` público respondeu `version: 6b6aa26`, `database: ok` às 19:02:27 UTC, após uma primeira resposta 503. O HEAD local auditado é `66fe44a`; não é a versão publicada. A resposta comprova conectividade naquele instante, não disponibilidade contínua.
-- **Worker no Render**: código (`backend/src/main/worker.ts`) e `render.yaml` na `main`, mas **o deploy efetivo não foi observado** — nenhuma evidência de serviço em execução.
+- **API na Vercel**: `/health` público respondeu `version: 6b6aa26`, `database: ok` às 19:02:27 UTC, após uma primeira resposta 503. O HEAD local auditado era `66fe44a`; não era a versão publicada. A resposta comprova conectividade naquele instante, não disponibilidade contínua.
+- **Worker no Render**: código (`backend/src/main/worker.ts`) e `render.yaml` estavam na `main`, mas **o deploy efetivo não foi observado** em 02/11.
 - **Relay da outbox**: roda só entre **18:45 e 23:05** em `America/Sao_Paulo` (DT-21, PR #45); fora da janela o polling não consulta o banco.
+
+Em **11/11/2026**, a API respondeu `version: a0625d7` com `database: ok` e o worker foi observado LIVE no Render ([`us-37.md`](../entrega/evidencias/us-37.md)); continuidade e número de réplicas não foram medidos.
 
 **Ambientes**:
 
 - **Dev**: broker Mosquitto local (porta `1884` no host, `1883` interna do container; sem TLS) e Postgres do compose — ver [`../guides/como-rodar.md`](../guides/como-rodar.md).
-- **Prod**: EMQX Cloud Serverless (MQTT sobre TLS, com credenciais; substituiu o HiveMQ Cloud, encerrado), Postgres no Neon, API no Vercel e processo MQTT no Render (mergeado, deploy não observado). O terminal ESP32 fala TLS com o broker quando compilado com `MQTT_USE_TLS 1` (DT-06); conexão e negativos de certificado foram observados no ESP32 em 06/11/2026, mas servo e ACK continuam pendentes. A reconexão só inicia com a porta em `idle` ([`evidencias/dt-06.md`](../entrega/evidencias/dt-06.md)).
+- **Prod**: EMQX Cloud Serverless (MQTT sobre TLS, com credenciais; substituiu o HiveMQ Cloud, encerrado), Postgres no Neon, API no Vercel e processo MQTT no Render. O serviço do Render foi observado LIVE em 11/11, com `mqtt conectado` e `/healthz` ok ([`us-37.md`](../entrega/evidencias/us-37.md)); continuidade não medida. O terminal ESP32 fala TLS com o broker quando compilado com `MQTT_USE_TLS 1` (DT-06); conexão e negativos de certificado foram observados no ESP32 em 06/11/2026, mas o servo físico continua não implementado. A reconexão só inicia com a porta em `idle` ([`evidencias/dt-06.md`](../entrega/evidencias/dt-06.md)).
 
 ## Fluxo de acesso via QR
 
-Fluxo alvo: os passos de envio pelo app ainda dependem da US-29. O worker só publica QR para terminais vistos online, mas o firmware não envia esse status; a simulação precisa declarar o status sintético. Renderização visual do QR atual ainda carece de demonstração registrada (US-22).
+Fluxo alvo: o app já envia o pedido e mostra o resultado (US-29), e a leitura com câmera foi observada em aparelho em 11/11. O worker só publica QR para terminais vistos online, mas o firmware não envia esse status (US-24); a simulação precisa declarar o status sintético. A entrega no display do terminal e a abertura física da cancela continuam não demonstradas de ponta a ponta.
 
 1. O processo MQTT do backend publica um QR Code rotativo (validade de 25 s) no tópico do terminal.
 2. O terminal exibe o QR Code no display.
@@ -49,7 +53,7 @@ Fluxo alvo: os passos de envio pelo app ainda dependem da US-29. O worker só pu
 
 ## Fluxo de acesso via NFC
 
-O backend implementa este processamento para mensagens simuladas; leitura/publicação pelo ESP32 ainda depende da US-23. NFC não exige GPS do celular: a geofence é aplicada ao método QR.
+O backend implementa este processamento para mensagens simuladas e reais; a leitura RC522 pelo ESP32 foi integrada na US-23 (#67), com evidência física inicial e servo desabilitado nesse perfil. NFC não exige GPS do celular: a geofence é aplicada ao método QR.
 
 1. O terminal lê a tag NFC e publica o UID no tópico MQTT de eventos.
 2. O processo MQTT do backend recebe o UID e chama o caso de uso, que valida a credencial, a janela de uso, o número de usos, o local e a distância quando aplicável.

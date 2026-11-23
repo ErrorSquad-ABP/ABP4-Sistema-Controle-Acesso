@@ -37,7 +37,7 @@ paths:
       tags:
         - credentials
       summary: Validar credencial QR
-      description: Valida a assinatura, o terminal e a expiracao da credencial. Nao concede acesso, nao consulta autorizacoes, nao calcula geofence e nao registra eventos. Requer sessao autenticada conforme US-14.
+      description: Valida a assinatura, o terminal e a expiracao da credencial. Aceita o token textual com `terminalId` ou o QR compacto de 41 digitos com `terminalCode`; no compacto, o servidor resolve o codigo curto e reconstroi a assinatura com o id real. Nao concede acesso, nao consulta autorizacoes, nao calcula geofence e nao registra eventos. Requer sessao autenticada conforme US-14.
       x-story: US-19
       security:
         - bearerAuth: []
@@ -627,7 +627,7 @@ paths:
       tags:
         - access-events
       summary: Solicitar acesso com o QR do terminal
-      description: "O app envia o token lido do QR, o terminal e a localizacao; o usuario vem do JWT. A API valida o token (formato, terminal e validade de 25 s), a autorizacao (janela, usos, local) e a distancia (ate 100 m); se liberar, envia o comando de abertura ao terminal (se o broker falhar, o worker entrega o mesmo comando dentro do prazo de 10 s). `terminalId` diferente do terminal do token -> DENIED com INVALID_CREDENTIAL. Toda tentativa vira um evento: negar acesso devolve 200 com `decision: DENIED` e o motivo."
+      description: "O app envia o token lido do QR e a localizacao; o usuario vem do JWT. O pedido traz `terminalId` (formato textual v1) OU `terminalCode` (QR compacto de 41 digitos), nunca os dois: o servidor resolve o codigo curto para o terminal real antes de decidir. A API valida o token (formato, terminal e validade de 25 s), a autorizacao (janela, usos, local) e a distancia; se liberar, envia o comando de abertura ao terminal (se o broker falhar, o worker entrega o mesmo comando dentro do prazo de 10 s). Terminal diferente do token ou codigo sem terminal provisionado -> negativa/404 sem abrir. Toda tentativa com terminal resolvido vira um evento; codigo curto inexistente responde 404 `NOT_FOUND` sem evento, como excecao documentada (a referencia do terminal nao existe para auditar). Negar acesso devolve 200 com `decision: DENIED` e o motivo."
       x-story: US-20
       security:
         - bearerAuth: []
@@ -1349,27 +1349,54 @@ components:
         - expiresIn
         - user
     QrAccessRequest:
-      type: object
-      properties:
-        qrToken:
-          type: string
-          minLength: 1
-          maxLength: 2048
-          description: Conteudo lido do QR exibido no terminal
-        terminalId:
-          type: string
-          pattern: ^[a-z0-9][a-z0-9-]{0,63}$
-          description: 'Identificador do terminal (ex.: "aurora-recepcao"); deve bater com o terminal do token'
-        position:
-          $ref: "#/components/schemas/GeoPoint"
-        requestId:
-          description: "Chave de idempotencia da tentativa: repetir o mesmo valor devolve o mesmo evento e o mesmo comando"
-          type: string
-          format: uuid
-      required:
-        - qrToken
-        - terminalId
-        - position
+      anyOf:
+        - type: object
+          properties:
+            qrToken:
+              type: string
+              minLength: 1
+              maxLength: 2048
+              description: Conteudo lido do QR exibido no terminal
+            terminalId:
+              type: string
+              pattern: ^[a-z0-9][a-z0-9-]{0,63}$
+              description: 'Identificador do terminal (ex.: "aurora-recepcao"); deve bater com o terminal do token'
+            terminalCode:
+              not: {}
+            position:
+              $ref: "#/components/schemas/GeoPoint"
+            requestId:
+              description: "Chave de idempotencia da tentativa: repetir o mesmo valor devolve o mesmo evento e o mesmo comando"
+              type: string
+              format: uuid
+          required:
+            - qrToken
+            - terminalId
+            - position
+        - type: object
+          properties:
+            qrToken:
+              type: string
+              pattern: ^[0-9]{41}$
+              description: QR compacto do terminal, com o codigo curto assinado
+            terminalId:
+              not: {}
+            terminalCode:
+              type: integer
+              minimum: 1
+              maximum: 255
+              description: Codigo curto provisionado para o terminal
+            position:
+              $ref: "#/components/schemas/GeoPoint"
+            requestId:
+              description: "Chave de idempotencia da tentativa: repetir o mesmo valor devolve o mesmo evento e o mesmo comando"
+              type: string
+              format: uuid
+          required:
+            - qrToken
+            - terminalCode
+            - position
+      description: "Pedido de acesso pelo QR do terminal: envia terminalId legado ou terminalCode compacto, nunca os dois"
     Role:
       type: string
       enum:
@@ -1479,20 +1506,40 @@ components:
         - name
         - role
     ValidateQrCredentialRequest:
-      type: object
-      properties:
-        qrToken:
-          type: string
-          minLength: 1
-          maxLength: 2048
-          description: Token assinado lido do QR do terminal
-        terminalId:
-          type: string
-          pattern: ^[a-z0-9][a-z0-9-]{0,63}$
-          description: 'Identificador do terminal (ex.: "aurora-recepcao"); deve bater com o terminal do token'
-      required:
-        - qrToken
-        - terminalId
+      anyOf:
+        - type: object
+          properties:
+            qrToken:
+              type: string
+              minLength: 1
+              maxLength: 2048
+              description: Token assinado lido do QR textual do terminal
+            terminalId:
+              type: string
+              pattern: ^[a-z0-9][a-z0-9-]{0,63}$
+              description: 'Identificador do terminal (ex.: "aurora-recepcao"); deve bater com o terminal do token'
+            terminalCode:
+              not: {}
+          required:
+            - qrToken
+            - terminalId
+        - type: object
+          properties:
+            qrToken:
+              type: string
+              pattern: ^[0-9]{41}$
+              description: Token compacto de 41 digitos
+            terminalCode:
+              type: integer
+              minimum: 1
+              maximum: 255
+              description: Codigo curto provisionado para o terminal
+            terminalId:
+              not: {}
+          required:
+            - qrToken
+            - terminalCode
+      description: "Token e referencia do terminal: terminalId legado ou terminalCode compacto, nunca os dois"
     ValidateQrCredentialResponse:
       oneOf:
         - type: object

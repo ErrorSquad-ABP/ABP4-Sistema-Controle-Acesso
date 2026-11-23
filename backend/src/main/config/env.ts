@@ -90,6 +90,10 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((value) => value === 'true'),
+  QR_COMPACT_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   RELAY_WINDOW_START: z
     .string()
     .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'use HH:mm (00:00 a 23:59)')

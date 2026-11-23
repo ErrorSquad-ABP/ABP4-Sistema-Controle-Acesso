@@ -18,18 +18,41 @@ String? terminalIdFromQrToken(String token) {
   return _terminalIdPattern.hasMatch(terminalId) ? terminalId : null;
 }
 
+/// Lê o código curto do QR compacto (41 dígitos) sem passar por `double`.
+///
+/// O código não autentica nada: o backend confere a assinatura HMAC embutida e
+/// resolve o terminal real. Devolve `null` para qualquer texto fora do formato.
+int? terminalCodeFromQrToken(String token) {
+  final value = token.trim();
+  if (!RegExp(r'^[0-9]{41}$').hasMatch(value)) return null;
+  final packed = BigInt.parse(value);
+  if (packed >= (BigInt.one << 136)) return null;
+  final code = (packed >> 128).toInt();
+  return code == 0 ? null : code;
+}
+
 /// `POST /access-events/qr` do contrato v1 (US-20): o que o app envia.
 @immutable
 class QrAccessRequest {
   const QrAccessRequest({
     required this.qrToken,
-    required this.terminalId,
+    this.terminalId,
+    this.terminalCode,
     required this.position,
     required this.requestId,
-  });
+  }) : assert(
+          (terminalId == null) != (terminalCode == null),
+          'envie terminalId legado ou terminalCode compacto, nunca os dois',
+        );
 
   final String qrToken;
-  final String terminalId;
+
+  /// Referência do QR textual v1; nula quando o QR é compacto.
+  final String? terminalId;
+
+  /// Código curto do QR compacto; nulo no formato textual v1.
+  final int? terminalCode;
+
   final GeoCoordinate position;
 
   /// Chave de idempotência da tentativa: repetir o mesmo valor devolve o mesmo
@@ -38,7 +61,8 @@ class QrAccessRequest {
 
   Map<String, Object> toJson() => {
     'qrToken': qrToken,
-    'terminalId': terminalId,
+    'terminalId': ?terminalId,
+    'terminalCode': ?terminalCode,
     'position': {
       'latitude': position.latitude,
       'longitude': position.longitude,

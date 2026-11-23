@@ -85,9 +85,11 @@ Validadas em [`src/main/config/env.ts`](src/main/config/env.ts); modelo em [`.en
 
 - `GET /health` → `200 { status, version, uptimeSeconds, timestamp, database }`. `database` é `ok`, `not_configured` (sem `DATABASE_URL`) ou `unavailable`; neste último caso a resposta é `503` com `status: "error"` (o motivo fica só no log).
 - `GET /docs` → Swagger UI do contrato v1 · `GET /openapi.json` → o documento OpenAPI
-- `POST /api/v1/credentials/qr/validate` → valida assinatura HMAC, terminal do token e validade de 10 s (US-19). Exige sessão; não decide acesso nem registra eventos.
+- `POST /api/v1/credentials/qr/validate` → valida assinatura HMAC, terminal do token e validade de 25 s (US-19). Exige sessão; não decide acesso nem registra eventos.
+- `PATCH /api/v1/me` → atualiza só o nome do próprio usuário; e-mail, perfil e situação ativa são ignorados.
+- `GET /api/v1/locations` (logado) → locais ativos, em ordem alfabética e paginados · `POST /api/v1/locations` (ADMIN) → cadastra local com raio de 1–100 m (US-39).
 - Com `DATABASE_URL`, `POST /api/v1/access-events/qr`, `GET /api/v1/access-events` (ADMIN) e `GET /api/v1/me/access-events` usam banco e identidade reais (`POST /auth/login`, HS256). Perfil e situação ativa vêm do banco.
-- As demais rotas continuam stubs `501 NOT_IMPLEMENTED`. Sem banco, as rotas de acesso respondem `503`. Detalhes em [`docs/api/README.md`](../docs/api/README.md).
+- Todas as operações do contrato v1 têm implementação; não há rota respondendo `501`. Detalhes em [`docs/api/README.md`](../docs/api/README.md).
 
 ## Segurança do consumidor (DT-01/02/03)
 
@@ -132,7 +134,7 @@ Erros seguem sempre `{ "error": { "code", "message", "details?" } }` — tabela 
 
 ## Deploy
 
-O deploy na Vercel é automático após o merge na `main` (`cd-backend.yml`); a entrada serverless é `src/index.ts`. Configuração e rollback em [`docs/guides/deploy.md`](../docs/guides/deploy.md).
+O deploy na Vercel é automático após o merge na `main` (`cd-backend.yml`); a entrada serverless é `src/index.ts`. O worker MQTT roda no Render e foi observado **LIVE** em 11/11, com `mqtt conectado` no EMQX (TLS 8883) e `/healthz` ok; a continuidade não foi medida. Configuração e rollback em [`docs/guides/deploy.md`](../docs/guides/deploy.md).
 
 ## Docker
 

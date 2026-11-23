@@ -1,4 +1,4 @@
-import { DomainError, ServiceUnavailableError } from '../../domain/errors/domain-error.js';
+import { DomainError, NotFoundError, ServiceUnavailableError } from '../../domain/errors/domain-error.js';
 import type { AccessRecord, AccessRepository } from '../../domain/ports/access-repository.js';
 import type { IdGenerator } from '../../domain/ports/id-generator.js';
 import type { Logger } from '../../shared/logger.js';
@@ -9,7 +9,8 @@ export interface QrAccessInput {
   /** Repetir o mesmo valor devolve o mesmo evento e o mesmo comando (idempotencia). */
   requestId?: string | undefined;
   userId: string;
-  terminalId: string;
+  terminalId?: string | undefined;
+  terminalCode?: number | undefined;
   qrToken: string;
   position: { latitude: number; longitude: number };
 }
@@ -33,9 +34,14 @@ export class RequestQrAccessUseCase {
   ) {}
 
   async execute(input: QrAccessInput): Promise<QrAccessOutput> {
+    const terminalId =
+      input.terminalId ??
+      (input.terminalCode === undefined ? null : await this.access.findTerminalIdByQrCode(input.terminalCode));
+    if (!terminalId) throw new NotFoundError('Terminal do QR nao encontrado');
+
     const event = await this.decide.execute({
       id: input.requestId ?? this.ids.uuid(),
-      terminalId: input.terminalId,
+      terminalId,
       method: 'QR',
       userId: input.userId,
       qrToken: input.qrToken,
@@ -45,14 +51,14 @@ export class RequestQrAccessUseCase {
     let commandPublished = false;
     if (event.decision === 'GRANTED') {
       // Republicar um comando antigo nao pode abrir a porta se o terminal/local saiu de operacao.
-      if (!(await this.access.canDispatch(input.terminalId))) {
+      if (!(await this.access.canDispatch(terminalId))) {
         throw new ServiceUnavailableError('Terminal indisponivel no momento');
       }
       try {
         // Publica o comando gravado na decisao; nunca cria um prazo novo aqui.
         const published = await this.publish.execute({
           requestId: event.id,
-          terminalId: input.terminalId,
+          terminalId,
           action: 'open',
           reason: 'authorized',
           decidedAt: new Date(event.occurredAt),

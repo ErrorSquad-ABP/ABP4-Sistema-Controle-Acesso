@@ -6,15 +6,15 @@
 
 Sistema integrado de baixo custo para controle de acesso em edifícios, com arquitetura prevista de terminal ESP32 (QR rotativo + NFC), app Flutter e backend Node/TypeScript por REST e MQTT. Este monorepo reúne backend, mobile, firmware, infraestrutura e documentação do projeto.
 
-## Estado atual — 02/11/2026 · board reconferido em 08/11/2026 · atualizado em 10/11/2026
+## Estado atual — 11/11/2026
 
-- **Backend:** login JWT/RBAC, usuários, autorizações, QR assinado de 25 s, decisão de acesso, histórico, outbox e processamento MQTT implementados. Autorizações usam intervalo contínuo; a DT-23 limita o QR ao menor valor entre o raio do local e 100 m, com restrição de cadastro no banco, implantada em produção em 10/11.
-- **App:** login real/sessão e leitura QR + posição implementados; o scanner **ainda não envia o pedido de acesso** (US-29). Minhas autorizações e admin ainda não têm telas funcionais completas.
-- **Terminal:** código de display QR, servo e feedback presente; NFC/GPS são esqueletos e status/heartbeat segue pendente. O TLS do broker foi validado no ESP32 contra o EMQX (DT-06); servo/PWM e ACK ainda não.
-- **Operação:** API pública respondeu em 10/11 com `version: 2dd532b`, `database: ok`; worker no Render continua sem deploy comprovado.
-- **Trello:** o board foi reconferido em 08/11 e atualizado pelos merges de 09–10/11; a contagem viva deve ser lida no Trello. Permanecem ressalvas de aceite e escopo, especialmente US-37 (deploy) e US-10/22 (demonstração real). DT-06, DT-08, DT-23 e DT-24 foram concluídas.
+- **Backend:** login JWT/RBAC, usuários, autorizações, QR assinado de 25 s, decisão de acesso, histórico, outbox e processamento MQTT implementados. Entraram o perfil editável (só nome, `PATCH /me`), a listagem autenticada de locais ativos e o cadastro de local por ADMIN (`GET`/`POST /locations`, raio de 1–100 m). A suíte tem **433 testes aprovados e 40 pulados** (os que exigem banco configurado). A API de produção roda no commit `a0625d7` com `database: ok`.
+- **App:** as **12 telas do Figma** (claro/escuro) estão implementadas — entrar, minhas autorizações, detalhe, escanear QR, liberado, negado, perfil, locais, novo local, vazio, carregando e erro —, além do shell com abas **Autorizações/Histórico/Perfil**. As telas de administração de autorizações (US-30) e de usuários + histórico (US-31) não têm frame no Figma e seguem o design system. A Home antiga foi removida; as rotas novas são `/scan`, `/locais`, `/admin/autorizacoes`, `/admin/usuarios` e `/autorizacoes/:id`. São **640 testes** de Flutter, e o app foi executado em aparelho físico (Motorola g86 5G, Android 15) com APK debug e `adb reverse` — ver [`us-29-aparelho.md`](docs/entrega/evidencias/us-29-aparelho.md).
+- **Terminal:** o NFC RC522 foi integrado (US-23, #67), com leitura, publicação MQTT e feedback de decisão; a evidência física inicial existe, mas o servo estava desabilitado nesse perfil. Servo/cancela física continua **não implementada**. GPS e heartbeat (US-24) e a resiliência offline (US-25) seguem pendentes. O TLS do broker foi validado no ESP32 contra o EMQX (DT-06).
+- **Operação:** a API pública respondeu em 11/11 com `version: a0625d7` e `database: ok`. O worker `abp4-mqtt-worker` está **LIVE no Render**, com `mqtt conectado` no EMQX Cloud (TLS 8883) e `/healthz` ok; Neon e EMQX Cloud completam a infraestrutura. `QR_TOKEN_SECRET` e `JWT_SECRET` foram rotacionados em 11/11, sem valores versionados. A continuidade do serviço não foi medida — ver [`us-37.md`](docs/entrega/evidencias/us-37.md).
+- **Trello:** US-28, US-30, US-31 e US-39 estão em **Concluído**, com comentário de evidência. A contagem viva do board deve ser lida no Trello; permanecem ressalvas de aceite em US-22 (demonstração visual) e no fluxo físico completo.
 
-Conferência dos **44 cards**, evidências, testes e pendências em [`docs/entrega/auditoria-estado-atual.md`](docs/entrega/auditoria-estado-atual.md). Código integrado, simulação e operação real são tratados separadamente; o fluxo completo app → terminal real ainda não foi demonstrado.
+Conferência dos cards, evidências, testes e pendências em [`docs/entrega/auditoria-estado-atual.md`](docs/entrega/auditoria-estado-atual.md), com o retrato do fechamento em [`docs/entrega/review-2.md`](docs/entrega/review-2.md). Código integrado, simulação e operação real são tratados separadamente; o fluxo app → terminal real ainda não foi demonstrado, e a abertura física da cancela não está implementada.
 
 ## Arquitetura
 
@@ -29,7 +29,7 @@ flowchart LR
   W -- regras --> DB
 ```
 
-Na S1 o processo MQTT roda localmente (US-04); na S2 foi preparado para o Render (US-37, PR #26) — o código e o `render.yaml` estão na `main`, mas o deploy efetivo **não foi observado**. A Vercel hospeda só a API. O polling de recuperação da outbox roda apenas entre **18:45 e 23:05** em `America/Sao_Paulo` (DT-21, PR #45); isso não bloqueia publicação imediata, consultas normais ou expurgos. Detalhes dos fluxos de acesso (QR e NFC), dos ambientes e da matriz de transporte em [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md); tópicos, payloads, QoS e expiração do MQTT em [`docs/architecture/contratos-mqtt.md`](docs/architecture/contratos-mqtt.md).
+Na S1 o processo MQTT roda localmente (US-04); na S2 foi preparado para o Render (US-37, PR #26) e, em 11/11, o serviço `abp4-mqtt-worker` foi observado **LIVE** com `mqtt conectado` no EMQX TLS e `/healthz` ok — a continuidade não foi medida ([`us-37.md`](docs/entrega/evidencias/us-37.md)). A Vercel hospeda só a API. O polling de recuperação da outbox roda apenas entre **18:45 e 23:05** em `America/Sao_Paulo` (DT-21, PR #45); isso não bloqueia publicação imediata, consultas normais ou expurgos. Detalhes dos fluxos de acesso (QR e NFC), dos ambientes e da matriz de transporte em [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md); tópicos, payloads, QoS e expiração do MQTT em [`docs/architecture/contratos-mqtt.md`](docs/architecture/contratos-mqtt.md).
 
 ## Estrutura do monorepo
 
@@ -42,7 +42,8 @@ ABP4-Sistema-Controle-Acesso/
 │  ├─ prisma/                schema.prisma · migrations · seed.ts
 │  └─ tests/                 unit/ · integration/
 ├─ mobile/                   Flutter
-│  ├─ lib/                   core/ · features/ (auth, home, scanner; authorizations/admin pendentes)
+│  ├─ lib/                   core/ · app/shell/ · features/ (auth, scanner, authorizations,
+│  │                         locations, profile, admin_authorizations, admin_users)
 │  └─ test/ · pubspec.yaml
 ├─ firmware/                 ESP32 · PlatformIO (C++); validação física na US-34
 │  ├─ src/                   main.cpp + modules/ (mqtt, display, nfc, gps, feedback, door)
@@ -84,6 +85,8 @@ Passo a passo de ambiente, infraestrutura e execução em [`docs/guides/como-rod
 - [`docs/entrega/auditoria-estado-atual.md`](docs/entrega/auditoria-estado-atual.md) — estado em 02/11/2026 e auditoria dos concluídos no Trello.
 - [`docs/scrum/README.md`](docs/scrum/README.md) — como o time aplica Scrum (backlog, DoD, sprints e templates).
 - [`docs/entrega/review-1.md`](docs/entrega/review-1.md) — documento de entrega da Review 1 (Sprint 1).
+- [`docs/entrega/review-2.md`](docs/entrega/review-2.md) — documento de entrega da Review 2 (Sprint 2), com o estado de 11/11.
+- [`docs/scrum/sprints/sprint-2.md`](docs/scrum/sprints/sprint-2.md) — fechamento da Sprint 2 · [review](docs/scrum/sprints/sprint-2-review.md) · [retro](docs/scrum/sprints/sprint-2-retro.md).
 - [`docs/entrega/README.md`](docs/entrega/README.md) — índice das evidências por card (`docs/entrega/evidencias/`).
 - [`docs/entrega/matriz-requisitos.md`](docs/entrega/matriz-requisitos.md) — matriz do edital (RF, RNF e RP) com status e lacunas.
 - [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md) — arquitetura, fluxos de acesso e matriz de transporte.
