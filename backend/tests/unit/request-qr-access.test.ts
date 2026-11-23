@@ -140,6 +140,10 @@ class AccessRepositoryTx {
     return true;
   }
 
+  async consumeCredential() {
+    return true;
+  }
+
   async record(event: AccessRecord) {
     this.events.set(event.id, event);
     return event;
@@ -171,6 +175,8 @@ class InMemoryAccessRepository implements AccessRepository {
   async listQrTerminalCodes(): Promise<ReadonlyMap<string, number>> {
     return new Map([...this.codes].map(([code, id]) => [id, code]));
   }
+
+  async saveNfcCredential(): Promise<void> {}
 
   async transaction<T>(_requestId: string, work: (tx: AccessRepositoryTx) => Promise<T>): Promise<T> {
     const draft = new AccessRepositoryTx(

@@ -21,11 +21,18 @@ const reason = z.string().min(1).max(100).optional();
 const SCHEMAS = {
   // Base64url dos claims + assinatura HMAC-SHA-256 pode exceder 128 chars.
   qr: z.object({ ...envelope, token: z.string().min(1).max(512), expiresAt: z.iso.datetime() }),
-  'access-events': z.object({
-    ...envelope,
-    type: z.literal('nfc_read'),
-    uid: z.string().regex(/^[0-9A-F]{4,20}$/),
-  }),
+  'access-events': z.discriminatedUnion('type', [
+    z.object({
+      ...envelope,
+      type: z.literal('nfc_read'),
+      uid: z.string().regex(/^[0-9A-F]{4,20}$/),
+    }),
+    z.object({
+      ...envelope,
+      type: z.literal('nfc_hce_read'),
+      credentialToken: z.string().regex(/^[0-9a-f]{32}$/),
+    }),
+  ]),
   status: z.object({
     ...envelope,
     state: z.enum(['online', 'offline']),

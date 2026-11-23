@@ -29,6 +29,7 @@ const IMPLEMENTED = new Set([
   'listLocations',
   'createLocation',
   'validateQrCredential',
+  'issueNfcCredential',
   'requestQrAccess',
 ]);
 
@@ -64,6 +65,12 @@ describe('rotas stub do contrato v1', () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INVALID_REQUEST');
     expect(res.body.error.details).toHaveProperty('email');
+  });
+
+  it('emissao de prova NFC deixou de ser stub e exige sessao', async () => {
+    const res = await request(app).post(`${API_V1_PREFIX}/access-credentials/nfc`);
+    // Sem banco neste app de teste, a autenticacao falha antes do handler (nunca 501).
+    expect(res.status).toBe(503);
   });
 
   it('validacao QR deixou de ser stub e exige sessao', async () => {

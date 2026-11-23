@@ -18,7 +18,8 @@ export interface AccessRecord {
 }
 
 export interface AccessCredential {
-  id: string; user: AccessUser; validFrom: Date | null; validUntil: Date | null; revokedAt: Date | null;
+  id: string; type: 'NFC' | 'NFC_HCE'; user: AccessUser;
+  validFrom: Date | null; validUntil: Date | null; revokedAt: Date | null; consumedAt: Date | null;
 }
 
 /**
@@ -38,6 +39,8 @@ export interface AccessTransaction {
    */
   findAuthorizations(userId: string, locationId: string, now: Date): Promise<AccessAuthorization[]>;
   consumeAuthorization(id: string, now: Date): Promise<boolean>;
+  /** Consome a prova HCE uma unica vez; false se ja consumida, vencida ou revogada. */
+  consumeCredential(id: string, now: Date): Promise<boolean>;
   record(event: AccessRecord): Promise<AccessRecord>;
   saveCommand(command: CommandMessage, requestId: string): Promise<CommandMessage>;
 }
@@ -52,4 +55,8 @@ export interface AccessRepository {
   findTerminalIdByQrCode(code: number): Promise<string | null>;
   /** Mapa terminalId -> codigo curto usado na emissao opt-in do QR compacto. */
   listQrTerminalCodes(): Promise<ReadonlyMap<string, number>>;
+  /** Grava somente o hash da prova HCE, com validade curta. */
+  saveNfcCredential(input: {
+    userId: string; valueHash: string; validFrom: Date; validUntil: Date;
+  }): Promise<void>;
 }

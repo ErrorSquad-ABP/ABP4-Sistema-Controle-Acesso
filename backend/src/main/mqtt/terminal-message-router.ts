@@ -39,7 +39,9 @@ export class TerminalMessageRouter {
         this.logger.info('tentativa de acesso recebida', {
           terminalId,
           type: result.message.type,
-          uid: maskUid(result.message.uid),
+          ...(result.message.type === 'nfc_read'
+            ? { uid: maskUid(result.message.uid) }
+            : {}),
           messageId: result.message.messageId,
         });
         this.onPresence(terminalId, true);

@@ -13,6 +13,8 @@ export interface AccessAttempt {
   terminalId: string;
   method: 'NFC' | 'QR';
   uid?: string;
+  /** Prova efemera do celular (HCE); nunca e o UID do aparelho. */
+  nfcToken?: string;
   userId?: string;
   qrToken?: string;
   position?: { latitude: number; longitude: number } | undefined;
@@ -51,8 +53,12 @@ export class DecideAccessUseCase {
 
       const terminal = await tx.findTerminal(input.terminalId);
       const credential =
-        input.method === 'NFC' && input.uid
-          ? await tx.findCredential(hashCredential(input.uid.toUpperCase()))
+        input.method === 'NFC' && (input.uid || input.nfcToken)
+          ? await tx.findCredential(
+              hashCredential(
+                input.uid ? input.uid.toUpperCase() : input.nfcToken!.toLowerCase(),
+              ),
+            )
           : null;
       const user =
         input.method === 'NFC'
@@ -79,7 +85,10 @@ export class DecideAccessUseCase {
             ((credential.validFrom !== null && now < credential.validFrom) ||
               (credential.validUntil !== null && now >= credential.validUntil))
           : qr?.valid === false && qr.reason === 'expired';
-      const credentialValid = input.method === 'NFC' ? !!credential && !credential.revokedAt : qr?.valid === true;
+      const credentialValid =
+        input.method === 'NFC'
+          ? !!credential && !credential.revokedAt && !credential.consumedAt
+          : qr?.valid === true;
 
       let decision = decideAccess({
         terminal,
@@ -91,6 +100,13 @@ export class DecideAccessUseCase {
         position: input.position,
         now,
       });
+      if (decision.authorizationId && credential?.type === 'NFC_HCE') {
+        // Uso unico: consumir antes da autorizacao; se outra replica ja consumiu,
+        // a tentativa vira negativa sem gastar um uso da autorizacao.
+        if (!(await tx.consumeCredential(credential.id, now))) {
+          decision = { ...decision, action: 'deny', reason: 'INVALID_CREDENTIAL', authorizationId: null };
+        }
+      }
       if (decision.authorizationId && !(await tx.consumeAuthorization(decision.authorizationId, now))) {
         decision = { ...decision, action: 'deny', reason: 'NO_USES_LEFT', authorizationId: null };
       }
