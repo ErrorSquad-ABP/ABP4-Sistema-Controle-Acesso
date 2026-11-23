@@ -16,6 +16,7 @@ import { ListLocationsUseCase } from '../application/locations/list-locations.us
 import { RequestQrAccessUseCase } from '../application/access/request-qr-access.use-case.js';
 import { PublishCommandUseCase } from '../application/terminal/publish-command.use-case.js';
 import type { AccessEventRepository } from '../domain/ports/access-event-repository.js';
+import type { AccessRepository } from '../domain/ports/access-repository.js';
 import type { AuthorizationRepository } from '../domain/ports/authorization-repository.js';
 import type { DatabaseProbe } from '../domain/ports/database-probe.js';
 import type { LocationRepository } from '../domain/ports/location-repository.js';
@@ -57,6 +58,8 @@ export interface Container {
     authorizations: AuthorizationRepository | undefined;
     accessEvents: AccessEventRepository | undefined;
     locations: LocationRepository | undefined;
+    /** Repositorio da decisao de acesso; usado para resolver o codigo curto do QR. */
+    access: AccessRepository | undefined;
   };
   useCases: {
     checkHealth: CheckHealthUseCase;
@@ -160,7 +163,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
     trustProxy: env.TRUST_PROXY,
     corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS,
     tokens,
-    repositories: { users, userAdmin, authorizations, accessEvents, locations },
+    repositories: { users, userAdmin, authorizations, accessEvents, locations, access: access?.repository },
     close: async () => {
       await accessBus?.close();
       await access?.pool.end();

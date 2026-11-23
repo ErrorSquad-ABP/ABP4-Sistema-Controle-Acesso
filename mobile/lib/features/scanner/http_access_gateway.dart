@@ -78,6 +78,7 @@ class HttpAccessGateway implements AccessGateway {
     throw AccessFailure(switch (status) {
       400 => AccessFailureReason.invalidRequest,
       401 => AccessFailureReason.unauthorized,
+      404 => AccessFailureReason.invalidRequest,
       429 => AccessFailureReason.tooManyRequests,
       >= 500 => AccessFailureReason.unavailable,
       _ => AccessFailureReason.unexpected,

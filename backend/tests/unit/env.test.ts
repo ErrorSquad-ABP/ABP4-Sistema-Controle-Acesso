@@ -39,7 +39,8 @@ describe('loadEnv', () => {
     expect(env.RELAY_WINDOW_ENABLED).toBe(false);
     expect(env.RELAY_WINDOW_START).toBe('08:00');
     expect(env.RELAY_WINDOW_END).toBe('12:30');
-    expect(env.RELAY_WINDOW_TZ).toBe('UTC');  });
+    expect(env.RELAY_WINDOW_TZ).toBe('UTC');
+  });
 
   it('recusa horario fora de HH:mm', () => {
     expect(() => configured({ RELAY_WINDOW_START: '25:00' })).toThrow(InvalidEnvError);

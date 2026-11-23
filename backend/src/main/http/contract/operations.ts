@@ -76,7 +76,10 @@ export const operations: readonly Operation[] = [
     tag: 'credentials',
     summary: 'Validar credencial QR',
     description:
-      'Valida a assinatura, o terminal e a expiracao da credencial. Nao concede acesso, nao consulta autorizacoes, nao calcula geofence e nao registra eventos. Requer sessao autenticada conforme US-14.',
+      'Valida a assinatura, o terminal e a expiracao da credencial. Aceita o token textual com `terminalId` ' +
+      'ou o QR compacto de 41 digitos com `terminalCode`; no compacto, o servidor resolve o codigo curto e ' +
+      'reconstroi a assinatura com o id real. Nao concede acesso, nao consulta autorizacoes, nao calcula ' +
+      'geofence e nao registra eventos. Requer sessao autenticada conforme US-14.',
     story: 'US-19',
     access: 'authenticated',
     body: ValidateQrCredentialRequest,
@@ -292,8 +295,10 @@ export const operations: readonly Operation[] = [
       'o codigo curto para o terminal real antes de decidir. A API valida o token (formato, terminal e validade ' +
       'de 25 s), a autorizacao (janela, usos, local) e a distancia; se liberar, envia o comando de abertura ao ' +
       'terminal (se o broker falhar, o worker entrega o mesmo comando dentro do prazo de 10 s). Terminal diferente ' +
-      'do token ou codigo sem terminal provisionado -> negativa/404 sem abrir. Toda tentativa vira um evento: ' +
-      'negar acesso devolve 200 com `decision: DENIED` e o motivo.',
+      'do token ou codigo sem terminal provisionado -> negativa/404 sem abrir. Toda tentativa com terminal ' +
+      'resolvido vira um evento; codigo curto inexistente responde 404 `NOT_FOUND` sem evento, como excecao ' +
+      'documentada (a referencia do terminal nao existe para auditar). Negar acesso devolve 200 com ' +
+      '`decision: DENIED` e o motivo.',
     story: 'US-20',
     access: 'authenticated',
     body: QrAccessRequest,

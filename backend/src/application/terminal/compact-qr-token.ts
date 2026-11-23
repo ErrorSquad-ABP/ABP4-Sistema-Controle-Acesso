@@ -1,8 +1,9 @@
 import { QR_SIGNATURE_BYTES } from '../../domain/ports/id-generator.js';
+import { QR_TTL_MS } from '../../domain/terminal/messages.js';
 
 /** 41 digitos decimais: codigo (1 byte), epoch UTC (4 bytes) e HMAC de 96 bits. */
 export const COMPACT_QR_DIGITS = 41;
-export const COMPACT_QR_TTL_SECONDS = 25;
+export const COMPACT_QR_TTL_SECONDS = QR_TTL_MS / 1000;
 
 const MAX_VALUE = 1n << 136n;
 const SIGNATURE_MASK = (1n << 96n) - 1n;

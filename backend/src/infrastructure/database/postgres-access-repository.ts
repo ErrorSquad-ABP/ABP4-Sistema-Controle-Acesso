@@ -74,7 +74,7 @@ class PostgresAccessTransaction implements AccessTransaction {
   }
 
   async findTerminal(id: string): Promise<TerminalContext | null> {
-    const result = await this.connection.query<{ id: string; active: boolean; location: TerminalContext['location'] }>(
+    const result = await this.connection.query<{ id: string; active: boolean; qrCode: number | null; location: TerminalContext['location'] }>(
       `SELECT t.id,t.active,t."qrCode",
         json_build_object('id',l.id,'name',l.name,'active',l."isActive",'latitude',l.latitude::float8,
         'longitude',l.longitude::float8,'radiusMeters',l."radiusMeters") AS location

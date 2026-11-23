@@ -53,6 +53,15 @@ describe('ValidateQrCredentialRequest / Response', () => {
     expect(ValidateQrCredentialRequest.safeParse({ qrToken: '', terminalId: 'terminal-01' }).success).toBe(false);
   });
 
+  it('aceita terminalCode apenas com 41 digitos e nunca as duas referencias', () => {
+    const compact = '0'.repeat(40) + '1';
+    expect(ValidateQrCredentialRequest.safeParse({ qrToken: compact, terminalCode: 1 }).success).toBe(true);
+    expect(ValidateQrCredentialRequest.safeParse({ qrToken: 'token', terminalCode: 1 }).success).toBe(false);
+    expect(ValidateQrCredentialRequest.safeParse({ qrToken: compact, terminalId: 'terminal-01' }).success).toBe(false);
+    expect(ValidateQrCredentialRequest.safeParse({ qrToken: compact, terminalId: 'terminal-01', terminalCode: 1 }).success).toBe(false);
+    expect(ValidateQrCredentialRequest.safeParse({ qrToken: compact, terminalCode: 0 }).success).toBe(false);
+  });
+
   it('resposta positiva inclui apenas terminal e expiracao; negativa nao inclui metadados', () => {
     expect(ValidateQrCredentialResponse.safeParse({ valid: true, terminalId: 'terminal-01', expiresAt: '2026-10-26T12:00:10.000Z' }).success).toBe(true);
     expect(ValidateQrCredentialResponse.safeParse({ valid: false }).success).toBe(true);

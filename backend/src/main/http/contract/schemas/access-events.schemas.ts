@@ -65,7 +65,12 @@ export const QrAccessRequest = named(
   'QrAccessRequest',
   z.union([
     z.object({
-      qrToken: z.string().min(1).max(2048).describe('Conteudo lido do QR exibido no terminal'),
+      qrToken: z
+        .string()
+        .min(1)
+        .max(2048)
+        .refine((value) => !/^[0-9]{41}$/.test(value), 'token compacto exige terminalCode')
+        .describe('Conteudo lido do QR exibido no terminal'),
       terminalId: TerminalId,
       terminalCode: z.never().optional(),
       // Sem .describe(): ele cria uma copia fora do registry e o $ref se perde.

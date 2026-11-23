@@ -202,4 +202,22 @@ describe.skipIf(!repository)('PostgresAccessRepository (DT-17)', () => {
     expect(serialized).toContain('Authorization_userId_locationId_endsAt_id_idx');
     expect(serialized).not.toContain('"Node Type":"Seq Scan"');
   });
+
+  it('resolve o codigo curto do QR e devolve o codigo no contexto do terminal', async () => {
+    const { locationId } = await seedPlace();
+    const terminalId = `terminal-qr-${randomUUID().slice(0, 8)}`;
+    const code = 200;
+    await pool!.query(
+      `INSERT INTO "Terminal" (id,"locationId","qrCode","updatedAt")
+       VALUES ($1,$2,$3,now())`,
+      [terminalId, locationId, code],
+    );
+
+    expect(await repository!.findTerminalIdByQrCode(code)).toBe(terminalId);
+    expect(await repository!.findTerminalIdByQrCode(code + 1)).toBeNull();
+    expect((await repository!.listQrTerminalCodes()).get(terminalId)).toBe(code);
+
+    const context = await repository!.transaction(randomUUID(), (tx) => tx.findTerminal(terminalId));
+    expect(context?.qrCode).toBe(code);
+  });
 });
