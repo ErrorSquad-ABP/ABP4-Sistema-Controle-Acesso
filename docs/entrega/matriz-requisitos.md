@@ -39,9 +39,9 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | RNF07 | Eficiência energética do dispositivo | Parcial | Terminal alimentado pela rede e sem deep sleep por causa do QR de 25 s (RF12); QR só é redesenhado quando o token muda e LEDs/buzzer só ligam no feedback — mecanismos verificáveis no firmware. Falta a medição de corrente e o teste de continuidade ([`evidencias/dt-22.md`](evidencias/dt-22.md), US-34) |
 | RNF08 | CI com build, testes e lint | Parcial | Workflows backend (lint/test/build), mobile (analyze/test/APK) e firmware (testes host/build com `-Werror`) presentes. O firmware não tem lint estático dedicado de todos os fontes; o CodeQL roda por default setup, sem workflow versionado, mas não é requisito do RNF08. Checks obrigatórios atuais não revalidados |
 | RNF09 | CD automatizado | Atendido | `cd-backend` publica na Vercel após CI; smoke em `/health` |
-| RNF10 | Testes automatizados no pipeline | Atendido | Vitest (backend, incl. e2e com Postgres embarcado), Flutter test, testes host do firmware |
+| RNF10 | Testes automatizados no pipeline | Atendido | Vitest no `.github/workflows/ci-backend.yml` (unitários, integração e E2E com Postgres embarcado), `flutter test` no `ci-mobile.yml` e testes host do firmware no `ci-firmware.yml` |
 | RNF11 | Git com branches, commits descritivos e estratégia | Atendido | Histórico de branches/commits por card e estratégia documentada; proteção atual da `main` não revalidada nesta auditoria |
-| RNF12 | Feedback de build/deploy | Atendido | GitHub Actions com checks por etapa |
+| RNF12 | Feedback de build/deploy | Atendido | Checks por etapa nos workflows de `.github/workflows/` e smoke test do `/health` no `cd-backend.yml` |
 
 ## Restrições de projeto
 
@@ -49,14 +49,14 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 |---|---|---|---|
 | RP01 | Node.js + Express + TypeScript | Atendido | `backend/package.json` (Node 24, Express 5, TS) |
 | RP02 | Integração com dispositivo físico (tela, sensores, atuadores) | Parcial | Wokwi com display, servo, LED e buzzer; NFC RC522 real (US-23) com evidência física inicial; GPS é esqueleto (US-24) e a abertura física da cancela não está implementada |
-| RP03 | Protocolo IoT (HTTP ou MQTT) | Atendido | MQTT v1 documentado e implementado |
-| RP04 | Aplicativo móvel (nativo ou híbrido) | Atendido | Flutter (Android como alvo principal) |
-| RP05 | Arquitetura cliente-servidor | Atendido | App, API, worker e terminal com papéis separados |
-| RP06 | Desenvolvimento incremental por sprint | Atendido | S1 13/13 e S2 com entregas parciais registradas |
+| RP03 | Protocolo IoT (HTTP ou MQTT) | Atendido | MQTT v1 em `docs/architecture/contratos-mqtt.md`, implementado em `backend/src/infrastructure/mqtt/` e `firmware/src/modules/mqtt.cpp` |
+| RP04 | Aplicativo móvel (nativo ou híbrido) | Atendido | Flutter em `mobile/` (`mobile/pubspec.yaml`), Android como alvo principal; APK gerado no CI (DT-10) |
+| RP05 | Arquitetura cliente-servidor | Atendido | App, API, worker e terminal com papéis separados (`docs/architecture/visao-geral.md`) |
+| RP06 | Desenvolvimento incremental por sprint | Atendido | S1 13/13 e S2 com entregas parciais registradas em [`review-1.md`](review-1.md), [`review-2.md`](review-2.md) e `docs/scrum/sprints/` |
 | RP07 | Documentação de arquitetura, diagramas e comunicação | Parcial | `docs/architecture/` com visão geral, contratos MQTT, modelo de dados e ADR; falta diagrama de casos de uso |
-| RP08 | Escopo viável, com simulações | Atendido | Wokwi e simulador Node |
-| RP09 | Pipeline CI/CD | Atendido | GitHub Actions |
-| RP10 | Testes no pipeline (obrigatório) | Atendido | RNF10 |
+| RP08 | Escopo viável, com simulações | Atendido | Wokwi (`firmware/wokwi/`) e simulador Node (`backend/src/main/sim-terminal.ts`, `npm run sim:terminal`) |
+| RP09 | Pipeline CI/CD | Atendido | GitHub Actions: `ci-backend.yml`, `ci-mobile.yml`, `ci-firmware.yml` e `cd-backend.yml` em `.github/workflows/` |
+| RP10 | Testes no pipeline (obrigatório) | Atendido | Mesmos workflows do RNF10 (`.github/workflows/ci-*.yml`) |
 | RP11 | Deploy automatizado do backend em nuvem | Atendido | Vercel + Neon; `/health` público |
 | RP12 | Conteinerização | Parcial | `backend/Dockerfile` e `docker-compose.dev.yml` (Mosquitto + Postgres); app e firmware não são containerizados (esperado) |
 

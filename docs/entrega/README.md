@@ -35,3 +35,7 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 ## Matriz de requisitos
 
 O cruzamento do edital (`Desafio 4DSM - 2026-2.pdf`, versao 31/08/2026) com o codigo esta em [`matriz-requisitos.md`](matriz-requisitos.md): status por RF, RNF e RP, com evidencia no repo e as lacunas abertas.
+
+## Relatório ABNT e apresentação final (US-36)
+
+O relatório fica em [`relatorio/`](relatorio/): texto em `relatorio.md` e `gerar.py`, que gera o DOCX e o PDF em ABNT e lê a matriz e este índice na hora, sem cópia manual. A versão entregue é o `relatorio/relatorio-final.pdf`, gerado com `--final` depois da revisão por par registrada no [README do relatório](relatorio/README.md). O roteiro, a divisão de fala, a demo e os ensaios estão em [`roteiro-apresentacao-final.md`](roteiro-apresentacao-final.md); os slides ficam fora do repositório.
