@@ -1,5 +1,81 @@
 # firmware
 
+## US-23 · NFC RC522 + feedback de decisão (S3)
+
+O perfil padrão `esp32dev` segue a montagem de 07/11/2026: RC522 SPI
+**SCK 18, MISO 19, MOSI 23, SS 32, RST 33**, RGB de ânodo comum
+**R 25 / G 27** (LOW acende), piezo no **14**, servo no **26**.
+Alimente o RC522 somente em **3,3 V**, use GND comum e resistor de 220 Ω por
+cor. O COM do RGB vai ao 3V3 do próprio ESP32. Não una fontes de 3,3 V.
+
+- `nfc.cpp` consulta o leitor a cada 100 ms, usa WUPA para detectar tags em
+  HALT, formata UIDs de 4/7/10 bytes em hexadecimal maiúsculo e encerra a sessão.
+  Uma apresentação gera uma tentativa; a mesma tag só rearma depois de
+  **500 ms de ausência**. Uma tag diferente pode gerar outra tentativa.
+- `publishNfc` envia envelope MQTT v1 com UUID v4 e UTC em
+  `terminals/{id}/access-events`, **QoS 1, sem retain**, esperando PUBACK.
+  A biblioteca passa a ser `256dpi/MQTT`: PubSubClient não publica QoS 1.
+  ACKs também usam QoS 1; comandos são enfileirados no callback e executados
+  fora dele para evitar publicação síncrona reentrante.
+  A fila volátil comporta 8 comandos; saturação é logada e descarta sem atuar.
+  PUBACK confirma transporte, não decisão de acesso nem abertura física.
+- A leitura **não** libera acesso. Só o comando validado do backend produz
+  verde/bipes agudos (`open`) ou vermelho/bipe grave (`deny`). Prazo, relógio
+  e deduplicação por `commandId` continuam sendo verificados antes da atuação.
+- Sem leitor, rede, PUBACK ou UTC confiável, não há liberação local nem fila
+  offline. Retire e reapresente a tag após recuperar o serviço. Retry com
+  persistência é escopo da US-25. Nunca se imprime o UID na serial.
+
+### Segurança e perfis de display
+
+Crie `include/config.h` a partir do exemplo **somente se ainda não existir**.
+Uma configuração antiga deve ser migrada manualmente: ela tem GPIOs em conflito
+com o RC522. Ajuste WiFi e o IP LAN do broker antes de gravar no ESP32.
+
+No perfil físico, **`DOOR_ENABLED=0`** mantém o GPIO do servo sem acionamento:
+`open` executa apenas o feedback de decisão (ACK `executed` confirma esse
+feedback, não abertura física). Só habilite depois de confirmar que o servo
+é de rotação contínua, sua alimentação e a calibração dos valores 0/90/180.
+Para servo posicional é necessário adaptar o driver, não só habilitar o pino.
+`FEEDBACK_BUZZER_ENABLED=0` evita acionar um buzzer de modelo desconhecido;
+habilite somente após confirmar piezo passivo compatível ou driver apropriado.
+
+OLED SSD1306 usa **TwoWire(1), SDA 21 / SCL 22**, endereço `0x3C`.
+LCD 1602 opcional usa **Wire, SDA 16 / SCL 17**, endereço `0x27`;
+`LCD_ENABLED=0` por segurança. Habilite apenas com módulo compatível em 3,3 V
+ou conversor bidirecional se os pull-ups forem para 5 V. No perfil físico padrão
+(`TERMINAL_DISPLAY_OLED=0`), esses displays mostram **status NFC**.
+A variante `TERMINAL_DISPLAY_OLED=1` da US-29 mostra QR compacto no OLED,
+com seleção da menor versão, margem completa por padrão e ajustes pela serial.
+Nesse modo, o OLED usa `Wire` e o LCD de status não é inicializado. LEDs/buzzer
+e NFC continuam ativos. O TFT só é inicializado no perfil legado com
+`TERMINAL_DISPLAY_OLED=0`: nunca há dois drivers disputando `terminal_display`.
+
+```powershell
+# Montagem física NFC (padrão)
+pio run -e esp32dev
+# TFT/servo/LEDs do diagrama Wokwi legado; NFC desabilitado por conflito de GPIOs
+pio run -e esp32dev-wokwi
+```
+
+`wokwi/wokwi.toml` aponta para `esp32dev-wokwi`. O diagrama legado permanece
+exclusivo desse perfil e **não simula o RC522 nem representa a montagem física**.
+Os testes `test_nfc_scan`, `test_nfc` (leitor simulado) e `test_mqtt_nfc`
+cobrem formatação, apresentação repetida, remoção, leitor ausente e envelope
+QoS 1/offline/UTC/PUBACK. `test_feedback_io` verifica polaridade dos GPIOs e
+bipes nos dois perfis, inclusive buzzer desabilitado. O CI compila os dois perfis.
+
+Roteiro de aceite e limites: [US-23](../docs/entrega/evidencias/us-23-nfc-rc522.md).
+Passo a passo de preparação, cadastro de tag e teste físico:
+[testar US-23](../docs/guides/testar-us-23-nfc.md).
+
+---
+
+## Referência histórica · perfil TFT US-08/US-22
+
+As pinagens e o roteiro Wokwi abaixo valem para `esp32dev-wokwi`, não para a
+montagem NFC física. Use `pio run -e esp32dev-wokwi` nos comandos desse roteiro.
+
 Terminal de Acesso ESP32 — PlatformIO + Arduino/C++. A **US-08** porta a atuação
 do protótipo `teste-servo.ino` (servo de rotação contínua, LED vermelho/verde,
 buzzer e display) para módulos do projeto novo, atrás de uma máquina de
@@ -85,7 +161,7 @@ Windows / PowerShell:
 py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install platformio==6.1.18
 Copy-Item include/config.example.h include/config.h
-.\.venv\Scripts\pio.exe run
+.\.venv\Scripts\pio.exe run -e esp32dev-wokwi
 ```
 
 Linux/macOS:
@@ -94,12 +170,12 @@ Linux/macOS:
 python3.13 -m venv .venv
 .venv/bin/python -m pip install platformio==6.1.18
 cp include/config.example.h include/config.h
-.venv/bin/pio run
+.venv/bin/pio run -e esp32dev-wokwi
 ```
 
-`pio run` baixa as bibliotecas (`PubSubClient`, `ESP32Servo`,
+`pio run` baixa as bibliotecas (`MQTT`, `MFRC522`, `ESP32Servo`,
 `Adafruit ILI9341`, `Adafruit GFX`, `QRCode`, `ArduinoJson`) e gera
-`.pio/build/esp32dev/firmware.bin` e `firmware.elf`. Edite somente `include/config.h` com a configuração local e não
+`.pio/build/esp32dev-wokwi/firmware.bin` e `firmware.elf` para o perfil legado. Edite somente `include/config.h` com a configuração local e não
 sobrescreva uma configuração existente ao repetir os passos.
 
 Para hardware real, ajuste WiFi/host do broker, use `pio run -t upload` e
@@ -185,8 +261,9 @@ Wokwi). Em produção o terminal fala TLS com o broker EMQX Cloud Serverless:
    `MQTT_RETRY_MS`. Sem conexão não há inscrição: nenhum comando chega e a porta não abre.
 6. O handshake **bloqueia o `loop()`** até `MQTT_HANDSHAKE_TIMEOUT_SECONDS`
    (5 s; no core 2.x o valor é em segundos), mas só inicia com a porta em `idle`.
-   A porta é atualizada antes da rede; abertura, espera aberta e fechamento adiam
-   a reconexão. Uma conexão viva continua atendida. Ao conectar, a serial mostra
+    A porta é atualizada antes da rede; abertura, espera aberta e fechamento pausam
+    MQTT e novas leituras NFC. O ACK é publicado após o ciclo, para que a espera
+    pelo PUBACK QoS 1 não atrase a parada do servo. Ao conectar, a serial mostra
    `[mqtt] tls ok em <N> ms, heap livre <M> B`.
 
 A porta 8883 é convenção: a regra é "CA obrigatório". Com `MQTT_USE_TLS 1` e um
@@ -208,6 +285,12 @@ A porta 8883 é convenção: a regra é "CA obrigatório". Com `MQTT_USE_TLS 1` 
 - Sem mensagem: confira tópico, terminalId, conexão e inscrição. Payloads não
   são impressos, evitando vazamento de credenciais pela serial.
 - Sem binário: rode o build antes da simulação e confirme os caminhos do TOML.
+- Windows com `xtensa-esp32-elf-g++: CreateProcess: No such file or directory`:
+  caminhos longos do Core/pacotes podem impedir o GCC de iniciar seu processo
+  interno. Use uma instalação do PlatformIO em caminho curto; não altere os
+  pinos para tentar corrigir esse erro. Para evitar problemas de módulos Python,
+  prefira o ambiente Python completo gerenciado pelo PlatformIO/VS Code, não
+  uma distribuição Python embutida sem os módulos do `esptool`.
 
 ## Testes
 
@@ -227,7 +310,7 @@ Os testes host rodam sem Arduino, com tempo e periféricos simulados:
 | `test_mqtt` | módulo MQTT real com doubles: offline, retentativas, inscrição, reconexão |
 | `test_mqtt_command` | JSON v1 de ponta a ponta: ACK publicado, dedup, prazo, `deny`, recusas e QR |
 | `test_mqtt_tls` | TLS (DT-06): CA configurado, sem `setInsecure`, sem conexão sem hora confiável, certificado recusado libera o transporte e não inscreve (compilar com `-DMQTT_USE_TLS=1`) |
-| `test_mqtt_door_timing` | `main` + MQTT + porta reais; queda nas três fases não inicia reconexão antes da parada do servo (TLS desligado e ligado) |
+| `test_mqtt_door_timing` | `main` + MQTT + porta reais; queda nas três fases e PUBACK lento não atrasam a parada do servo (TLS desligado e ligado) |
 
 Linux/CI, a partir de `firmware/`:
 
@@ -249,8 +332,8 @@ g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "
 g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_command.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt-command && /tmp/t-mqtt-command
 g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=1 -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_tls.cpp src/modules/mqtt.cpp -o /tmp/t-mqtt-tls && /tmp/t-mqtt-tls
 for tls in 0 1; do
-  g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=$tls -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_door_timing.cpp src/main.cpp src/modules/mqtt.cpp src/modules/door.cpp -o /tmp/t-mqtt-door
-  for phase in opening open closing; do /tmp/t-mqtt-door "$phase"; done
+  g++ -std=c++11 -Wall -Wextra -Werror -DTERMINAL_LEGACY_TFT=1 -DMQTT_USE_TLS=$tls -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_door_timing.cpp src/main.cpp src/modules/mqtt.cpp src/modules/door.cpp -o /tmp/t-mqtt-door
+  for phase in opening open closing puback; do /tmp/t-mqtt-door "$phase"; done
 done
 ```
 
@@ -273,13 +356,14 @@ conexão do simulador ao broker nem o movimento real do servo.
 
 ## Limites desta história
 
+- Heartbeat/LWT (`terminals/{id}/status`) e GPS continuam pendentes (US-24).
+  NFC está implementado no perfil físico pela US-23; permanece desabilitado
+  no perfil TFT legado, cujos pinos conflitam com o RC522.
 - O TLS (DT-06) foi validado no ESP32 contra o EMQX em 06/11/2026 (conexão e
   negativos de CA/hostname). O servo não girou nessa bancada e o ACK não foi
   observado; a correção de timing da reconexão foi validada só em host/build
   ([`evidencias/dt-06.md`](../docs/entrega/evidencias/dt-06.md)). Sem mTLS nem
   rotação automática de CA.
-- Heartbeat/LWT (`terminals/{id}/status`) e eventos de acesso continuam
-  pendentes (US-04 e seguintes); NFC e GPS seguem como stubs.
 - O QR exibido é o token cru recebido do backend; assinatura e validação de
   credencial entram na US-19/US-20.
 - O prazo do comando depende de SNTP: sem hora confiável o terminal recusa em vez

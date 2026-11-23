@@ -1,7 +1,7 @@
-// TFT ILI9341 (padrao). Com TERMINAL_DISPLAY_OLED 1 vale o display_oled.cpp.
+// TFT do perfil legado. O perfil fisico usa status ou QR no OLED, conforme config.
 #include "terminal_settings.h"
 
-#if !TERMINAL_DISPLAY_OLED
+#if TERMINAL_LEGACY_TFT && !TERMINAL_DISPLAY_OLED
 
 #include "display.h"
 
@@ -189,6 +189,4 @@ void update() {
 }
 
 }  // namespace terminal_display
-
-
-#endif  // !TERMINAL_DISPLAY_OLED
+#endif  // TERMINAL_LEGACY_TFT && !TERMINAL_DISPLAY_OLED

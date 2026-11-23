@@ -73,6 +73,15 @@ jobs:
           "$RUNNER_TEMP/abp4-test-display-qr"
           g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_clock_policy.cpp -o "$RUNNER_TEMP/abp4-test-clock"
           "$RUNNER_TEMP/abp4-test-clock"
+          g++ -std=c++11 -Wall -Wextra -Werror -I include tests/test_nfc_scan.cpp -o "$RUNNER_TEMP/abp4-test-nfc"
+          "$RUNNER_TEMP/abp4-test-nfc"
+          g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src tests/test_nfc.cpp src/modules/nfc.cpp -o "$RUNNER_TEMP/abp4-test-nfc-module"
+          "$RUNNER_TEMP/abp4-test-nfc-module"
+          "$RUNNER_TEMP/abp4-test-nfc-module" missing-reader
+          g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src tests/test_feedback_io.cpp src/modules/feedback.cpp -o "$RUNNER_TEMP/abp4-test-feedback-physical"
+          "$RUNNER_TEMP/abp4-test-feedback-physical"
+          g++ -std=c++11 -Wall -Wextra -Werror -D TERMINAL_LEGACY_TFT=1 -I tests/fakes -I include -I src tests/test_feedback_io.cpp src/modules/feedback.cpp -o "$RUNNER_TEMP/abp4-test-feedback-wokwi"
+          "$RUNNER_TEMP/abp4-test-feedback-wokwi"
 
       - name: Testes host (modulo MQTT com broker simulado)
         run: |
@@ -81,6 +90,8 @@ jobs:
           "$RUNNER_TEMP/abp4-test-mqtt"
           g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_command.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-command"
           "$RUNNER_TEMP/abp4-test-mqtt-command"
+          g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_nfc.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-nfc"
+          "$RUNNER_TEMP/abp4-test-mqtt-nfc"
 
       # DT-06: TLS ligado, com o fake de tests/fakes antes de include/ (o mqtt_ca.h de teste
       # substitui o PEM real).
@@ -94,8 +105,8 @@ jobs:
         run: |
           JSON_SRC=.pio/libdeps/esp32dev/ArduinoJson/src
           for tls in 0 1; do
-            g++ -std=c++11 -Wall -Wextra -Werror -DMQTT_USE_TLS=$tls -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_door_timing.cpp src/main.cpp src/modules/mqtt.cpp src/modules/door.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-door"
-            for phase in opening open closing; do
+            g++ -std=c++11 -Wall -Wextra -Werror -DTERMINAL_LEGACY_TFT=1 -DMQTT_USE_TLS=$tls -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_door_timing.cpp src/main.cpp src/modules/mqtt.cpp src/modules/door.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-door"
+            for phase in opening open closing puback; do
               "$RUNNER_TEMP/abp4-test-mqtt-door" "$phase"
             done
           done
@@ -113,13 +124,18 @@ jobs:
         run: cp include/config.example.h include/config.h
 
       - name: Build
-        run: pio run
+        run: pio run -e esp32dev -e esp32dev-wokwi
 
       # DT-06: o caminho de producao (WiFiClientSecure + CA embutido) tambem precisa compilar.
       - name: Build com TLS
-        run: pio run
+        run: pio run -e esp32dev
         env:
           PLATFORMIO_BUILD_FLAGS: -DMQTT_USE_TLS=1
+
+      - name: Build legado com TLS
+        run: pio run -e esp32dev-wokwi
+        env:
+          PLATFORMIO_BUILD_FLAGS: -DMQTT_USE_TLS=1 -DTERMINAL_LEGACY_TFT=1
 
       # DT-06/US-29: a variante OLED (TERMINAL_DISPLAY_OLED=1) precisa compilar.
       - name: Build com TLS e OLED

@@ -1,0 +1,7 @@
+# Complemento local para NFC: preserva o PostgreSQL nativo que usa 5436.
+# docker compose -f infra/docker-compose.dev.yml -f infra/docker-compose.nfc.local.yml up -d
+# !override exige Docker Compose >= 2.24.4.
+services:
+  postgres:
+    ports: !override
+      - "127.0.0.1:5437:5432"

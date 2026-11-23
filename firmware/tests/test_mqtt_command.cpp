@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "Arduino.h"
-#include "PubSubClient.h"
+#include "MQTTClient.h"
 #include "modules/mqtt.h"
 
 uint32_t testNow = 0;
@@ -34,8 +34,13 @@ void deliver(const char* json, const char* topic = kCommandsTopic) {
   char payload[600];
   const size_t length = strlen(json);
   memcpy(payload, json, length + 1);
-  broker.callback(const_cast<char*>(topic), reinterpret_cast<uint8_t*>(payload),
-                  static_cast<unsigned int>(length));
+  const int beforeActions = actions;
+  const int beforePublishes = broker.publishCalls;
+  broker.callback(nullptr, const_cast<char*>(topic), payload, static_cast<int>(length));
+  assert(actions == beforeActions);
+  assert(broker.publishCalls == beforePublishes);  // Sem QoS 1 reentrante no callback.
+  terminal_mqtt::update();
+  terminal_mqtt::update();
 }
 
 void expectPublish(const char* fragment) {
@@ -120,6 +125,7 @@ int main() {
   assert(broker.publishCalls == 1);
   assert(strcmp(broker.publishedTopic, "terminals/terminal-dev-01/acks") == 0);
   assert(broker.publishedRetained == false);
+  assert(broker.publishedQos == 1);
   expectPublish("\"v\":1");
   expectPublish("\"terminalId\":\"terminal-dev-01\"");
   expectPublish("\"timestamp\":\"2026-10-19T19:30:13.000Z\"");
@@ -183,6 +189,22 @@ int main() {
       R"({"v":1,"terminalId":"terminal-dev-01","expiresAt":"2026-10-19T19:30:13.400Z","action":"open"})");
   assert(broker.publishCalls == publishesBefore);
   assert(actions == 2);
+
+  // Rajada no callback: fila limitada, copia o payload e nunca publica/atua
+  // de forma reentrante. Saturacao descarta em vez de executar sem controle.
+  char queued[600];
+  strcpy(queued, kOpenCommand);
+  for (int i = 0; i < 9; ++i) {
+    broker.callback(nullptr, const_cast<char*>(kCommandsTopic), queued,
+                    static_cast<int>(strlen(queued)));
+  }
+  queued[0] = '\0';  // O callback nao pode guardar ponteiro para esse buffer.
+  assert(broker.publishCalls == publishesBefore);
+  assert(actions == 2);
+  for (int i = 0; i < 9; ++i) terminal_mqtt::update();
+  assert(broker.publishCalls == publishesBefore + 8);
+  assert(actions == 2);
+  expectPublish("\"reason\":\"duplicate\"");
 
   puts("mqtt: JSON v1, prazo, dedup, ACK e recusas OK");
 }
