@@ -69,7 +69,7 @@ describe('CreateLocationUseCase', () => {
     expect((await locations.listActive({ page: 1, pageSize: 20 })).total).toBe(1);
   });
 
-  it('recusa raio fora de 1..100 e nao inteiro (DT-23)', async () => {
+  it('recusa raio fora de 1..500 e nao inteiro', async () => {
     const create = new CreateLocationUseCase(new InMemoryLocationRepository());
     const base = {
       name: 'Edificio Aurora',
@@ -78,7 +78,7 @@ describe('CreateLocationUseCase', () => {
       radiusMeters: 100,
     };
 
-    for (const radiusMeters of [0, -1, 101, 50.5, Number.NaN]) {
+    for (const radiusMeters of [0, -1, 501, 50.5, Number.NaN]) {
       await expect(create.execute({ ...base, radiusMeters })).rejects.toBeInstanceOf(ValidationError);
     }
   });

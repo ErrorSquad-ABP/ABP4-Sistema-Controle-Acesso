@@ -14,9 +14,9 @@ export class CreateLocationUseCase {
   constructor(private readonly locations: LocationRepository) {}
 
   async execute(input: CreateLocationInput): Promise<LocationView> {
-    // Mesmo intervalo da CHECK do banco (DT-23): a entrada nao pode ampliar o teto de 100 m.
-    if (!Number.isInteger(input.radiusMeters) || input.radiusMeters < 1 || input.radiusMeters > 100) {
-      throw new ValidationError('Raio deve ser um inteiro entre 1 e 100 metros');
+    // Mesmo intervalo da CHECK do banco: a entrada nao pode ampliar o teto de 500 m.
+    if (!Number.isInteger(input.radiusMeters) || input.radiusMeters < 1 || input.radiusMeters > 500) {
+      throw new ValidationError('Raio deve ser um inteiro entre 1 e 500 metros');
     }
 
     const created = await this.locations.create({

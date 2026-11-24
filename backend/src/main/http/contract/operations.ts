@@ -383,7 +383,7 @@ export const operations: readonly Operation[] = [
     tag: 'locations',
     summary: 'Cadastrar local de acesso',
     description:
-      'So ADMIN. `radiusMeters` aceita de 1 a 100 (teto da DT-23); omitido, usa 100. ' +
+      'So ADMIN. `radiusMeters` aceita de 1 a 500; omitido, usa 100. ' +
       'Latitude e longitude em graus decimais.',
     story: 'US-39',
     access: 'admin',
