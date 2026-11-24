@@ -36,7 +36,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | RNF04 | Interface simples, acessível ao público idoso | Parcial | Fonte 2x sem estouro e rótulos acessíveis (US-27); telas de administração e histórico entregues (US-31), mas sem auditoria de acessibilidade registrada nessas telas |
 | RNF05 | Modularidade e separação de responsabilidades | Atendido | Clean Architecture com regra de camadas verificada no lint (`backend/src/{domain,application,infrastructure,main}`) |
 | RNF06 | Banco de dados em nuvem | Atendido | Postgres no Neon; `/health` com `database: ok` |
-| RNF07 | Eficiência energética do dispositivo | Parcial | Terminal alimentado pela rede e sem deep sleep por causa do QR de 25 s (RF12); QR só é redesenhado quando o token muda e LEDs/buzzer só ligam no feedback — mecanismos verificáveis no firmware. Falta a medição de corrente e o teste de continuidade ([`evidencias/dt-22.md`](evidencias/dt-22.md), US-34) |
+| RNF07 | Eficiência energética do dispositivo | Parcial | Projeto documentado (terminal na fonte, sem deep sleep), mecanismos verificáveis (QR só redesenha na troca do token; LEDs/buzzer só no feedback) e orçamento estimado em faixa, com incerteza declarada ([`dt-22.md`](evidencias/dt-22.md)). Consumo não medido e continuidade de 24 h não cronometrada |
 | RNF08 | CI com build, testes e lint | Parcial | Workflows backend (lint/test/build), mobile (analyze/test/APK) e firmware (testes host/build com `-Werror`) presentes. O firmware não tem lint estático dedicado de todos os fontes; o CodeQL roda por default setup, sem workflow versionado, mas não é requisito do RNF08. Checks obrigatórios atuais não revalidados |
 | RNF09 | CD automatizado | Atendido | `cd-backend` publica na Vercel após CI; smoke em `/health` |
 | RNF10 | Testes automatizados no pipeline | Atendido | Vitest (backend, incl. e2e com Postgres embarcado), Flutter test, testes host do firmware |
@@ -65,7 +65,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 1. **Fluxo físico (US-34)**: servo/cancela não implementado; o fluxo app → terminal real não foi demonstrado. O QR foi lido de um monitor e o NFC físico não acionou servo ([`us-29-aparelho.md`](evidencias/us-29-aparelho.md)).
 2. **RF11/US-24/US-25**: GPS e heartbeat/status do terminal continuam pendentes; a resiliência offline (retry persistente) também.
 3. **RNF02**: TLS do firmware validado no ESP32 contra o EMQX (DT-06); a revisão de segurança (US-33) não foi feita. `QR_TOKEN_SECRET` e `JWT_SECRET` foram rotacionados em 11/11.
-4. **RNF07**: estratégia e orçamento documentados em [`evidencias/dt-22.md`](evidencias/dt-22.md); falta medir corrente no hardware (US-34).
+4. **RNF07**: estratégia e orçamento documentados em [`evidencias/dt-22.md`](evidencias/dt-22.md). A medição de corrente não foi realizada; o card foi encerrado por escopo e o requisito segue **Parcial**.
 5. **RF03**: confirmar com o professor/PO se "horário inicial/final" exige janela diária dentro do período — hoje é um intervalo contínuo.
 6. **RNF04**: telas de administração e histórico entregues, sem auditoria de acessibilidade registrada.
 7. **RNF08/RNF11**: checks obrigatórios e proteção da `main` não foram revalidados nesta rodada.
