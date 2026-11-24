@@ -1,6 +1,6 @@
 # Matriz de requisitos — Desafio 4DSM 2026-2
 
-Fonte dos requisitos: leitura anteriormente registrada de `Desafio 4DSM - 2026-2.pdf` (versão 31/08/2026, FATEC Jacareí). Estado do projeto revisto em **02/11/2026**, código local `66fe44a`, contra o Trello e as evidências versionadas; **atualizado em 11/11/2026** com o app, a operação e as evidências do fechamento; o PDF não foi relido nesta rodada. Conferência por card e limites de validação em [`auditoria-estado-atual.md`](auditoria-estado-atual.md).
+Fonte dos requisitos: leitura anteriormente registrada de `Desafio 4DSM - 2026-2.pdf` (versão 31/08/2026, FATEC Jacareí). Estado do projeto revisto em **02/11/2026**, código local `66fe44a`, contra o Trello e as evidências versionadas; **atualizado em 11/11/2026** com o app e a operação; **atualizado em 24/11/2026** com o fechamento da Sprint 3, o fluxo físico em bancada e a entrega final. O PDF do edital não foi relido nesta rodada. Conferência por card e limites de validação em [`auditoria-estado-atual.md`](auditoria-estado-atual.md); o retrato final está em [`review-3.md`](review-3.md) e no [`relatorio-abnt.pdf`](relatorio/relatorio-abnt.pdf).
 
 Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · **Não comprovado** (não há evidência no repo).
 
@@ -31,14 +31,14 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | ID | Requisito | Status | Evidência / lacuna |
 |---|---|---|---|
 | RNF01 | Dispositivo IoT + backend Node/TS + API REST + app móvel | Atendido | Monorepo `firmware/`, `backend/`, `mobile/` |
-| RNF02 | Autenticação, proteção de dados e comunicação segura | Parcial | JWT, rate limit, HTTPS na Vercel, Keystore no app, broker de produção com TLS; firmware com TLS e validação de certificado (DT-06, `MQTT_USE_TLS 1`), comprovado em teste host, build e no ESP32 real contra o EMQX (conexão, CA errado e host por IP recusados, 06/11/2026) ([`dt-06.md`](evidencias/dt-06.md)) |
-| RNF03 | Funcionamento com retry/persistência sob falha de conexão | Parcial | Outbox de comandos com retry (DT-13, #37); resiliência do firmware (US-25) pendente, sem retry offline persistente |
+| RNF02 | Autenticação, proteção de dados e comunicação segura | Parcial | JWT, rate limit, HTTPS na Vercel, Keystore no app, broker de produção com TLS; firmware com TLS e validação de certificado (DT-06, `MQTT_USE_TLS 1`), comprovado em teste host, build e no ESP32 real contra o EMQX (conexão, CA errado e host por IP recusados, 06/11/2026) ([`dt-06.md`](evidencias/dt-06.md)). A revisão US-33 está registrada ([`us-33.md`](evidencias/us-33.md)), mas o PR #76 segue em revisão por pares e há aceites formais pendentes |
+| RNF03 | Funcionamento com retry/persistência sob falha de conexão | Parcial | Outbox de comandos com retry (DT-13, #37); resiliência do firmware (US-25) em **bloqueio**, sem retry offline persistente |
 | RNF04 | Interface simples, acessível ao público idoso | Parcial | Fonte 2x sem estouro e rótulos acessíveis (US-27); telas de administração e histórico entregues (US-31), mas sem auditoria de acessibilidade registrada nessas telas |
 | RNF05 | Modularidade e separação de responsabilidades | Atendido | Clean Architecture com regra de camadas verificada no lint (`backend/src/{domain,application,infrastructure,main}`) |
 | RNF06 | Banco de dados em nuvem | Atendido | Postgres no Neon; `/health` com `database: ok` |
 | RNF07 | Eficiência energética do dispositivo | Parcial | Projeto documentado (terminal na fonte, sem deep sleep), mecanismos verificáveis (QR só redesenha na troca do token; LEDs/buzzer só no feedback) e orçamento estimado em faixa, com incerteza declarada ([`dt-22.md`](evidencias/dt-22.md)). Consumo não medido e continuidade de 24 h não cronometrada |
-| RNF08 | CI com build, testes e lint | Parcial | Workflows backend (lint/test/build), mobile (analyze/test/APK) e firmware (testes host/build com `-Werror`) presentes. O firmware não tem lint estático dedicado de todos os fontes; o CodeQL roda por default setup, sem workflow versionado, mas não é requisito do RNF08. Checks obrigatórios atuais não revalidados |
-| RNF09 | CD automatizado | Atendido | `cd-backend` publica na Vercel após CI; smoke em `/health` |
+| RNF08 | CI com build, testes e lint | Parcial | Workflows backend (lint/test/build), mobile (analyze/test/APK) e firmware (testes host/build com `-Werror`) presentes. O firmware não tem lint estático dedicado de todos os fontes; o CodeQL roda por default setup. Os seis checks obrigatórios e o CodeQL estavam verdes em 24/11/2026 |
+| RNF09 | CD automatizado | Atendido | `cd-backend` publica na Vercel após CI; `cd-web` publica a demo com smoke test; smoke em `/health` |
 | RNF10 | Testes automatizados no pipeline | Atendido | Vitest (backend, incl. e2e com Postgres embarcado), Flutter test, testes host do firmware |
 | RNF11 | Git com branches, commits descritivos e estratégia | Atendido | Histórico de branches/commits por card e estratégia documentada; proteção atual da `main` não revalidada nesta auditoria |
 | RNF12 | Feedback de build/deploy | Atendido | GitHub Actions com checks por etapa |
@@ -48,7 +48,7 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | ID | Restrição | Status | Evidência / lacuna |
 |---|---|---|---|
 | RP01 | Node.js + Express + TypeScript | Atendido | `backend/package.json` (Node 24, Express 5, TS) |
-| RP02 | Integração com dispositivo físico (tela, sensores, atuadores) | Parcial | Wokwi com display, servo, LED e buzzer; NFC RC522 real (US-23) com evidência física inicial; GPS é esqueleto (US-24) e a abertura física da cancela não está implementada |
+| RP02 | Integração com dispositivo físico (tela, sensores, atuadores) | Parcial | Wokwi com display, servo, LED e buzzer; NFC RC522 real (US-23) com evidência física; QR, tag e HCE exercitados na bancada. GPS ficou fora do escopo (módulo indisponível) e a abertura física de uma cancela não está implementada |
 | RP03 | Protocolo IoT (HTTP ou MQTT) | Atendido | MQTT v1 documentado e implementado |
 | RP04 | Aplicativo móvel (nativo ou híbrido) | Atendido | Flutter (Android como alvo principal) |
 | RP05 | Arquitetura cliente-servidor | Atendido | App, API, worker e terminal com papéis separados |
@@ -60,16 +60,16 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | RP11 | Deploy automatizado do backend em nuvem | Atendido | Vercel + Neon; `/health` público |
 | RP12 | Conteinerização | Parcial | `backend/Dockerfile` e `docker-compose.dev.yml` (Mosquitto + Postgres); app e firmware não são containerizados (esperado) |
 
-## Lacunas por prioridade (estado de 11/11/2026)
+## Lacunas por prioridade (estado de 24/11/2026)
 
 1. **Fluxo físico (US-34)**: servo/cancela não implementado; o fluxo app → terminal real não foi demonstrado. O QR foi lido de um monitor e o NFC físico não acionou servo ([`us-29-aparelho.md`](evidencias/us-29-aparelho.md)).
-2. **RF11/US-24/US-25**: heartbeat/status do terminal implementado (retained + LWT), pendente de confirmação no ESP32; GPS fora do escopo (módulo indisponível); a resiliência offline (retry persistente) segue pendente na US-25.
-3. **RNF02**: TLS do firmware validado no ESP32 contra o EMQX (DT-06); a revisão de segurança (US-33) não foi feita. `QR_TOKEN_SECRET` e `JWT_SECRET` foram rotacionados em 11/11.
+2. **RF11/US-24/US-25**: heartbeat/status do terminal implementado (retained + LWT), pendente de confirmação no ESP32; GPS fora do escopo (módulo indisponível); a resiliência offline (retry persistente) está **bloqueada** na US-25.
+3. **RNF02**: TLS do firmware validado no ESP32 contra o EMQX (DT-06); a revisão de segurança (US-33) foi feita e está no PR #76, em revisão por pares. Faltam os aceites formais dos riscos e a auditoria de dependências.
 4. **RNF07**: estratégia e orçamento documentados em [`evidencias/dt-22.md`](evidencias/dt-22.md). A medição de corrente não foi realizada; o card foi encerrado por escopo e o requisito segue **Parcial**.
 5. **RF03**: confirmar com o professor/PO se "horário inicial/final" exige janela diária dentro do período — hoje é um intervalo contínuo.
 6. **RNF04**: telas de administração e histórico entregues, sem auditoria de acessibilidade registrada.
-7. **RNF08/RNF11**: checks obrigatórios e proteção da `main` não foram revalidados nesta rodada.
-8. **Entrega final**: demonstração visual do QR no display (US-22) e relatório ABNT/apresentação (US-36) seguem abertos; os diagramas finais (US-35) entraram em 23/11; APK de release em loja não entrou (a execução usou APK debug).
+7. **RNF08/RNF11**: os seis checks obrigatórios e o CodeQL estavam verdes em 24/11/2026; a proteção da `main` exige uma aprovação e os seis contextos.
+8. **Entrega final**: o relatório ABNT, as mídias e o roteiro entraram em 24/11/2026; o PDF está versionado. A apresentação em si e a revisão por pares do relatório dependem da cerimônia. O APK de release em loja não entrou (a execução usou APK debug).
 
 Pendências transversais: o worker no Render foi observado **LIVE** em 11/11, com `mqtt conectado` no EMQX TLS e `/healthz` ok, mas sem medição de continuidade ([`us-37.md`](evidencias/us-37.md)); DT-11 foi fechada pela DT-24, com pinagem por SHA e Dependabot integrados em 10/11 (#56) ([evidência](evidencias/dt-24.md)). A API respondeu com banco ok em 02/11 (versão `6b6aa26`), após uma primeira resposta 503, e em 11/11 (`a0625d7`); isso não é prova de operação contínua nem de fluxo físico completo.
 
