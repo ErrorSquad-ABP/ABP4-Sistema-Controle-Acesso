@@ -39,18 +39,9 @@ As capturas mostram o aviso de limitações do navegador (NFC apenas no terminal
 
 Capturas pendentes, se a banca pedir: resultado liberado, resultado negado e telas de administração. O aparelho usado foi o Motorola g86 5G; as capturas foram feitas com `adb shell screencap` e o app logado.
 
-## Terminal ESP32 (a fotografar)
+## Terminal ESP32 na banca
 
-Fotos pendentes, com o conjunto montado:
-
-1. Terminal completo (ESP32, OLED, LCD, RC522, servo, LEDs e buzzer).
-2. Close do OLED exibindo o QR e do LCD com o status.
-3. Celular encostado no RC522 durante uma leitura HCE.
-4. Tag física no leitor.
-5. Servo em repouso e em abertura.
-6. Bancada ligada, com o terminal em operação.
-
-Guardar em `terminal/`. Evitar enquadrar senhas, redes Wi-Fi ou etiquetas com credenciais. As fotos entram no relatório como evidência de montagem; a decisão de acesso continua comprovada pelos eventos e ACKs no banco.
+O terminal é apresentado fisicamente na Review 3, então fotos não fazem parte da entrega de mídias. A evidência do funcionamento fica nos eventos e ACKs registrados no banco, nas capturas do app e nos diagramas. Se a banca pedir um registro fotográfico, ele pode ser feito na hora e não altera o relatório.
 
 ## Uso no relatório
 
