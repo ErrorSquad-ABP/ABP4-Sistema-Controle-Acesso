@@ -59,5 +59,5 @@ Se a rede ou o terminal falhar, usar as evidências já registradas: eventos e A
 
 - Repositório: https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso
 - Board: https://trello.com/b/AxZZyPyN/errorsquad-abp-4dsm
-- Documento de entrega: [`../entrega/review-3.md`](../entrega/review-3.md)
-- Relatório: [`../entrega/relatorio/relatorio-abnt.pdf`](../entrega/relatorio/relatorio-abnt.pdf)
+- Documento de entrega: [`../../entrega/review-3.md`](../../entrega/review-3.md)
+- Relatório: [`../../entrega/relatorio/relatorio-abnt.pdf`](../../entrega/relatorio/relatorio-abnt.pdf)

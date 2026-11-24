@@ -70,7 +70,7 @@ Não houve registro diário de pontos. O quadro abaixo mostra o que restava no f
 ## Rastreabilidade
 
 - [Review 3](sprint-3-review.md) · [Retrospectiva 3](sprint-3-retro.md)
-- [Documento de entrega final](../entrega/review-3.md)
-- [Relatório ABNT](../entrega/relatorio/relatorio-abnt.pdf)
-- [Matriz de requisitos](../entrega/matriz-requisitos.md) · [Índice de evidências](../entrega/README.md)
+- [Documento de entrega final](../../entrega/review-3.md)
+- [Relatório ABNT](../../entrega/relatorio/relatorio-abnt.pdf)
+- [Matriz de requisitos](../../entrega/matriz-requisitos.md) · [Índice de evidências](../../entrega/README.md)
 - [Product backlog](../product-backlog.md)
