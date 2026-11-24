@@ -31,8 +31,8 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | ID | Requisito | Status | Evidência / lacuna |
 |---|---|---|---|
 | RNF01 | Dispositivo IoT + backend Node/TS + API REST + app móvel | Atendido | Monorepo `firmware/`, `backend/`, `mobile/` |
-| RNF02 | Autenticação, proteção de dados e comunicação segura | Parcial | JWT, rate limit, HTTPS na Vercel, Keystore no app, broker de produção com TLS; firmware com TLS e validação de certificado (DT-06, `MQTT_USE_TLS 1`), comprovado em teste host, build e no ESP32 real contra o EMQX (conexão, CA errado e host por IP recusados, 06/11/2026) ([`dt-06.md`](evidencias/dt-06.md)). A revisão US-33 está registrada ([`us-33.md`](evidencias/us-33.md)), mas o PR #76 segue em revisão por pares e há aceites formais pendentes |
-| RNF03 | Funcionamento com retry/persistência sob falha de conexão | Parcial | Outbox de comandos com retry (DT-13, #37); resiliência do firmware (US-25) em **bloqueio**, sem retry offline persistente |
+| RNF02 | Autenticação, proteção de dados e comunicação segura | Parcial | JWT, rate limit, HTTPS na Vercel, Keystore no app e TLS do firmware validado no ESP32 ([DT-06](evidencias/dt-06.md)). A [revisão US-33](evidencias/us-33.md) registra o que foi verificado e os riscos que ainda aguardam aceite. |
+| RNF03 | Funcionamento com retry/persistência sob falha de conexão | Parcial | Outbox de comandos com retry (DT-13, #37); resiliência do firmware (US-25) pendente, sem retry offline persistente |
 | RNF04 | Interface simples, acessível ao público idoso | Parcial | Fonte 2x sem estouro e rótulos acessíveis (US-27); telas de administração e histórico entregues (US-31), mas sem auditoria de acessibilidade registrada nessas telas |
 | RNF05 | Modularidade e separação de responsabilidades | Atendido | Clean Architecture com regra de camadas verificada no lint (`backend/src/{domain,application,infrastructure,main}`) |
 | RNF06 | Banco de dados em nuvem | Atendido | Postgres no Neon; `/health` com `database: ok` |
@@ -62,10 +62,18 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 
 ## Lacunas por prioridade (estado de 24/11/2026)
 
+1. **RF09 + RF13 (app)**: o app já pede o acesso e mostra o resultado (US-29); falta validar câmera e GPS em aparelho real e a demonstração ponta-a-ponta com o terminal (US-34).
+2. **RF08**: tela "minhas autorizações" — US-28 sem PR.
+3. **RF02**: cadastro de local não existe em API nem tela.
+4. **RF10/RF11/RF14**: NFC e GPS do terminal (US-23 em Em andamento; US-24 na lista Sprint 2). Backend NFC já existe para simulação.
+5. **RF17**: registrar tentativa NFC depende de US-23.
+6. **RNF02**: a [US-33](evidencias/us-33.md) revisou o repositório. Ainda faltam a validação de headers e CORS no ambiente hospedado, a conclusão da auditoria de dependências e o aceite formal dos riscos registrados. A rotação de segredos registrada em 11/11 não foi revalidada.
+7. **RNF07**: estratégia e orçamento documentados em [`evidencias/dt-22.md`](evidencias/dt-22.md); falta medir corrente no hardware (US-34).
+8. **RF03**: confirmar com o professor/PO se "horário inicial/final" exige janela diária dentro do período — hoje é um intervalo contínuo.
+9. **RF13**: teto de 100 m implantado em produção em 10/11 (#56): migration aplicada, CHECK de 1–100 m confirmada e pré-check sem cadastros inválidos. Falta a US-39 validar o intervalo no cadastro.
 1. **Fluxo físico (US-34)**: servo/cancela não implementado; o fluxo app → terminal real não foi demonstrado. O QR foi lido de um monitor e o NFC físico não acionou servo ([`us-29-aparelho.md`](evidencias/us-29-aparelho.md)).
-2. **RF11/US-24/US-25**: heartbeat/status do terminal implementado (retained + LWT), pendente de confirmação no ESP32; GPS fora do escopo (módulo indisponível); a resiliência offline (retry persistente) está **bloqueada** na US-25.
-3. **RNF02**: TLS do firmware validado no ESP32 contra o EMQX (DT-06); a revisão de segurança (US-33) foi feita e está no PR #76, em revisão por pares. Faltam os aceites formais dos riscos e a auditoria de dependências.
-4. **RNF07**: estratégia e orçamento documentados em [`evidencias/dt-22.md`](evidencias/dt-22.md). A medição de corrente não foi realizada; o card foi encerrado por escopo e o requisito segue **Parcial**.
+2. **RF11/US-24/US-25**: GPS e heartbeat/status do terminal continuam pendentes; a resiliência offline (retry persistente) também.
+4. **RNF07**: estratégia e orçamento documentados em [`evidencias/dt-22.md`](evidencias/dt-22.md); falta medir corrente no hardware (US-34).
 5. **RF03**: confirmar com o professor/PO se "horário inicial/final" exige janela diária dentro do período — hoje é um intervalo contínuo.
 6. **RNF04**: telas de administração e histórico entregues, sem auditoria de acessibilidade registrada.
 7. **RNF08/RNF11**: os seis checks obrigatórios e o CodeQL estavam verdes em 24/11/2026; a proteção da `main` exige uma aprovação e os seis contextos.

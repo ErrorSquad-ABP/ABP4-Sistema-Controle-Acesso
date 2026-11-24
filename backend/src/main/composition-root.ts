@@ -52,6 +52,8 @@ export interface Container {
   trustProxy: number;
   /** Origens liberadas no CORS (DT-08); vazio desliga. Ver CORS_ALLOWED_ORIGINS em env.ts. */
   corsAllowedOrigins: readonly string[];
+  /** HSTS somente quando a API e publicada em HTTPS. */
+  production: boolean;
   tokens: TokenService;
   repositories: {
     users: UserRepository | undefined;
@@ -164,6 +166,7 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
     logger,
     trustProxy: env.TRUST_PROXY,
     corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS,
+    production: env.NODE_ENV === 'production',
     tokens,
     repositories: { users, userAdmin, authorizations, accessEvents, locations, access: access?.repository },
     close: async () => {
