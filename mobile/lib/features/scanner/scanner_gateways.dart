@@ -175,6 +175,7 @@ class GeolocatorLocationGateway implements LocationGateway {
         latitude: position.latitude,
         longitude: position.longitude,
         accuracyMeters: accuracy.isFinite && accuracy >= 0 ? accuracy : null,
+        measuredAt: position.timestamp,
       );
     } on TimeoutException {
       throw const LocationFailure(LocationFailureReason.timeout);

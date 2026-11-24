@@ -26,6 +26,7 @@ class GeoCoordinate {
     required this.latitude,
     required this.longitude,
     this.accuracyMeters,
+    this.measuredAt,
   });
 
   final double latitude;
@@ -33,6 +34,7 @@ class GeoCoordinate {
 
   /// Precisão informada pelo GPS, quando disponível (`GeoPoint.accuracyMeters`).
   final double? accuracyMeters;
+  final DateTime? measuredAt;
 }
 
 class LocationFailure implements Exception {

@@ -6,6 +6,7 @@ import 'access_contract.dart';
 import 'http_access_gateway.dart';
 import 'scanner_contracts.dart';
 import 'scanner_gateways.dart';
+import 'scanner_startup_location.dart';
 
 abstract final class ScannerMessages {
   static const permissionDenied =
@@ -195,7 +196,7 @@ class ScannerController extends Notifier<ScannerState> {
     state = const ScannerLocating();
     final GeoCoordinate point;
     try {
-      point = await ref.read(locationGatewayProvider).currentPosition();
+      point = await ref.read(scannerStartupLocationProvider).positionForScan();
     } on LocationFailure catch (failure) {
       if (!ref.mounted || operation != _operation) return;
       state = ScannerFailure(_messageFor(failure.reason));
