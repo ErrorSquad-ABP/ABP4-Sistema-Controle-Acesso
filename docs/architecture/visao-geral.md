@@ -6,7 +6,7 @@ Esse é o **desenho alvo**, não a declaração de que todo o fluxo está operac
 
 **Atualização de 11/11/2026:** o app envia o pedido de acesso e tem as 12 telas do Figma; o NFC RC522 foi integrado (US-23) com evidência física inicial; o worker no Render foi observado no ar com `mqtt conectado` no EMQX TLS; a API está em `a0625d7`. Continuam pendentes o servo/cancela física, o GPS/heartbeat (US-24), a resiliência offline (US-25) e o fluxo completo app → terminal real.
 
-**Atualização de 23/11/2026:** os diagramas finais de casos de uso, componentes, implantação e sequências QR/NFC estão na seção [Diagramas de arquitetura](#diagramas-de-arquitetura) (US-35). Na `main`, o GPS e o heartbeat do terminal (US-24) seguem pendentes, e por isso aparecem tracejados nos diagramas.
+**Atualização de 23/11/2026:** os diagramas finais de casos de uso, componentes, implantação e sequências QR/NFC estão na seção [Diagramas de arquitetura](#diagramas-de-arquitetura) (US-35), conferidos contra a `main` em `0d6245f`. Entrou também o acesso por NFC do celular (HCE, #77): o app gera uma prova de 60 s e de uso único na API e a apresenta ao leitor. API, worker e app estão na `main`; a leitura da prova pelo ESP32 não está no repositório. Seguem pendentes no firmware o GPS e o heartbeat (US-24), que aparecem tracejados nos diagramas junto com a leitura HCE.
 
 ## Diagrama
 
@@ -33,7 +33,7 @@ Todos em Mermaid, versionados neste diretório e conferidos contra o código da 
 |---|---|
 | [`casos-de-uso.md`](casos-de-uso.md) | Casos de uso com administrador, condômino, visitante e terminal, e a rota ou tópico de cada um |
 | [`componentes-implantacao.md`](componentes-implantacao.md) | Componentes (app, API, worker, broker, banco, terminal) e implantação em dev e em produção |
-| [`sequencias.md`](sequencias.md) | Sequências da rotação do QR, do acesso por QR e do acesso por NFC, com frescor de 30 s, dedup, outbox/relay e ACK |
+| [`sequencias.md`](sequencias.md) | Sequências da rotação do QR, do acesso por QR, do acesso por NFC (tag e celular) e da entrega do comando, com frescor de 30 s, dedup, outbox/relay e ACK |
 | [`modelo-dados.md`](modelo-dados.md) | Modelo relacional |
 | [`contratos-mqtt.md`](contratos-mqtt.md) | Tópicos, payloads, QoS e LWT |
 | [`caso-de-uso-modelo.md`](caso-de-uso-modelo.md) | Camadas do backend e a regra de dependência |
@@ -75,12 +75,15 @@ O backend implementa este processamento para mensagens simuladas e reais; a leit
 3. O processo MQTT responde no tópico de comando do terminal — libera ou nega — e registra o evento de acesso.
 4. O terminal abre a porta, sinaliza o resultado (LED/buzzer) e publica o ACK de execução.
 
+**NFC do celular (HCE, #77):** em vez do UID da tag, o celular entrega uma prova de 128 bits que o app pede em `POST /api/v1/access-credentials/nfc`. A prova vale 60 s, só o hash vai ao banco e ela é consumida no primeiro acesso aceito. O terminal a publica como `nfc_hce_read` e o resto do fluxo é o mesmo. A leitura da prova pelo ESP32 ainda não está no repositório. Sequência completa em [`sequencias.md`](sequencias.md#3-acesso-por-nfc-tag-física-ou-celular).
+
 ## Matriz de transporte
 
 | Mensagem | Transporte | Produtor → consumidor | Onde roda a regra |
 |---|---|---|---|
 | QR rotativo | MQTT `terminals/{id}/qr` | processo MQTT → terminal | backend gera token e expiração; terminal só exibe |
-| Leitura NFC / tentativa | MQTT `terminals/{id}/access-events` (`type=nfc_read`) | terminal → processo MQTT | caso de uso valida credencial/autorização |
+| Leitura NFC / tentativa | MQTT `terminals/{id}/access-events` (`type=nfc_read` ou `nfc_hce_read`) | terminal → processo MQTT | caso de uso valida credencial/autorização |
+| Prova NFC do celular | HTTPS REST `POST /api/v1/access-credentials/nfc` | app → API | API emite a prova de 60 s e guarda só o hash |
 | Heartbeat | MQTT `terminals/{id}/status` | terminal → processo MQTT | backend interpreta disponibilidade; LWT marca desconexão |
 | Comando | MQTT `terminals/{id}/commands` | API ou processo MQTT → terminal | caso de uso decide; terminal executa comando válido |
 | ACK de execução | MQTT `terminals/{id}/acks` | terminal → processo MQTT | backend correlaciona `commandId`; ACK não concede acesso |
