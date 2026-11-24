@@ -11,7 +11,7 @@ O pedido de acesso por QR **não** passa por MQTT: o app o envia à API por HTTP
 | Tópico | Sentido | QoS | Retain | Mensagem |
 |---|---|---|---|---|
 | `terminals/{id}/qr` | backend → terminal | 0 | não | QR rotativo |
-| `terminals/{id}/access-events` | terminal → backend | 1 | não | tentativa de acesso (leitura NFC) |
+| `terminals/{id}/access-events` | terminal → backend | 1 | não | tentativa de acesso (tag NFC ou prova HCE do celular) |
 | `terminals/{id}/status` | terminal → backend | 1 | **sim** | heartbeat e LWT |
 | `terminals/{id}/commands` | backend → terminal | 1 | não | comando de abertura ou negação |
 | `terminals/{id}/acks` | terminal → backend | 1 | não | ACK de execução |
@@ -64,7 +64,22 @@ Mensagem com `v` desconhecida, `terminalId` diferente do tópico ou campo faltan
 }
 ```
 
-`type` é `nfc_read` na v1; `uid` é hexadecimal maiúsculo (4 a 20 caracteres). O backend decide; o terminal só aguarda o comando.
+`type` é `nfc_read` (tag física) ou `nfc_hce_read` (celular, abaixo). No `nfc_read`, `uid` é hexadecimal maiúsculo (4 a 20 caracteres). O backend decide; o terminal só aguarda o comando.
+
+#### NFC do celular — `type: "nfc_hce_read"`
+
+```json
+{
+  "v": 1,
+  "messageId": "6c1e0f7a-2b4d-4e8f-9a31-5d7c2b0e4f19",
+  "terminalId": "terminal-01",
+  "timestamp": "2026-11-23T19:30:03.120Z",
+  "type": "nfc_hce_read",
+  "credentialToken": "3f9a1c0e7b2d4f6a8c1e3b5d7f9a2c4e"
+}
+```
+
+`credentialToken` são 32 caracteres hexadecimais minúsculos (128 bits). É a prova que o app obtém em `POST /api/v1/access-credentials/nfc` e apresenta por HCE (AID `F041425034444D01`, resposta de 16 bytes + `9000`); nunca é o UID do aparelho. O banco guarda só o hash da prova (`Credential` do tipo `NFC_HCE`), que vale **60 s** e é **consumida no primeiro acesso aceito**: uma segunda tentativa com a mesma prova é negada com `INVALID_CREDENTIAL`, sem gastar uso da autorização. Frescor, dedup e decisão seguem as mesmas regras do `nfc_read`. O parser e o caso de uso estão na `main` (#77) e o firmware publica este tipo desde o #79.
 
 Na US-23, o RC522 físico produz UIDs de 4, 7 ou 10 bytes (8, 14 ou 20
 caracteres, preservando zeros iniciais). Uma apresentação gera uma tentativa;

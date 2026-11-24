@@ -61,6 +61,16 @@ class _AuthorizationsPageState extends ConsumerState<AuthorizationsPage> {
                 onPressed: () => context.push(AppRoutes.scan),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.screen,
+              ),
+              child: TextButton.icon(
+                onPressed: () => context.push(AppRoutes.nfc),
+                icon: const Icon(Icons.nfc, size: 20),
+                label: const Text('Acesso por NFC'),
+              ),
+            ),
             const SizedBox(height: AppSpacing.sm),
           ],
         ),

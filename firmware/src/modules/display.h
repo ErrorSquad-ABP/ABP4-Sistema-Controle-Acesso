@@ -16,3 +16,9 @@ void showDoor(door_machine::State state);
 /** Desenha o QR rotativo e a contagem regressiva; sem token valido, apaga a area. */
 void showQr(const qr_token::State& state, uint64_t nowEpoch, bool clockValid);
 }  // namespace terminal_display
+
+namespace terminal_oled_qr {
+void begin();
+void update();
+void showQr(const qr_token::State& state, uint64_t nowEpoch, bool clockValid);
+}

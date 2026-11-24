@@ -6,12 +6,14 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
 import 'core/widgets/web_frame.dart';
+import 'features/scanner/scanner_startup_location.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(scannerLocationOnLaunchProvider);
     return MaterialApp.router(
       title: 'Controle de Acesso',
       debugShowCheckedModeBanner: false,

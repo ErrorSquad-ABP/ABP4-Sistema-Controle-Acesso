@@ -36,6 +36,21 @@ int main() {
   expect(qr_version::modules(qr_version::smallestFor(qr_token::kMaxTokenBytes)) <= 64 - 2 * 4,
          "maior QR cabe na altura do OLED com margem de 4 px");
 
+  const char* compact = "00482439167562615602613664743089338165947";
+  expect(std::strlen(compact) == 41, "token compacto tem 41 digitos");
+  expect(qr_version::forText(compact) == 1, "41 digitos usam a versao 1");
+  expect(qr_version::modules(qr_version::forText(compact)) == 21, "versao 1 tem 21 modulos");
+  expect(64 / (qr_version::modules(qr_version::forText(compact)) + 8) == 2,
+         "QR v1 comporta escala 2 com margem completa no OLED");
+  expect(qr_version::forText("1234") == 1, "quatro digitos continuam numericos");
+  // 18 digitos cabem na v1 pelo modo numerico; texto misto mantem a estimativa
+  // conservadora por bytes.
+  expect(qr_version::smallestFor(18) == 2, "18 bytes pelo limite conservador usam v2");
+  expect(qr_version::forText("123456789012345678") == 1, "18 digitos usam o modo numerico");
+  expect(qr_version::forText("123456789012345678a") == 2, "texto misto mantem a estimativa por bytes");
+  expect(qr_version::forText("123456789012345678901234567890123456789012") == 3,
+         "42 digitos caem na estimativa por bytes, nao no modo compacto");
+
   if (failures == 0) std::printf("test_qr_version: ok\n");
   return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

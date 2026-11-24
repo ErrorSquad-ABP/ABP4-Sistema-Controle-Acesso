@@ -12,6 +12,7 @@ import '../../features/authorizations/authorization_contract.dart';
 import '../../features/authorizations/authorization_detail_page.dart';
 import '../../features/authorizations/authorizations_page.dart';
 import '../../features/locations/locations_page.dart';
+import '../../features/nfc_access/nfc_access_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/scanner/scanner_page.dart';
 
@@ -24,6 +25,7 @@ abstract final class AppRoutes {
   static const String login = '/login';
   static const String loading = '/loading';
   static const String scan = '/scan';
+  static const String nfc = '/nfc';
 
   /// Detalhe de uma autorização, aberto pelo cartão da lista.
   static const String authorizationDetailPattern = '/autorizacoes/:id';
@@ -112,6 +114,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.scan,
         builder: (context, state) => const ScannerPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.nfc,
+        builder: (context, state) => const NfcAccessPage(),
       ),
       GoRoute(
         path: AppRoutes.authorizationDetailPattern,

@@ -30,6 +30,7 @@ import { PostgresDatabaseProbe } from '../infrastructure/database/postgres-datab
 import { CryptoIdGenerator } from '../infrastructure/ids/crypto-id-generator.js';
 import { HmacQrTokenSigner } from '../infrastructure/ids/hmac-qr-token-signer.js';
 import { LazyMqttMessageBus } from '../infrastructure/mqtt/lazy-mqtt-message-bus.js';
+import { IssueNfcCredentialUseCase } from '../application/terminal/issue-nfc-credential.use-case.js';
 import { ValidateQrCredentialUseCase } from '../application/terminal/qr-credential.use-cases.js';
 import { PrismaAccessEventRepository } from '../infrastructure/repositories/prisma-access-event-repository.js';
 import { PrismaAuthorizationRepository } from '../infrastructure/repositories/prisma-authorization-repository.js';
@@ -64,6 +65,7 @@ export interface Container {
   useCases: {
     checkHealth: CheckHealthUseCase;
     validateQrCredential: ValidateQrCredentialUseCase;
+    issueNfcCredential: IssueNfcCredentialUseCase | undefined;
     login: LoginUseCase | undefined;
     getCurrentUser: GetCurrentUserUseCase | undefined;
     updateCurrentUser: UpdateCurrentUserUseCase | undefined;
@@ -178,6 +180,9 @@ export function buildContainer(env: Env, overrides: ContainerOverrides = {}): Co
         logger,
       ),
       validateQrCredential,
+      issueNfcCredential: access
+        ? new IssueNfcCredentialUseCase(access.repository, clock, ids)
+        : undefined,
       login: users ? new LoginUseCase(users, tokens) : undefined,
       getCurrentUser: users ? new GetCurrentUserUseCase(users) : undefined,
       updateCurrentUser: users ? new UpdateCurrentUserUseCase(users) : undefined,

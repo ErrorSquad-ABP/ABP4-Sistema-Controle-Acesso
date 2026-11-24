@@ -260,6 +260,7 @@ Plano original, não uma lista de stories ainda abertas. Títulos, épico e spri
 | US-37 | Worker MQTT persistente no Render | E1 | S2 |
 | US-38 | Demo web + identidade de distribuição na Vercel | E6 | S3 |
 
+**US-35**: diagramas finais em Mermaid no repo (casos de uso, componentes, implantação dev/prod, sequências QR/NFC), ligados a partir de `docs/architecture/visao-geral.md`. Depende da US-24 só para tirar o tracejado de heartbeat/GPS.
 **US-37**: publica no Render o processo MQTT local da US-04, sem recriar a integração.
 **US-38**: além do build web, troca os ícones padrão do Flutter (web e Android) por uma identidade única, com o nome público "Controle de Acesso".
 

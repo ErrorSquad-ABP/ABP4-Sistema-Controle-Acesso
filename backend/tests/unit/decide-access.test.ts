@@ -32,10 +32,11 @@ function setup(options: { terminal?: boolean } = {}) {
     findTerminal: vi.fn<AccessTransaction['findTerminal']>().mockResolvedValue(options.terminal === false ? null : terminal),
     findUser: vi.fn<AccessTransaction['findUser']>().mockResolvedValue(user),
     findCredential: vi.fn<AccessTransaction['findCredential']>().mockResolvedValue({
-      id: 'credencial', user, validFrom: null, validUntil: null, revokedAt: null,
+      id: 'credencial', type: 'NFC', user, validFrom: null, validUntil: null, revokedAt: null, consumedAt: null,
     }),
     findAuthorizations: vi.fn<AccessTransaction['findAuthorizations']>().mockResolvedValue([authorization]),
     consumeAuthorization: vi.fn<AccessTransaction['consumeAuthorization']>().mockResolvedValue(true),
+    consumeCredential: vi.fn<AccessTransaction['consumeCredential']>().mockResolvedValue(true),
     record: vi.fn<AccessTransaction['record']>().mockImplementation(async (event) => event),
     saveCommand: vi.fn<AccessTransaction['saveCommand']>().mockImplementation(async (command, requestId) =>
       commands.save(command, requestId)),
@@ -46,6 +47,7 @@ function setup(options: { terminal?: boolean } = {}) {
     canDispatch: vi.fn().mockResolvedValue(true),
     findTerminalIdByQrCode: vi.fn().mockResolvedValue(null),
     listQrTerminalCodes: vi.fn().mockResolvedValue(new Map()),
+    saveNfcCredential: vi.fn().mockResolvedValue(undefined),
   };
   const clock = new FixedClock(NOW);
   const ids = new SequentialIds();

@@ -92,6 +92,7 @@ Passo a passo de ambiente, infraestrutura e execução em [`docs/guides/como-rod
 - [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md) — arquitetura, fluxos de acesso e matriz de transporte.
 - [`docs/architecture/contratos-mqtt.md`](docs/architecture/contratos-mqtt.md) — contrato MQTT v1 (tópicos, payloads, QoS, ids e expiração).
 - [`docs/architecture/modelo-dados.md`](docs/architecture/modelo-dados.md) — diagrama ER do modelo Prisma v1.
+- [`docs/architecture/casos-de-uso.md`](docs/architecture/casos-de-uso.md), [`componentes-implantacao.md`](docs/architecture/componentes-implantacao.md) e [`sequencias.md`](docs/architecture/sequencias.md) — casos de uso, componentes, implantação dev/prod e sequências QR/NFC (US-35).
 - [`docs/guides/desenvolvimento.md`](docs/guides/desenvolvimento.md) — branches, commits, PRs, review e CI.
 - [`docs/architecture/caso-de-uso-modelo.md`](docs/architecture/caso-de-uso-modelo.md) — como estender o backend (camadas, erros, env, testes).
 

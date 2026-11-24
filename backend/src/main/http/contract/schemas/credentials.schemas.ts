@@ -32,3 +32,12 @@ export const ValidateQrCredentialResponse = named(
   ]),
   'Resultado da validacao criptografica; nao representa uma decisao de acesso',
 );
+
+export const IssueNfcCredentialResponse = named(
+  'IssueNfcCredentialResponse',
+  z.object({
+    token: z.string().regex(/^[0-9a-f]{32}$/).describe('Prova efemera de uso unico, so em memoria'),
+    expiresAt: z.iso.datetime(),
+  }),
+  'Prova efemera para o NFC do celular; nao concede acesso sozinha',
+);

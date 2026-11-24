@@ -17,6 +17,9 @@
 #ifndef DOOR_SERVO_MIN_US
 #define DOOR_SERVO_MIN_US 1000
 #endif
+#ifndef DOOR_SERVO_POSITIONAL
+#define DOOR_SERVO_POSITIONAL 0
+#endif
 #ifndef DOOR_SERVO_MAX_US
 #define DOOR_SERVO_MAX_US 2000
 #endif

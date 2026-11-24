@@ -1,7 +1,6 @@
 // Display OLED SSD1306 128x64 por I2C (TERMINAL_DISPLAY_OLED 1). A tela e pequena,
-// entao ela mostra so o QR rotativo, no maior tamanho que cabe: fundo aceso,
-// modulos apagados e escala inteira (com o token compacto, QR 29x29 em escala 2).
-// Sem QR valido, uma linha curta avisa que o terminal aguarda o QR.
+// entao ela mostra so o QR rotativo, no maior tamanho inteiro que cabe com a
+// margem de 4 modulos. So o quadrado do QR fica aceso: o resto da tela apaga.
 #include "terminal_settings.h"
 
 #if TERMINAL_DISPLAY_OLED
@@ -24,19 +23,18 @@ constexpr int kHeight = 64;
 // na horizontal a margem real e bem maior; na vertical sobra o que a escala deixar.
 constexpr int kMinMarginPx = 2;
 
-Adafruit_SSD1306 oled(kWidth, kHeight, &Wire, -1);
+TwoWire oledBus(1);
+Adafruit_SSD1306 oled(kWidth, kHeight, &oledBus, -1);
 bool ready = false;
 
 QRCode qr;
 uint8_t qrBuffer[384];  // cobre a versao 8 (49x49 modulos)
 
 // Ajustes de leitura, trocados em tempo de execucao pela serial (teste de bancada):
-// i = inverte as cores, c = brilho baixo/alto, s = escala 1 com margem completa /
-// escala maxima (sem a zona de silencio de 4 modulos que o padrao exige).
+// i = inverte as cores, c = brilho baixo/alto, s = volta para a margem padrao /
+// escala maxima com margem reduzida, fora da zona de silencio recomendada.
 bool inverted = false;
 bool lowContrast = false;
-// Padrao conforme a especificacao: zona de silencio de 4 modulos. Em 128x64 isso
-// obriga escala 1; a tecla `s` troca para escala maxima durante o teste de leitura.
 bool fullQuietZone = true;
 
 bool qrVisible = false;
@@ -56,17 +54,19 @@ void drawWaiting() {
 }
 
 bool drawQr(const char* token) {
-  const uint8_t version = qr_version::smallestFor(strlen(token));
+  const uint8_t version = qr_version::forText(token);
   if (version == 0 || qrcode_initText(&qr, qrBuffer, version, ECC_LOW, token) != 0) return false;
 
-  const int usable = fullQuietZone ? kHeight - 2 * 4 : kHeight - 2 * kMinMarginPx;
-  int scale = fullQuietZone ? 1 : usable / qr.size;
-  if (scale < 1) scale = 1;
+  const int usable = fullQuietZone ? kHeight : kHeight - 2 * kMinMarginPx;
+  const int scale = fullQuietZone ? kHeight / (qr.size + 8) : usable / qr.size;
+  if (scale < 1) return false;
   const int side = qr.size * scale;
+  const int margin = fullQuietZone ? 4 * scale : kMinMarginPx;
   const int left = (kWidth - side) / 2;
   const int top = (kHeight - side) / 2;
 
-  oled.fillScreen(SSD1306_WHITE);
+  oled.fillScreen(SSD1306_BLACK);
+  oled.fillRect(left - margin, top - margin, side + 2 * margin, side + 2 * margin, SSD1306_WHITE);
   for (uint8_t y = 0; y < qr.size; ++y) {
     for (uint8_t x = 0; x < qr.size; ++x) {
       if (qrcode_getModule(&qr, x, y)) {
@@ -79,7 +79,8 @@ bool drawQr(const char* token) {
 
 void printMode() {
   Serial.printf("[display] modo: cores %s, brilho %s, %s\n", inverted ? "invertidas" : "normais",
-                lowContrast ? "baixo" : "alto", fullQuietZone ? "escala 1 + margem completa" : "escala maxima (sem zona de silencio)");
+                lowContrast ? "baixo" : "alto",
+                fullQuietZone ? "margem completa" : "escala maxima (margem reduzida)");
 }
 
 // Le uma tecla da serial e aplica o ajuste. Devolve true se o QR precisa ser redesenhado.
@@ -109,12 +110,15 @@ bool pollKeys() {
 
 }  // namespace
 
-namespace terminal_display {
+namespace terminal_oled_qr {
 
 void begin() {
-  Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
-  Wire.setClock(400000);
-  ready = oled.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDRESS);
+  oledBus.begin(OLED_SDA_PIN, OLED_SCL_PIN);
+  oledBus.setClock(400000);
+  oledBus.setTimeOut(50);
+  oledBus.beginTransmission(OLED_I2C_ADDRESS);
+  ready = oledBus.endTransmission() == 0 &&
+          oled.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDRESS, true, false);
   if (!ready) {
     Serial.println("[display] oled nao respondeu no I2C; confira SDA/SCL e o endereco");
     return;
@@ -126,13 +130,6 @@ void begin() {
   oled.display();
   drawnScreen = Screen::waiting;
 }
-
-// No OLED os avisos de acesso e da cancela nao aparecem: a tela fica so com o QR.
-// LEDs e buzzer continuam sinalizando liberado/negado.
-void showReading() {}
-void showGranted() {}
-void showDenied() {}
-void showDoor(door_machine::State) {}
 
 void showQr(const qr_token::State& state, uint64_t nowEpoch, bool clockValid) {
   qrVisible = qr_token::visible(state, nowEpoch, clockValid);
@@ -165,6 +162,6 @@ void update() {
   oled.display();
 }
 
-}  // namespace terminal_display
+}  // namespace terminal_oled_qr
 
 #endif  // TERMINAL_DISPLAY_OLED
