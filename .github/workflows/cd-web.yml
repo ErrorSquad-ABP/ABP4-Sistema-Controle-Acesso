@@ -80,7 +80,8 @@ jobs:
     # Dispatch de outra branch roda so o build: a demo publicada sempre vem da main.
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      # Token proprio do projeto da demo: o VERCEL_TOKEN da API nao enxerga este projeto.
+      VERCEL_TOKEN: ${{ secrets.VERCEL_WEB_TOKEN }}
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       # Projeto proprio da demo, diferente do VERCEL_PROJECT_ID da API.
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_WEB_PROJECT_ID }}
