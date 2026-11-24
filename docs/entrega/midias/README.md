@@ -27,19 +27,17 @@ Os PNGs foram renderizados a partir dos blocos Mermaid versionados. Para regerar
 
 As capturas mostram o aviso de limitações do navegador (NFC apenas no terminal Android; câmera e localização exigem HTTPS e permissão).
 
-## App Android (a capturar)
+## App Android
 
-O aparelho usado na bancada é o Motorola g86 5G. Capturas pendentes, com o app logado:
+| Arquivo | Conteúdo | Origem |
+|---|---|---|
+| `app/01-autorizacoes.png` | Minhas autorizações com ativa e expirada | Captura em 24/11/2026, Motorola g86 5G |
+| `app/02-detalhe.png` | Detalhe da autorização (local, período, usos, pessoa) | idem |
+| `app/03-nfc.png` | Acesso por NFC com prova ativa e contagem regressiva | idem |
+| `app/04-scanner.png` | Scanner de QR Code com aviso de distância | idem |
+| `app/07-perfil.png` | Perfil, tema e opções da conta | idem |
 
-1. Minhas autorizações (lista com uma autorização ativa).
-2. Detalhe da autorização.
-3. Acesso por NFC com a prova ativa.
-4. Scanner apontando para o QR do terminal.
-5. Resultado liberado.
-6. Resultado negado (prova reutilizada ou QR vencido).
-7. Perfil e, se necessário para a banca, telas de administração.
-
-Sugestão de captura: `adb exec-out screencap -p > app-<tela>.png`, com o aparelho desbloqueado e o app em primeiro plano. Guardar em `app/`.
+Capturas pendentes, se a banca pedir: resultado liberado, resultado negado e telas de administração. O aparelho usado foi o Motorola g86 5G; as capturas foram feitas com `adb shell screencap` e o app logado.
 
 ## Terminal ESP32 (a fotografar)
 
