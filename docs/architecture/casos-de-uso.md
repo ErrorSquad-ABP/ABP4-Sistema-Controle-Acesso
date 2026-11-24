@@ -56,11 +56,9 @@ flowchart LR
   UC7 -.->|depende de| UC15
   INC2 -.->|gera| UC16
 
-  TER --- UC13 & UC14 & UC15 & UC16
-  TER -.- UC17
+  TER --- UC13 & UC14 & UC15 & UC16 & UC17
 
   classDef pendente stroke-dasharray: 5 5
-  class UC17 pendente
 ```
 
 ## Onde cada caso de uso está
@@ -85,7 +83,7 @@ flowchart LR
 | Ler tag e enviar a tentativa | terminal | `terminal_nfc::update` → `terminal_mqtt::publishNfc` | US-23 |
 | Ler a prova HCE do celular | terminal | ISO-DEP: o firmware envia o `SELECT AID` e publica `nfc_hce_read` (`firmware/src/modules/nfc.cpp`) | #77, #79 |
 | Executar comando e confirmar com ACK | terminal | recebe `terminals/{id}/commands`, publica `terminals/{id}/acks` | US-08, US-26 |
-| Informar presença por heartbeat | terminal | `terminals/{id}/status` com LWT — **pendente** | US-24 |
+| Informar presença por heartbeat | terminal | `terminals/{id}/status` retained QoS 1 a cada 30 s, com LWT `offline` (`firmware/src/modules/mqtt.cpp`) | US-24 |
 
 ## Limites e decisões que o diagrama reflete
 
@@ -93,6 +91,6 @@ flowchart LR
 - **A tag física não é cadastrada pelo app nem pela API.** A credencial `NFC` entra pelo seed ou pelos scripts de provisionamento (`backend/prisma/seed.ts`, `provision.ts`). Já a prova do celular (`NFC_HCE`) é emitida pela API a cada uso, vale 60 s e é consumida no primeiro acesso aceito.
 - **O NFC do celular está completo.** A API, o worker, o app (serviço HCE `NfcHceService`, AID `F041425034444D01`) e a leitura ISO-DEP pelo ESP32 estão na `main` (#77 e #79). O teste real registrou `NFC_HCE GRANTED` com a prova consumida e o ACK do terminal.
 - **O QR negado não chega ao terminal.** No QR, o resultado volta para o app na resposta HTTP e só a decisão `GRANTED` grava um comando `open`. No NFC, o worker publica `open` ou `deny`, porque o terminal é a única interface de quem encostou a tag ou o celular.
-- **Heartbeat pendente (US-24).** O firmware ainda não publica `status` nem registra LWT. Hoje o worker passa a considerar o terminal online quando recebe dele uma tentativa NFC recente (`TerminalMessageRouter`), e só então envia o QR rotativo. Em simulação, o status é publicado pelo `sim-terminal`.
+- **Heartbeat implementado (US-24).** O firmware publica `status online` retained QoS 1 ao conectar e a cada 30 s, e registra o LWT `offline`. Com isso o worker deixa de depender de uma leitura NFC recente para marcar presença e voltar a publicar o QR. **GPS ficou fora do escopo**: o módulo NEO-6M não está disponível e o terminal não publica coordenada; a posição continua vindo do app no pedido de QR.
 
 Fluxos detalhados em [`sequencias.md`](sequencias.md) e peças do sistema em [`componentes-implantacao.md`](componentes-implantacao.md).

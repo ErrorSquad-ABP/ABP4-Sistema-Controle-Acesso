@@ -6,7 +6,7 @@ Esse é o **desenho alvo**, não a declaração de que todo o fluxo está operac
 
 **Atualização de 11/11/2026:** o app envia o pedido de acesso e tem as 12 telas do Figma; o NFC RC522 foi integrado (US-23) com evidência física inicial; o worker no Render foi observado no ar com `mqtt conectado` no EMQX TLS; a API está em `a0625d7`. Continuam pendentes o servo/cancela física, o GPS/heartbeat (US-24), a resiliência offline (US-25) e o fluxo completo app → terminal real.
 
-**Atualização de 24/11/2026:** os diagramas finais de casos de uso, componentes, implantação e sequências QR/NFC estão na seção [Diagramas de arquitetura](#diagramas-de-arquitetura) (US-35), conferidos contra a `main` em `349575d`. Entrou também o acesso por NFC do celular (HCE, #77): o app gera uma prova de 60 s e de uso único na API e a apresenta ao leitor; o firmware lê a prova por ISO-DEP desde o #79. Seguem pendentes no firmware o GPS e o heartbeat (US-24), que aparecem tracejados nos diagramas.
+**Atualização de 24/11/2026:** os diagramas finais de casos de uso, componentes, implantação e sequências QR/NFC estão na seção [Diagramas de arquitetura](#diagramas-de-arquitetura) (US-35), conferidos contra a `main` em `349575d`. Entrou também o acesso por NFC do celular (HCE, #77): o app gera uma prova de 60 s e de uso único na API e a apresenta ao leitor; o firmware lê a prova por ISO-DEP desde o #79. O heartbeat do terminal (US-24) foi implementado com status retained e LWT. O GPS do terminal ficou fora do escopo: o módulo NEO-6M não está disponível e a posição continua vindo do app.
 
 ## Diagrama
 

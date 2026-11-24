@@ -244,7 +244,7 @@ Plano original, não uma lista de stories ainda abertas. Títulos, épico e spri
 | US-21 | Eventos de acesso + histórico com filtros | E2 | S2/S3 |
 | US-22 | Display: render do QR + status | E3 | S2 |
 | US-23 | NFC RC522 + feedback de decisão | E3 | S3 |
-| US-24 | GPS + heartbeat | E3 | S3 |
+| US-24 | Heartbeat e presença (GPS fora do escopo) | E3 | S3 |
 | US-25 | Resiliência: retry/reconexão/persistência local | E3 | S3 |
 | US-26 | Comando de abertura do servo via MQTT | E3 | S2 |
 | US-27 | Login real + sessão | E4 | S2 |

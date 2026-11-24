@@ -103,6 +103,8 @@ jobs:
           "$RUNNER_TEMP/abp4-test-mqtt-command"
           g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_nfc.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-nfc"
           "$RUNNER_TEMP/abp4-test-mqtt-nfc"
+          g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_status.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-status"
+          "$RUNNER_TEMP/abp4-test-mqtt-status"
 
       # DT-06: TLS ligado, com o fake de tests/fakes antes de include/ (o mqtt_ca.h de teste
       # substitui o PEM real).

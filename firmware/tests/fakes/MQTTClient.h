@@ -23,6 +23,11 @@ struct TestBroker {
   char publishedPayload[512] = {0};
   bool publishedRetained = true;
   int publishedQos = -1;
+  const char* willTopic = "";
+  char willPayload[512] = {0};
+  bool willRetained = false;
+  int willQos = -1;
+  int willCalls = 0;
   unsigned int qos = 0;
   unsigned int bufferSize = 256;
   void (*callback)(MQTTClient*, char*, char*, int) = nullptr;
@@ -37,6 +42,15 @@ class MQTTClient {
   void onMessageAdvanced(void (*callback)(MQTTClient*, char*, char*, int)) {
     broker.callback = callback;
   }
+  void setWill(const char* topic, const char* payload, bool retained, int qos) {
+    broker.willTopic = topic;
+    strncpy(broker.willPayload, payload, sizeof broker.willPayload - 1);
+    broker.willPayload[sizeof broker.willPayload - 1] = '\0';
+    broker.willRetained = retained;
+    broker.willQos = qos;
+    ++broker.willCalls;
+  }
+  void clearWill() { broker.willTopic = ""; }
   bool connected() { return broker.online; }
   bool connect(const char* clientId) {
     broker.clientId = clientId;
