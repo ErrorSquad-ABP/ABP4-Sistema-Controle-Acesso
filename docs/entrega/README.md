@@ -37,7 +37,7 @@ O fechamento da Sprint 3 está em [`review-3.md`](review-3.md). O relatório em 
 | [`us-29.md`](evidencias/us-29.md) | US-29 | scanner QR que pede o acesso ao backend e mostra o resultado liberado/negado; câmera e GPS reais pendentes | — |
 | [`us-26-mqtt-servo.md`](evidencias/us-26-mqtt-servo.md) | US-26 | comando de abertura do servo via MQTT (herdado da US-08) | #19 · #25 |
 | [`us-35.md`](evidencias/us-35.md) | US-35 | diagramas finais em Mermaid (casos de uso, componentes, implantação, sequências QR/NFC) e conferência contra o código | #74 |
-| [`us-36.md`](evidencias/us-36.md) | US-36 | relatório ABNT, mídias, roteiro e conferência do PDF | a abrir |
+| [`us-36.md`](evidencias/us-36.md) | US-36 | relatório ABNT, mídias, roteiro e conferência do PDF | #83 |
 | [`us-38.md`](evidencias/us-38.md) | US-38 | identidade única, aviso de limitações do navegador, demo publicada e CORS exato | #75 |
 
 ## Matriz de requisitos
