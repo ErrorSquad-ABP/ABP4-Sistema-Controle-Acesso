@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -51,6 +52,7 @@ class _ScannerPreviewState extends State<_ScannerPreview> {
   @override
   void initState() {
     super.initState();
+    if (kIsWeb) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_controller.setZoomScale(_initialZoom));
     });
@@ -91,41 +93,42 @@ class _ScannerPreviewState extends State<_ScannerPreview> {
             );
           },
         ),
-        Positioned(
-          left: 12,
-          right: 12,
-          bottom: 4,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(left: 12),
-                  child: Icon(Icons.zoom_out, size: 18, color: Colors.white),
-                ),
-                Expanded(
-                  child: Slider(
-                    value: _zoom,
-                    label: 'Zoom',
-                    activeColor: Colors.white,
-                    inactiveColor: Colors.white30,
-                    onChanged: (value) {
-                      setState(() => _zoom = value);
-                      unawaited(_controller.setZoomScale(value));
-                    },
+        if (!kIsWeb)
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 4,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(left: 12),
+                    child: Icon(Icons.zoom_out, size: 18, color: Colors.white),
                   ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(right: 12),
-                  child: Icon(Icons.zoom_in, size: 18, color: Colors.white),
-                ),
-              ],
+                  Expanded(
+                    child: Slider(
+                      value: _zoom,
+                      label: 'Zoom',
+                      activeColor: Colors.white,
+                      inactiveColor: Colors.white30,
+                      onChanged: (value) {
+                        setState(() => _zoom = value);
+                        unawaited(_controller.setZoomScale(value));
+                      },
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 12),
+                    child: Icon(Icons.zoom_in, size: 18, color: Colors.white),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
       ],
     );
   }

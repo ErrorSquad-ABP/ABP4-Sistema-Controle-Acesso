@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,9 +19,11 @@ class AuthorizationsPage extends ConsumerStatefulWidget {
   const AuthorizationsPage({
     super.key,
     this.initialFilter = AuthorizationFilter.active,
+    this.isWeb = kIsWeb,
   });
 
   final AuthorizationFilter initialFilter;
+  final bool isWeb;
 
   @override
   ConsumerState<AuthorizationsPage> createState() => _AuthorizationsPageState();
@@ -61,16 +64,17 @@ class _AuthorizationsPageState extends ConsumerState<AuthorizationsPage> {
                 onPressed: () => context.push(AppRoutes.scan),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.screen,
+            if (!widget.isWeb)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screen,
+                ),
+                child: TextButton.icon(
+                  onPressed: () => context.push(AppRoutes.nfc),
+                  icon: const Icon(Icons.nfc, size: 20),
+                  label: const Text('Acesso por NFC'),
+                ),
               ),
-              child: TextButton.icon(
-                onPressed: () => context.push(AppRoutes.nfc),
-                icon: const Icon(Icons.nfc, size: 20),
-                label: const Text('Acesso por NFC'),
-              ),
-            ),
             const SizedBox(height: AppSpacing.sm),
           ],
         ),
