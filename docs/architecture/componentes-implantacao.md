@@ -52,7 +52,7 @@ flowchart LR
     T_HCE["leitura HCE do celular<br/>SELECT AID e prova"]
     T_DOOR["door · servo"]
     T_FB["feedback · LED e buzzer"]
-    T_GPS["gps · esqueleto US-24"]
+    T_GPS["gps · fora do escopo (módulo indisponível)"]
     T_CLK["clock_time · SNTP"]
   end
 
@@ -83,7 +83,7 @@ flowchart LR
 | Worker (Render) | Recebe tentativas NFC (tag e celular), ACKs e status; publica QR rotativo e comandos; republica comandos sem ACK dentro do prazo (outbox) | Não atende o app |
 | Broker | Entrega as mensagens MQTT v1 (QoS 1, exceto o QR com QoS 0), com TLS em produção | Não guarda comandos (sem retain) |
 | PostgreSQL | Fonte única de usuários, autorizações, credenciais, eventos, outbox de comandos (`TerminalCommand`) e dedup (`ProcessedAccessMessage`) | — |
-| Terminal ESP32 | Mostra o QR, lê a tag e a prova HCE do celular, executa o comando válido, sinaliza e confirma com ACK | Nunca decide acesso. Sem hora confiável, recusa o comando (`clock_unsynced`). Heartbeat ainda não está no firmware |
+| Terminal ESP32 | Mostra o QR, lê a tag e a prova HCE do celular, executa o comando válido, sinaliza, confirma com ACK e publica heartbeat de presença | Nunca decide acesso. Sem hora confiável, recusa o comando (`clock_unsynced`). Não lê GPS: o módulo não está disponível e a posição vem do app |
 
 Tópicos, payloads e QoS: [`contratos-mqtt.md`](contratos-mqtt.md). Tabelas: [`modelo-dados.md`](modelo-dados.md). Camadas internas do backend: [`caso-de-uso-modelo.md`](caso-de-uso-modelo.md).
 

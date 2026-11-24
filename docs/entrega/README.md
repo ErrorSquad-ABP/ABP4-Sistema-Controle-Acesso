@@ -29,6 +29,7 @@ Um arquivo por card em [`evidencias/`](evidencias/): o que foi verificado, como 
 | [`us-10-scanner.md`](evidencias/us-10-scanner.md) | US-10 | scanner QR, geolocalização e textos em pt-BR | #20 |
 | [`us-20.md`](evidencias/us-20.md) | US-20 | decisão de acesso QR e geofence de 100 m | #42 |
 | [`us-23-nfc-rc522.md`](evidencias/us-23-nfc-rc522.md) | US-23 | RC522 físico, MQTT QoS 1, decisão/ACK e feedback; roteiro de teste e resultados automáticos | a abrir |
+| [`us-24.md`](evidencias/us-24.md) | US-24 | heartbeat/status retained e LWT no firmware; GPS fora do escopo; confirmação no ESP32 pendente | a abrir |
 | [`us-29.md`](evidencias/us-29.md) | US-29 | scanner QR que pede o acesso ao backend e mostra o resultado liberado/negado; câmera e GPS reais pendentes | — |
 | [`us-26-mqtt-servo.md`](evidencias/us-26-mqtt-servo.md) | US-26 | comando de abertura do servo via MQTT (herdado da US-08) | #19 · #25 |
 | [`us-35.md`](evidencias/us-35.md) | US-35 | diagramas finais em Mermaid (casos de uso, componentes, implantação, sequências QR/NFC) e conferência contra o código | #74 |

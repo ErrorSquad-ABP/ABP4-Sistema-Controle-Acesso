@@ -229,7 +229,7 @@ sequenceDiagram
 ## O que os diagramas não garantem
 
 - **Abertura física.** A decisão `GRANTED` é autorização. A confirmação de que a porta abriu é o ACK `executed`, e o servo físico ainda não foi demonstrado de ponta a ponta (US-34).
-- **Heartbeat, LWT e leitura HCE no ESP32.** Desenhados, mas pendentes no firmware do repositório (US-24 e #77).
+- **GPS do terminal.** Fora do escopo: o módulo NEO-6M não está disponível e o terminal não publica coordenada. Heartbeat/LWT e leitura HCE estão implementados no firmware (US-24 e #79).
 - **Entrega garantida.** MQTT com QoS 1 é *at-least-once*, e o terminal tenta publicar o ACK uma vez só. Quem cobre um ACK perdido é a republicação do relay, que só acontece dentro dos 10 s do comando e dentro da janela de operação. Por isso há dedup nos três pontos: tentativa, comando e ACK.
 
 Contratos dos payloads em [`contratos-mqtt.md`](contratos-mqtt.md). Visão geral em [`visao-geral.md`](visao-geral.md).

@@ -50,6 +50,15 @@ constexpr size_t kAckCapacity = 320;
 char pendingAck[kAckCapacity] = {};
 size_t pendingAckLength = 0;
 
+// Presenca (US-24): status retained a cada 30 s e LWT offline retained QoS 1.
+constexpr uint32_t kStatusIntervalMs = 30000;
+constexpr size_t kStatusCapacity = 256;
+#ifndef FIRMWARE_VERSION
+#define FIRMWARE_VERSION "abp4-1.0"
+#endif
+RetryInterval statusRetry(kStatusIntervalMs);
+bool statusDue = false;
+
 uint64_t clockNow() { return clockSource == nullptr ? 0 : clockSource(); }
 
 void copyText(char* destination, size_t size, const char* source) {
@@ -82,6 +91,23 @@ void makeMessageId(char* out, size_t size) {
     out[position++] = kHex[bytes[i] & 0x0F];
   }
   out[position] = '\0';
+}
+
+size_t buildStatusPayload(char* out, size_t size, const char* state) {
+  char messageId[37];
+  makeMessageId(messageId, sizeof messageId);
+
+  char timestamp[32] = {};
+  if (!iso8601::fromEpoch(clockNow(), timestamp, sizeof timestamp)) return 0;
+
+  JsonDocument document;
+  document["v"] = 1;
+  document["messageId"] = messageId;
+  document["terminalId"] = terminal_settings::id;
+  document["timestamp"] = timestamp;
+  document["state"] = state;
+  document["firmware"] = FIRMWARE_VERSION;
+  return serializeJson(document, out, size);
 }
 
 void queueAck(const terminal_command::Ack& ack) {
@@ -255,6 +281,15 @@ void update(bool allowBlocking) {
 #endif
     if (!mqttRetry.ready(now)) return;
 
+    // LWT: se a conexao cair sem desconexao limpa, o broker publica offline retained.
+    char willPayload[kStatusCapacity] = {};
+    const size_t willLength = buildStatusPayload(willPayload, sizeof willPayload, "offline");
+    if (willLength == 0 || willLength >= sizeof willPayload) {
+      Serial.println("[mqtt] status offline invalido; LWT nao registrado");
+    } else {
+      client.setWill(terminal_settings::statusTopic, willPayload, true, 1);
+    }
+
 #if MQTT_USE_TLS
     const uint32_t connectStartedAt = millis();
 #endif
@@ -285,6 +320,7 @@ void update(bool allowBlocking) {
       return;
     }
     // MQTTClient espera SUBACK; so anunciamos conectado apos as inscricoes.
+    statusDue = true;
     Serial.println("[mqtt] conectado e inscrito nos comandos");
 #if MQTT_USE_TLS
     // Medidas para a evidencia da DT-06: custo do handshake (bloqueia o loop) e heap livre.
@@ -294,6 +330,18 @@ void update(bool allowBlocking) {
 #endif
   }
   client.loop();
+  const bool statusIntervalDue = statusRetry.ready(now);
+  if (connected() && (statusDue || statusIntervalDue)) {
+    char statusPayload[kStatusCapacity] = {};
+    const size_t length = buildStatusPayload(statusPayload, sizeof statusPayload, "online");
+    if (length != 0 && length < sizeof statusPayload &&
+        client.publish(terminal_settings::statusTopic, statusPayload,
+                       static_cast<int>(length), true, 1)) {
+      statusDue = false;
+    } else {
+      Serial.println("[mqtt] falha ao publicar status");
+    }
+  }
   if (pendingAckLength != 0) {
     if (!client.publish(terminal_settings::acksTopic, pendingAck,
                         static_cast<int>(pendingAckLength), false, 1)) {

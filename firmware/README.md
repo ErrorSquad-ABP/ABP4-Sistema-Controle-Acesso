@@ -388,7 +388,7 @@ conexão do simulador ao broker nem o movimento real do servo.
 
 ## Limites desta história
 
-- Heartbeat/LWT (`terminals/{id}/status`) e GPS continuam pendentes (US-24).
+- Heartbeat/LWT (`terminals/{id}/status`) implementado no `mqtt.cpp` (status retained a cada 30 s e LWT offline). GPS ficou fora do escopo: o módulo NEO-6M não está disponível e o terminal não publica coordenada (US-24).
   NFC está implementado no perfil físico pela US-23; permanece desabilitado
   no perfil TFT legado, cujos pinos conflitam com o RC522.
 - O TLS (DT-06) foi validado no ESP32 contra o EMQX em 06/11/2026 (conexão e

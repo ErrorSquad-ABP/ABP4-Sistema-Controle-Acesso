@@ -46,4 +46,5 @@ constexpr const char* qrTopic = MQTT_TOPIC_QR;
 constexpr const char* commandsTopic = MQTT_TOPIC_COMMANDS;
 constexpr const char* acksTopic = MQTT_TOPIC_ACKS;
 constexpr const char* accessEventsTopic = MQTT_TOPIC_ACCESS_EVENTS;
+constexpr const char* statusTopic = MQTT_TOPIC_STATUS;
 }  // namespace terminal_settings
