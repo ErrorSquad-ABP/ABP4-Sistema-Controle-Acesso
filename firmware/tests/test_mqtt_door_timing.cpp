@@ -45,6 +45,7 @@ namespace terminal_nfc {
 Publisher publisher = nullptr;
 bool scan = false;
 void setPublisher(Publisher value) { publisher = value; }
+void setHcePublisher(HcePublisher) {}
 void begin() {}
 void update() { if (scan && publisher) publisher("04A1B2C3"); }
 }
@@ -64,6 +65,8 @@ int main(int argc, char** argv) {
   testNow = 5000;
   loop();
   assert(terminal_mqtt::connected());
+  // O status online do heartbeat ja saiu; os testes contam apenas publicacoes de ACK.
+  broker.publishCalls = 0;
 
   if (strcmp(argv[1], "puback") == 0) {
     broker.publishDelayMs = 5000;

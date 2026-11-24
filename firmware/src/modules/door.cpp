@@ -10,9 +10,12 @@ namespace {
 Servo servo;
 door_machine::Machine machine(door_machine::Timing{DOOR_MOVE_MS, DOOR_HOLD_OPEN_MS});
 
-// Servo de rotacao continua: qualquer pulso fora do neutro exato faz o eixo
-// girar. Parado, o pino fica sem pulso (detach), entao o servo nao arrasta
-// mesmo que o neutro dele nao seja 1500 us.
+#if DOOR_SERVO_POSITIONAL
+static_assert(DOOR_SERVO_OPEN >= 0 && DOOR_SERVO_OPEN <= 180 &&
+              DOOR_SERVO_CLOSE >= 0 && DOOR_SERVO_CLOSE <= 180,
+              "Angulos do servo posicional devem estar entre 0 e 180");
+#endif
+
 void move(int value) {
   if (!servo.attached()) {
     servo.setPeriodHertz(50);
@@ -23,7 +26,9 @@ void move(int value) {
 
 void stop() {
   if (!servo.attached()) return;
+#if !DOOR_SERVO_POSITIONAL
   servo.write(DOOR_SERVO_STOP);
+#endif
   servo.detach();
   digitalWrite(DOOR_SERVO_PIN, LOW);
 }
@@ -37,6 +42,9 @@ void apply(door_machine::State state) {
       move(DOOR_SERVO_CLOSE);
       break;
     case door_machine::State::open:
+#if DOOR_SERVO_POSITIONAL
+      break;
+#endif
     case door_machine::State::idle:
       stop();
       break;
@@ -54,6 +62,8 @@ void begin() {
   digitalWrite(DOOR_SERVO_PIN, LOW);
   machine.reset(millis());
   apply(machine.state());
+  Serial.println(DOOR_SERVO_POSITIONAL ? "[door] servo posicional habilitado; sem movimento no boot"
+                                     : "[door] servo continuo habilitado; sem movimento no boot");
 #else
   Serial.println("[door] servo desabilitado: somente feedback de decisao");
 #endif

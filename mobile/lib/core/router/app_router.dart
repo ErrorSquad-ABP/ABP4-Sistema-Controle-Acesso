@@ -12,6 +12,7 @@ import '../../features/authorizations/authorization_contract.dart';
 import '../../features/authorizations/authorization_detail_page.dart';
 import '../../features/authorizations/authorizations_page.dart';
 import '../../features/locations/locations_page.dart';
+import '../../features/nfc_access/nfc_access_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/scanner/scanner_page.dart';
 
@@ -24,6 +25,7 @@ abstract final class AppRoutes {
   static const String login = '/login';
   static const String loading = '/loading';
   static const String scan = '/scan';
+  static const String nfc = '/nfc';
 
   /// Detalhe de uma autorização, aberto pelo cartão da lista.
   static const String authorizationDetailPattern = '/autorizacoes/:id';
@@ -55,6 +57,11 @@ String? sessionRedirect(AsyncValue<SessionState> session, String location) {
   return null;
 }
 
+/// Rotas que só existem fora do navegador (HCE depende de plugin Android).
+@visibleForTesting
+String? webRedirect(String location, {bool web = kIsWeb}) =>
+    web && location == AppRoutes.nfc ? AppRoutes.home : null;
+
 /// Router unico do app. Nao observa a sessao com `watch` (recriaria o
 /// router): repassa as mudancas ao `refreshListenable`, que reavalia o
 /// redirect.
@@ -65,8 +72,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
     initialLocation: AppRoutes.home,
     refreshListenable: session,
-    redirect: (context, state) =>
-        sessionRedirect(session.value, state.matchedLocation),
+    redirect: (context, state) {
+      final sessionTarget = sessionRedirect(
+        session.value,
+        state.matchedLocation,
+      );
+      if (sessionTarget != null) return sessionTarget;
+      return webRedirect(state.matchedLocation);
+    },
     routes: [
       GoRoute(
         path: AppRoutes.loading,
@@ -112,6 +125,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.scan,
         builder: (context, state) => const ScannerPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.nfc,
+        builder: (context, state) => const NfcAccessPage(),
       ),
       GoRoute(
         path: AppRoutes.authorizationDetailPattern,

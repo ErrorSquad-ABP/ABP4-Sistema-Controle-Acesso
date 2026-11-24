@@ -1,55 +1,76 @@
-# Sprint 3 — NFC, geofence e qualidade (12/11 → 25/11)
+# Sprint 3 — NFC, hardware e entrega final (12/11 → 25/11/2026)
 
-- **Planning 3**: início da sprint · **Review 3**: 25/11 19h30 · **Retro**: logo após a review (30 min)
-- **Foco macro**: NFC + geofence ≤100m + histórico + qualidade + polish
+- **Planning 3**: 12/11/2026 · **Review 3**: 25/11/2026, 19h30 · **Retro**: logo após a review (30 min)
+- **Foco macro**: fechar o controle de acesso físico (QR, tag e celular), consolidar a qualidade e entregar documentação e demonstração final.
+- **Sprint Goal**: *"Um acesso real de ponta a ponta na bancada — QR, tag e celular — com o sistema auditável, a demo web publicada e a entrega final documentada em ABNT."*
 
-## Escopo previsto
+## Escopo e resultado
 
-Stories do backlog com **Sprint alvo S3** e com **S2/S3** no [`product-backlog.md`](../product-backlog.md). O refinamento fatiar e detalha cada uma antes de entrar na sprint; o escopo final é fechado na Planning 3.
+A Sprint 3 partiu do plano de NFC, geofence e polish e absorveu o fechamento do fluxo físico que dependia de bancada. O resultado foi além do previsto em três frentes: o QR compacto passou a caber no OLED, o NFC do celular (HCE) foi implementado e validado, e o terminal ganhou leitura de prova efêmera e heartbeat.
 
-| US | Título | Épico | Sprint alvo |
+| US | Título | Resultado | Evidência |
 |---|---|---|---|
-| US-20 | Validação de acesso QR com geofence 100m | E2 | S3 |
-| US-21 | Eventos de acesso + histórico com filtros | E2 | S2/S3 |
-| US-23 | NFC RC522 + feedback de decisão | E3 | S3 |
-| US-24 | GPS + heartbeat | E3 | S3 |
-| US-25 | Resiliência: retry/reconexão/persistência local | E3 | S3 |
-| US-30 | Admin: autorizações criar/consultar/cancelar | E4 | S3 |
-| US-31 | Admin: usuários e histórico + acessibilidade idoso | E4 | S3 |
-| US-32 | E2E simulado no CI | E5 | S3 |
-| US-33 | Revisão de segurança | E5 | S3 |
-| US-34 | Teste em hardware real | E5 | S3 |
-| US-35 | Diagramas e docs de arquitetura finais | E6 | S3 |
-| US-38 | Demo web + identidade de distribuição na Vercel | E6 | S3 |
+| US-22 | QR compacto no OLED | Concluído: token de 41 dígitos renderizado por inteiro, com margem e escala | PR #73, `us-35.md` |
+| US-23 | NFC RC522 e feedback | Concluído: tag física, MQTT, decisão e feedback | PR #67, `us-23-nfc-rc522.md` |
+| US-24 | Heartbeat e presença | Código concluído e mergeado; confirmação no ESP32 pendente | PR #82, `us-24.md` |
+| US-25 | Resiliência offline | **Bloqueada** por decisão do time | Card no Trello |
+| US-28 | Minhas autorizações | Concluído na S2/S3 | PR #69 |
+| US-29 | Scanner e pedido de acesso | Concluído, com execução em aparelho | PR #55, `us-29-aparelho.md` |
+| US-30 | Admin de autorizações | Concluído | PR #69 |
+| US-31 | Admin de usuários e histórico | Concluído | PR #69 |
+| US-33 | Revisão de segurança | Revisão feita; PR em revisão por pares | PR #76, `us-33.md` |
+| US-34 | Teste em hardware real | Executado em bancada: QR, tag, HCE e servo | eventos e ACKs no banco |
+| US-35 | Diagramas finais | Concluído | PR #74 |
+| US-36 | Relatório ABNT e apresentação | Entregue neste fechamento | `relatorio/`, `midias/` |
+| US-38 | Demo web e identidade | Concluído e publicado | PR #75, `us-38.md` |
+| US-39 | Locais no app | Concluído | PR #69 |
 
-**US-21 (S2/S3)**: o que não fechou na Sprint 2 é retomado aqui.
+## Entregas que marcaram a sprint
 
-**US-20 (antecipada)**: fechada na Sprint 2 pelo PR #42; a linha da US-20 na tabela fica só como registro do plano original, não como escopo novo.
+1. **QR no OLED:** o token numérico de 41 dígitos passou a ser desenhado inteiro, com margem de silêncio, e o LCD mostra o status. A leitura pelo aplicativo foi validada em bancada.
+2. **HCE do celular:** o aplicativo emite uma prova de 128 bits na API, apresenta por `HostApduService` e o firmware lê por ISO-DEP. A prova é de uso único; a segunda apresentação é negada.
+3. **Ajuste de tempo do RC522:** o leitor espera 25 ms e o Android demorava mais para conectar o serviço na primeira apresentação. O serviço passou a ser preparado enquanto a tela de NFC está em primeiro plano, e a resposta foi reduzida para 16 bytes.
+4. **Heartbeat:** o firmware publica status retained a cada 30 s e registra LWT offline. O worker deixa de depender de uma leitura NFC para marcar presença.
+5. **Demo web:** projeto separado na Vercel, com CORS exato na API, tela de entrada e aviso de limitações do navegador.
+6. **Documentação final:** diagramas conferidos contra o código, matriz atualizada, relatório ABNT, pasta de mídias e roteiro de apresentação.
 
-**Atualização em 10/11/2026 (fechamento da S2):** esta tabela preserva o plano original. **US-20** e **US-32** foram antecipadas e concluídas na S2; **US-28 e US-29** entram na S3 como carry-over explícito (US-29 está no PR #55, aberto em review, sem câmera/GPS reais). US-24, US-28, US-30, US-31, US-33, US-34, US-35, US-36, US-38 e US-39 estão na lista Sprint 3; US-23/25 seguem em andamento; **DT-12 e DT-22** estão bloqueadas por bancada. O teto de 100 m (DT-23) e a pinagem/Dependabot (DT-24) foram concluídos em 10/11. Escopo final continua sujeito à Planning 3.
+## Qualidade observada
 
-**US-38**: além do build web, troca os ícones padrão do Flutter (web e Android) por uma identidade única, com o nome público "Controle de Acesso".
-
-Resumo por épico: **E2** acrescenta a validação por geofence e o histórico completo · **E3** entrega NFC, GPS/heartbeat e a resiliência do terminal · **E4** fecha o admin no app com acessibilidade para o público idoso (RNF04) · **E5** escreve a qualidade (E2E no CI, revisão de segurança, hardware real) · **E6** consolida arquitetura e diagramas.
-
-A **US-36** (relatório ABNT e apresentação final) é da janela de entrega final, após a Review 3 — o projeto tem três sprints, não uma quarta. A Review 3 fecha a Sprint 3 conforme o cronograma oficial.
-
-## Sprint Goal
-
-A definir na Planning 3. O goal nasce do foco macro acima (NFC e geofence fechando o controle de acesso, com qualidade e polish).
-
-## Backlog detalhado da sprint
-
-Preenchido na Planning 3: cards puxados, donos, pontos, critérios de aceite refinados e cortes de segurança, no mesmo formato da [`sprint-1.md`](sprint-1.md).
-
-| US | Título | Dono | Pontos | Status |
-|---|---|---|---|---|
-| — | — | — | — | — |
-
-## Burndown simples
-
-Total definido na Planning 3; pontos restantes preenchidos durante a sprint.
-
-| Dia | Pontos restantes |
+| Item | Resultado em 24/11/2026 |
 |---|---|
-| 12/11 → 25/11 | — (preencher por dia na sprint) |
+| Testes do aplicativo | 664 aprovados; `flutter analyze` sem problemas |
+| Testes do backend | 450 aprovados no merge do fluxo HCE |
+| Firmware | Suite host com MQTT, TLS, NFC/HCE, display, servo e timing; builds PlatformIO |
+| CI | Seis checks obrigatórios, CodeQL e Dependabot |
+| API | `/health` com `database: ok` |
+| Worker | `/healthz` com `status: ok` |
+| Demo web | Publicada e verificada no navegador |
+| Hardware | QR, tag e HCE com `GRANTED` e ACK `executed` |
+
+Os números são das execuções registradas em 24/11/2026; não são uma medição contínua nem uma estimativa de velocidade por pontos.
+
+## O que não fechou
+
+- **US-25 (resiliência offline):** bloqueada por decisão do time. O escopo está preservado (backoff com jitter, fila persistida, TTL de 30 s, dedup por `messageId`), mas a mudança mexe no caminho de reconexão e no NVS do ESP32 e não bloqueia a banca.
+- **GPS do terminal:** o módulo NEO-6M não estava disponível. O terminal não publica coordenada; a posição vem do aplicativo.
+- **Abertura física de cancela:** o servo é acionado, mas o mecanismo de uma porta real não foi acoplado.
+- **Consumo elétrico:** a DT-22 foi encerrada por escopo, com orçamento e procedimento; nenhum valor foi medido.
+- **US-33:** a revisão está registrada, mas o PR segue em revisão por pares e os aceites formais de risco estão pendentes.
+
+## Burndown
+
+Não houve registro diário de pontos. O quadro abaixo mostra o que restava no fechamento, por estado, em vez de inventar uma curva.
+
+| Estado no fechamento | Itens |
+|---|---|
+| Entregue | US-22, US-23, US-28, US-29, US-30, US-31, US-34, US-35, US-36, US-38, US-39 e DT-22 |
+| Em revisão | US-24 (hardware) e US-33 (PR) |
+| Bloqueado | US-25 |
+
+## Rastreabilidade
+
+- [Review 3](sprint-3-review.md) · [Retrospectiva 3](sprint-3-retro.md)
+- [Documento de entrega final](../../entrega/review-3.md)
+- [Relatório ABNT](../../entrega/relatorio/relatorio-abnt.pdf)
+- [Matriz de requisitos](../../entrega/matriz-requisitos.md) · [Índice de evidências](../../entrega/README.md)
+- [Product backlog](../product-backlog.md)

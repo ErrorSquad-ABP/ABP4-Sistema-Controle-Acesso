@@ -78,10 +78,21 @@ jobs:
           g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src tests/test_nfc.cpp src/modules/nfc.cpp -o "$RUNNER_TEMP/abp4-test-nfc-module"
           "$RUNNER_TEMP/abp4-test-nfc-module"
           "$RUNNER_TEMP/abp4-test-nfc-module" missing-reader
+          "$RUNNER_TEMP/abp4-test-nfc-module" held-tag
+          "$RUNNER_TEMP/abp4-test-nfc-module" recover-reader
+          "$RUNNER_TEMP/abp4-test-nfc-module" hce
           g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src tests/test_feedback_io.cpp src/modules/feedback.cpp -o "$RUNNER_TEMP/abp4-test-feedback-physical"
           "$RUNNER_TEMP/abp4-test-feedback-physical"
           g++ -std=c++11 -Wall -Wextra -Werror -D TERMINAL_LEGACY_TFT=1 -I tests/fakes -I include -I src tests/test_feedback_io.cpp src/modules/feedback.cpp -o "$RUNNER_TEMP/abp4-test-feedback-wokwi"
           "$RUNNER_TEMP/abp4-test-feedback-wokwi"
+          g++ -std=c++11 -Wall -Wextra -Werror -DTEST_FULL_HARDWARE=1 -I tests/fakes -I include -I src tests/test_feedback_io.cpp src/modules/feedback.cpp -o "$RUNNER_TEMP/abp4-test-feedback-full"
+          "$RUNNER_TEMP/abp4-test-feedback-full"
+          g++ -std=c++11 -Wall -Wextra -Werror -DTEST_FULL_HARDWARE=1 -I tests/fakes -I include -I src tests/test_door_positional.cpp src/modules/door.cpp -o "$RUNNER_TEMP/abp4-test-door-positional"
+          "$RUNNER_TEMP/abp4-test-door-positional"
+          g++ -std=c++11 -Wall -Wextra -Werror -DTEST_FULL_HARDWARE=1 -I tests/fakes -I include -I src -I .pio/libdeps/esp32dev/QRCode/src tests/test_display_combined.cpp src/modules/display_physical.cpp src/modules/display_oled.cpp "$RUNNER_TEMP/qrcode.o" -o "$RUNNER_TEMP/abp4-test-display-combined"
+          "$RUNNER_TEMP/abp4-test-display-combined"
+          "$RUNNER_TEMP/abp4-test-display-combined" missing-oled
+          "$RUNNER_TEMP/abp4-test-display-combined" missing-lcd
 
       - name: Testes host (modulo MQTT com broker simulado)
         run: |
@@ -92,6 +103,8 @@ jobs:
           "$RUNNER_TEMP/abp4-test-mqtt-command"
           g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_nfc.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-nfc"
           "$RUNNER_TEMP/abp4-test-mqtt-nfc"
+          g++ -std=c++11 -Wall -Wextra -Werror -I tests/fakes -I include -I src -isystem "$JSON_SRC" tests/test_mqtt_status.cpp src/modules/mqtt.cpp -o "$RUNNER_TEMP/abp4-test-mqtt-status"
+          "$RUNNER_TEMP/abp4-test-mqtt-status"
 
       # DT-06: TLS ligado, com o fake de tests/fakes antes de include/ (o mqtt_ca.h de teste
       # substitui o PEM real).

@@ -11,7 +11,7 @@ O pedido de acesso por QR **não** passa por MQTT: o app o envia à API por HTTP
 | Tópico | Sentido | QoS | Retain | Mensagem |
 |---|---|---|---|---|
 | `terminals/{id}/qr` | backend → terminal | 0 | não | QR rotativo |
-| `terminals/{id}/access-events` | terminal → backend | 1 | não | tentativa de acesso (leitura NFC) |
+| `terminals/{id}/access-events` | terminal → backend | 1 | não | tentativa de acesso (tag NFC ou prova HCE do celular) |
 | `terminals/{id}/status` | terminal → backend | 1 | **sim** | heartbeat e LWT |
 | `terminals/{id}/commands` | backend → terminal | 1 | não | comando de abertura ou negação |
 | `terminals/{id}/acks` | terminal → backend | 1 | não | ACK de execução |
@@ -64,7 +64,22 @@ Mensagem com `v` desconhecida, `terminalId` diferente do tópico ou campo faltan
 }
 ```
 
-`type` é `nfc_read` na v1; `uid` é hexadecimal maiúsculo (4 a 20 caracteres). O backend decide; o terminal só aguarda o comando.
+`type` é `nfc_read` (tag física) ou `nfc_hce_read` (celular, abaixo). No `nfc_read`, `uid` é hexadecimal maiúsculo (4 a 20 caracteres). O backend decide; o terminal só aguarda o comando.
+
+#### NFC do celular — `type: "nfc_hce_read"`
+
+```json
+{
+  "v": 1,
+  "messageId": "6c1e0f7a-2b4d-4e8f-9a31-5d7c2b0e4f19",
+  "terminalId": "terminal-01",
+  "timestamp": "2026-11-23T19:30:03.120Z",
+  "type": "nfc_hce_read",
+  "credentialToken": "3f9a1c0e7b2d4f6a8c1e3b5d7f9a2c4e"
+}
+```
+
+`credentialToken` são 32 caracteres hexadecimais minúsculos (128 bits). É a prova que o app obtém em `POST /api/v1/access-credentials/nfc` e apresenta por HCE (AID `F041425034444D01`, resposta de 16 bytes + `9000`); nunca é o UID do aparelho. O banco guarda só o hash da prova (`Credential` do tipo `NFC_HCE`), que vale **60 s** e é **consumida no primeiro acesso aceito**: uma segunda tentativa com a mesma prova é negada com `INVALID_CREDENTIAL`, sem gastar uso da autorização. Frescor, dedup e decisão seguem as mesmas regras do `nfc_read`. O parser e o caso de uso estão na `main` (#77) e o firmware publica este tipo desde o #79.
 
 Na US-23, o RC522 físico produz UIDs de 4, 7 ou 10 bytes (8, 14 ou 20
 caracteres, preservando zeros iniciais). Uma apresentação gera uma tentativa;
@@ -157,7 +172,7 @@ Se o cliente desistir antes (`Query read timeout`), a conexão é descartada sem
 
 A decisão e o comando já persistidos são reutilizados nas retentativas, com o mesmo `commandId` e prazo original. MQTT e PostgreSQL não compartilham transação: uma queda após publicar e antes de confirmar a marca pode retransmitir o mesmo comando; a deduplicação do terminal por `commandId` continua obrigatória. O modo demo mantém o adapter volátil, sem garantia de dedup após restart. ACKs continuam correlacionados de forma persistente por `TerminalCommand`.
 
-`TerminalCommand` funciona como outbox (DT-13): `publishedAt` fica `NULL` até a primeira tentativa de entrega ao broker. Se a publicação falhar (ex.: a API sem broker no pedido QR), a decisão continua válida — o pedido responde `GRANTED` e a autorização não é consumida de novo. O worker roda um relay no boot e a cada `COMMAND_RELAY_INTERVAL_MS` (padrão **5 s**), **independente da presença do terminal, dentro da janela de operação configurada** (DT-21): o firmware da main não publica `status` nem tentativa de acesso antes da leitura, então presença de terminal não serve de gate para a recuperação; a janela é o que evita manter o Neon acordado 24/7. O relay publica as intenções pendentes ainda no prazo, com o mesmo `commandId` e `expiresAt`, após uma folga de 1,5 s desde a decisão para não disputar com o publicador original. Nunca publica comando vencido nem abertura para terminal ou local inativo. O resumo do ciclo inclui `backlog` (lote de 50 cheio: pode haver mais pendentes); um `count(*)` por ciclo foi descartado para não dobrar o custo no Neon.
+`TerminalCommand` funciona como outbox (DT-13): `publishedAt` fica `NULL` até a primeira tentativa de entrega ao broker. Se a publicação falhar (ex.: a API sem broker no pedido QR), a decisão continua válida — o pedido responde `GRANTED` e a autorização não é consumida de novo. O worker roda um relay no boot e a cada `COMMAND_RELAY_INTERVAL_MS` (padrão **5 s**), **independente da presença do terminal, dentro da janela de operação configurada** (DT-21): o firmware publica `status` desde a US-24, mas a presença não serve de gate para a recuperação; a janela é o que evita manter o Neon acordado 24/7. O relay publica as intenções pendentes ainda no prazo, com o mesmo `commandId` e `expiresAt`, após uma folga de 1,5 s desde a decisão para não disputar com o publicador original. Nunca publica comando vencido nem abertura para terminal ou local inativo. O resumo do ciclo inclui `backlog` (lote de 50 cheio: pode haver mais pendentes); um `count(*)` por ciclo foi descartado para não dobrar o custo no Neon.
 
 Cada intenção é **reservada** antes da publicação (`UPDATE ... SET "publishedAt"` com `FOR UPDATE SKIP LOCKED`): duas réplicas do worker não publicam o mesmo comando. O relay reserva **um comando por vez**, não um lote: a reserva cobre só o publish daquele comando (teto de 3 s do PUBACK), então nunca fica velha enquanto os primeiros da fila ainda estão sendo enviados. No publish bem-sucedido, `markPublished` **atualiza** `publishedAt` para o instante da entrega (sem `WHERE publishedAt IS NULL`); durante o envio o campo vale como reserva, e é isso que a consulta de claim lê. Se o publish falhar, a reserva volta para `NULL` e o próximo ciclo tenta de novo. Uma reserva órfã (processo que morreu entre marcar e publicar) é retomada depois de **5 s**. A janela precisa ser menor que o prazo de 10 s do comando (a query exige `expiresAt > now`, então 60 s nunca reclamava nada) e maior que o teto de 3 s do PUBACK, para um relay vivo não perder a reserva. A entrega é *at-least-once*: o terminal deduplica por `commandId`, mas a janela dele guarda só **8 ids** — dentro do prazo de 10 s do comando isso basta, porque o relay tenta no máximo duas vezes com 5 s.
 

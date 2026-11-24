@@ -58,7 +58,7 @@ O app web (Flutter Web) chama a API de outra origem, e o navegador só deixa o a
 | Origem | Quando |
 |---|---|
 | `http://localhost:5000` | desenvolvimento: `flutter run -d chrome --web-port 5000` contra a API local (`CORS_ALLOWED_ORIGINS=http://localhost:5000`) |
-| `https://<demo-web>.vercel.app` | demo web da US-38; o domínio entra aqui e na variável da Vercel quando for definido |
+| `https://<demo-web>.vercel.app` | demo web da US-38: o mesmo valor de `WEB_URL` no GitHub; o smoke test do `cd-web.yml` confere que a API libera exatamente essa origem ([deploy](../guides/deploy.md#demo-web-us-38)) |
 | _(nenhuma)_ | app Android (não envia `Origin`) e o Swagger em `/docs` (mesma origem) não precisam de CORS |
 
 Regras:

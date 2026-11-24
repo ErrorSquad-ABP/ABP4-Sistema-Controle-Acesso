@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { ServiceUnavailableError } from '../../../domain/errors/domain-error.js';
 import type { Container } from '../../composition-root.js';
 import {
+  IssueNfcCredentialResponse,
   ValidateQrCredentialRequest,
   ValidateQrCredentialResponse,
 } from '../contract/schemas/credentials.schemas.js';
@@ -35,6 +36,13 @@ export function credentialsRoutes(container: Container): Router {
         }
       : { valid: false as const };
     res.status(200).json(ValidateQrCredentialResponse.parse(response));
+  });
+
+  router.post('/access-credentials/nfc', rateLimit, requireAuth(container), async (_req, res) => {
+    const useCase = container.useCases.issueNfcCredential;
+    if (!useCase) throw new ServiceUnavailableError('Prova NFC indisponivel sem banco configurado');
+    const issued = await useCase.execute(res.locals.user.id);
+    res.status(201).json(IssueNfcCredentialResponse.parse(issued));
   });
 
   return router;

@@ -16,7 +16,11 @@ import {
   ListMyAuthorizationsQuery,
 } from './schemas/authorizations.schemas.js';
 import { IdParams, PaginationQuery } from './schemas/common.schemas.js';
-import { ValidateQrCredentialRequest, ValidateQrCredentialResponse } from './schemas/credentials.schemas.js';
+import {
+  IssueNfcCredentialResponse,
+  ValidateQrCredentialRequest,
+  ValidateQrCredentialResponse,
+} from './schemas/credentials.schemas.js';
 import { CreateLocationRequest, Location, LocationPage } from './schemas/locations.schemas.js';
 import {
   CreateUserRequest,
@@ -86,6 +90,23 @@ export const operations: readonly Operation[] = [
     success: { status: 200, description: 'Resultado da validacao da credencial, sem decisao de acesso', schema: ValidateQrCredentialResponse },
     extraErrors: [429, 503],
     example: { body: { qrToken: 'eyJ0ZXJtaW5hbElkIjoiYXVyb3JhLXJlY2VwY2FvIn0.assinatura', terminalId: 'aurora-recepcao' } },
+  },
+  {
+    operationId: 'issueNfcCredential',
+    method: 'post',
+    path: '/access-credentials/nfc',
+    tag: 'credentials',
+    summary: 'Emitir prova efemera para o NFC do celular',
+    description:
+      'Gera uma prova aleatoria de 128 bits valida por 60 s, guardada apenas como hash, para o app ' +
+      'apresentar por HCE. A prova identifica a sessao no momento do toque, mas nao concede acesso: ' +
+      'terminal, usuario, autorizacao, prazo e limite continuam validados no pedido de acesso. ' +
+      'Uso unico: o primeiro acesso aceito a consome. Requer sessao autenticada; 503 sem banco.',
+    story: 'US-23',
+    access: 'authenticated',
+    success: { status: 201, description: 'Prova efemera e instante de expiracao', schema: IssueNfcCredentialResponse },
+    extraErrors: [401, 429, 503],
+    example: {},
   },
   // ---------------------------------------------------------------- auth
   {

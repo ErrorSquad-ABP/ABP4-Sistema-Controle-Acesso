@@ -17,6 +17,9 @@
 #ifndef DOOR_SERVO_MIN_US
 #define DOOR_SERVO_MIN_US 1000
 #endif
+#ifndef DOOR_SERVO_POSITIONAL
+#define DOOR_SERVO_POSITIONAL 0
+#endif
 #ifndef DOOR_SERVO_MAX_US
 #define DOOR_SERVO_MAX_US 2000
 #endif
@@ -43,4 +46,5 @@ constexpr const char* qrTopic = MQTT_TOPIC_QR;
 constexpr const char* commandsTopic = MQTT_TOPIC_COMMANDS;
 constexpr const char* acksTopic = MQTT_TOPIC_ACKS;
 constexpr const char* accessEventsTopic = MQTT_TOPIC_ACCESS_EVENTS;
+constexpr const char* statusTopic = MQTT_TOPIC_STATUS;
 }  // namespace terminal_settings

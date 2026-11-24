@@ -244,7 +244,7 @@ Plano original, não uma lista de stories ainda abertas. Títulos, épico e spri
 | US-21 | Eventos de acesso + histórico com filtros | E2 | S2/S3 |
 | US-22 | Display: render do QR + status | E3 | S2 |
 | US-23 | NFC RC522 + feedback de decisão | E3 | S3 |
-| US-24 | GPS + heartbeat | E3 | S3 |
+| US-24 | Heartbeat e presença (GPS fora do escopo) | E3 | S3 |
 | US-25 | Resiliência: retry/reconexão/persistência local | E3 | S3 |
 | US-26 | Comando de abertura do servo via MQTT | E3 | S2 |
 | US-27 | Login real + sessão | E4 | S2 |
@@ -260,6 +260,7 @@ Plano original, não uma lista de stories ainda abertas. Títulos, épico e spri
 | US-37 | Worker MQTT persistente no Render | E1 | S2 |
 | US-38 | Demo web + identidade de distribuição na Vercel | E6 | S3 |
 
+**US-35**: diagramas finais em Mermaid no repo (casos de uso, componentes, implantação dev/prod, sequências QR/NFC), ligados a partir de `docs/architecture/visao-geral.md`. Depende da US-24 só para tirar o tracejado de heartbeat/GPS.
 **US-37**: publica no Render o processo MQTT local da US-04, sem recriar a integração.
 **US-38**: além do build web, troca os ícones padrão do Flutter (web e Android) por uma identidade única, com o nome público "Controle de Acesso".
 
@@ -321,3 +322,18 @@ Código auditado em 02/11: `66fe44a`; API pública observada em `6b6aa26`, com b
 **DT-22 (RNF07):** decisão, estimativas e procedimento de medição já estão em [`../entrega/evidencias/dt-22.md`](../entrega/evidencias/dt-22.md); consumo e continuidade não foram medidos. A descrição no Trello foi sincronizada em 08/11: estratégia documentada, medição de corrente/continuidade pendente (US-34).
 
 Detalhe da sprint em [`sprints/sprint-2.md`](sprints/sprint-2.md). A API na Vercel em `a0625d7` e o worker observado LIVE no Render em 11/11 comprovam a operação da API e do processo MQTT naquele instante; não comprovam o fluxo físico completo nem a abertura da cancela.
+
+
+---
+
+## Fechamento da Sprint 3 e entrega final (24/11/2026)
+
+- **US-22, US-23, US-35 e US-38:** concluídas (QR compacto, NFC físico, diagramas e demo web).
+- **US-24:** heartbeat/LWT implementado e mergeado no #82; a confirmação no ESP32 ficou pendente. GPS do terminal fora do escopo (módulo NEO-6M indisponível).
+- **US-25:** **bloqueada** por decisão do time; escopo preservado para retomada depois da entrega.
+- **US-33:** revisão de segurança registrada; PR #76 em revisão por pares, com aceites formais pendentes.
+- **US-36:** relatório ABNT, mídias e roteiro entregues em `docs/entrega/relatorio/`, `docs/entrega/midias/` e `docs/entrega/apresentacao/`.
+- **DT-22:** encerrada por escopo (projeto e orçamento documentados; consumo não medido).
+- **US-34:** fluxo de bancada exercitado com QR, tag, HCE e servo; a abertura de uma cancela real não foi demonstrada.
+
+O retrato final está em [`../entrega/review-3.md`](../entrega/review-3.md), e a matriz de requisitos em [`../entrega/matriz-requisitos.md`](../entrega/matriz-requisitos.md).

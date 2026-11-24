@@ -86,11 +86,12 @@ class PostgresAccessTransaction implements AccessTransaction {
 
   async findCredential(hash: string): Promise<AccessCredential | null> {
     const result = await this.connection.query<AccessCredential>(
-      `SELECT c.id,
+      `SELECT c.id, c.type,
         c."validFrom" AT TIME ZONE 'UTC' AS "validFrom", c."validUntil" AT TIME ZONE 'UTC' AS "validUntil",
-        c."revokedAt" AT TIME ZONE 'UTC' AS "revokedAt",
+        c."revokedAt" AT TIME ZONE 'UTC' AS "revokedAt", c."consumedAt" AT TIME ZONE 'UTC' AS "consumedAt",
         json_build_object('id',u.id,'name',u.name,'role',u.role,'active',u.active) AS "user"
-        FROM "Credential" c JOIN "User" u ON u.id=c."userId" WHERE c."valueHash"=$1 AND c.type='NFC'`,
+        FROM "Credential" c JOIN "User" u ON u.id=c."userId"
+        WHERE c."valueHash"=$1 AND c.type IN ('NFC','NFC_HCE')`,
       [hash],
     );
     return result.rows[0] ?? null;
@@ -121,6 +122,16 @@ class PostgresAccessTransaction implements AccessTransaction {
     const result = await this.connection.query(
       `UPDATE "Authorization" SET "usedCount"="usedCount"+1,"updatedAt"=$2
         WHERE id=$1 AND "canceledAt" IS NULL AND "startsAt" <= $2 AND "endsAt" >= $2 AND "usedCount" < "maxUses"`,
+      [id, now.toISOString()],
+    );
+    return result.rowCount === 1;
+  }
+
+  async consumeCredential(id: string, now: Date): Promise<boolean> {
+    const result = await this.connection.query(
+      `UPDATE "Credential" SET "consumedAt"=$2,"updatedAt"=$2
+        WHERE id=$1 AND type='NFC_HCE' AND "consumedAt" IS NULL
+          AND "revokedAt" IS NULL AND ("validUntil" IS NULL OR "validUntil" > $2)`,
       [id, now.toISOString()],
     );
     return result.rowCount === 1;
@@ -181,6 +192,16 @@ export class PostgresAccessRepository implements AccessRepository {
       'SELECT id, "qrCode" FROM "Terminal" WHERE "qrCode" IS NOT NULL',
     );
     return new Map(result.rows.map((row) => [row.id, row.qrCode]));
+  }
+
+  async saveNfcCredential(input: {
+    userId: string; valueHash: string; validFrom: Date; validUntil: Date;
+  }): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO "Credential" (id,"userId",type,"valueHash","validFrom","validUntil","createdAt","updatedAt")
+       VALUES (gen_random_uuid(),$1,'NFC_HCE',$2,$3,$4,now(),now())`,
+      [input.userId, input.valueHash, input.validFrom.toISOString(), input.validUntil.toISOString()],
+    );
   }
 
   async transaction<T>(requestId: string, work: (tx: AccessTransaction) => Promise<T>): Promise<T> {

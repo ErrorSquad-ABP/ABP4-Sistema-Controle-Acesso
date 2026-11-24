@@ -29,6 +29,8 @@ extern TestEsp ESP;
 
 struct TestSerial {
   void begin(unsigned long) {}
+  int available() { return 0; }
+  int read() { return -1; }
   void println(const char*) {}
   template <typename... Args>
   void printf(const char*, Args...) {}

@@ -1,6 +1,6 @@
 # Matriz de requisitos — Desafio 4DSM 2026-2
 
-Fonte dos requisitos: leitura anteriormente registrada de `Desafio 4DSM - 2026-2.pdf` (versão 31/08/2026, FATEC Jacareí). Estado do projeto revisto em **02/11/2026**, código local `66fe44a`, contra o Trello e as evidências versionadas; **atualizado em 11/11/2026** com o app, a operação e as evidências do fechamento; o PDF não foi relido nesta rodada. Conferência por card e limites de validação em [`auditoria-estado-atual.md`](auditoria-estado-atual.md).
+Fonte dos requisitos: leitura anteriormente registrada de `Desafio 4DSM - 2026-2.pdf` (versão 31/08/2026, FATEC Jacareí). Estado do projeto revisto em **02/11/2026**, código local `66fe44a`, contra o Trello e as evidências versionadas; **atualizado em 11/11/2026** com o app e a operação; **atualizado em 24/11/2026** com o fechamento da Sprint 3, o fluxo físico em bancada e a entrega final. O PDF do edital não foi relido nesta rodada. Conferência por card e limites de validação em [`auditoria-estado-atual.md`](auditoria-estado-atual.md); o retrato final está em [`review-3.md`](review-3.md) e no [`relatorio-abnt.pdf`](relatorio/relatorio-abnt.pdf).
 
 Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · **Não comprovado** (não há evidência no repo).
 
@@ -18,8 +18,8 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | RF08 | Usuário vê suas autorizações no app | Atendido | API `GET /me/authorizations` (US-18, #33) e tela "Minhas autorizações" com detalhe (US-28), executada em aparelho em 11/11 ([`us-29-aparelho.md`](evidencias/us-29-aparelho.md)) |
 | RF09 | Leitura de QR Code pelo app | Atendido | Scanner (US-10, #20) envia a leitura com posição e `requestId` e mostra resultado liberado/negado (US-29, #55). Leitura com câmera e pedido ao backend observados em aparelho em 11/11 ([`us-29-aparelho.md`](evidencias/us-29-aparelho.md)); sem medição de precisão do GPS e sem terminal físico no fluxo |
 | RF10 | Leitura de NFC pelo terminal | Atendido | RC522 SPI integrado (US-23, #67): leitura, publicação MQTT, decisão no backend e feedback; evidência física inicial com RC522 e MQTT observados na placa. O servo estava desabilitado nesse perfil e a abertura física não está implementada |
-| RF11 | Terminal com processamento, rede, tela, NFC, sinalização, GPS e abertura | Parcial | Tela, servo (simulado), LED, buzzer, MQTT e NFC (US-07/08/22/23); `gps.cpp` é esqueleto e o heartbeat/status é US-24 (S3); a abertura física da cancela não está implementada |
-| RF12 | QR gerado no backend e trocado a cada 25 s | Atendido | Backend gera e rotaciona a cada 25 s, com renovação a cada 20 s (US-19, #27; TTL alterado no #64 em 10/11) e o worker publica no timer (US-22, #26). A entrega/exibição no TFT depende de presença/status do terminal (US-24, RF11), que é outra lacuna |
+| RF11 | Terminal com processamento, rede, tela, NFC, sinalização, GPS e abertura | Parcial | Tela, servo (simulado), LED, buzzer, MQTT, NFC e heartbeat/status (US-07/08/22/23/24); `gps.cpp` é esqueleto e o módulo NEO-6M não está disponível, então o terminal não publica GPS; a abertura física da cancela não está implementada |
+| RF12 | QR gerado no backend e trocado a cada 25 s | Atendido | Backend gera e rotaciona a cada 25 s, com renovação a cada 20 s (US-19, #27; TTL alterado no #64 em 10/11) e o worker publica no timer (US-22, #26). A entrega no hardware real passa a depender de presença por heartbeat (US-24), implementado no firmware |
 | RF13 | Validação QR: autenticidade, validade, local, situação, usos e geofence de 100 m | Atendido | Decisão implementada (DT-01/02/03 #32; US-20 #42); DT-23 impõe teto de 100 m na política e CHECK de 1–100 m no banco, implantada em 10/11 ([evidência](evidencias/dt-23.md)). O app envia o pedido (US-29) e a leitura foi observada em aparelho; a abertura física não foi demonstrada |
 | RF14 | Validação NFC pelo backend | Atendido | `DecideAccessUseCase` resolve UID/local, valida credencial/autorização e registra decisão; o RC522 real publica o UID e o fluxo foi exercitado com tag desconhecida e autorizada (US-23, #67). O servo não foi acionado nessa bancada |
 | RF15 | Liberação do acesso (mecanismo físico ou simulado) | Atendido | Comando `open` via MQTT aciona o servo (US-08 #19, US-26) |
@@ -36,9 +36,9 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | RNF04 | Interface simples, acessível ao público idoso | Parcial | Fonte 2x sem estouro e rótulos acessíveis (US-27); telas de administração e histórico entregues (US-31), mas sem auditoria de acessibilidade registrada nessas telas |
 | RNF05 | Modularidade e separação de responsabilidades | Atendido | Clean Architecture com regra de camadas verificada no lint (`backend/src/{domain,application,infrastructure,main}`) |
 | RNF06 | Banco de dados em nuvem | Atendido | Postgres no Neon; `/health` com `database: ok` |
-| RNF07 | Eficiência energética do dispositivo | Parcial | Terminal alimentado pela rede e sem deep sleep por causa do QR de 25 s (RF12); QR só é redesenhado quando o token muda e LEDs/buzzer só ligam no feedback — mecanismos verificáveis no firmware. Falta a medição de corrente e o teste de continuidade ([`evidencias/dt-22.md`](evidencias/dt-22.md), US-34) |
-| RNF08 | CI com build, testes e lint | Parcial | Workflows backend (lint/test/build), mobile (analyze/test/APK) e firmware (testes host/build com `-Werror`) presentes. O firmware não tem lint estático dedicado de todos os fontes; o CodeQL roda por default setup, sem workflow versionado, mas não é requisito do RNF08. Checks obrigatórios atuais não revalidados |
-| RNF09 | CD automatizado | Atendido | `cd-backend` publica na Vercel após CI; smoke em `/health` |
+| RNF07 | Eficiência energética do dispositivo | Parcial | Projeto documentado (terminal na fonte, sem deep sleep), mecanismos verificáveis (QR só redesenha na troca do token; LEDs/buzzer só no feedback) e orçamento estimado em faixa, com incerteza declarada ([`dt-22.md`](evidencias/dt-22.md)). Consumo não medido e continuidade de 24 h não cronometrada |
+| RNF08 | CI com build, testes e lint | Parcial | Workflows backend (lint/test/build), mobile (analyze/test/APK) e firmware (testes host/build com `-Werror`) presentes. O firmware não tem lint estático dedicado de todos os fontes; o CodeQL roda por default setup. Os seis checks obrigatórios e o CodeQL estavam verdes em 24/11/2026 |
+| RNF09 | CD automatizado | Atendido | `cd-backend` publica na Vercel após CI; `cd-web` publica a demo com smoke test; smoke em `/health` |
 | RNF10 | Testes automatizados no pipeline | Atendido | Vitest (backend, incl. e2e com Postgres embarcado), Flutter test, testes host do firmware |
 | RNF11 | Git com branches, commits descritivos e estratégia | Atendido | Histórico de branches/commits por card e estratégia documentada; proteção atual da `main` não revalidada nesta auditoria |
 | RNF12 | Feedback de build/deploy | Atendido | GitHub Actions com checks por etapa |
@@ -48,19 +48,19 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 | ID | Restrição | Status | Evidência / lacuna |
 |---|---|---|---|
 | RP01 | Node.js + Express + TypeScript | Atendido | `backend/package.json` (Node 24, Express 5, TS) |
-| RP02 | Integração com dispositivo físico (tela, sensores, atuadores) | Parcial | Wokwi com display, servo, LED e buzzer; NFC RC522 real (US-23) com evidência física inicial; GPS é esqueleto (US-24) e a abertura física da cancela não está implementada |
+| RP02 | Integração com dispositivo físico (tela, sensores, atuadores) | Parcial | Wokwi com display, servo, LED e buzzer; NFC RC522 real (US-23) com evidência física; QR, tag e HCE exercitados na bancada. GPS ficou fora do escopo (módulo indisponível) e a abertura física de uma cancela não está implementada |
 | RP03 | Protocolo IoT (HTTP ou MQTT) | Atendido | MQTT v1 documentado e implementado |
 | RP04 | Aplicativo móvel (nativo ou híbrido) | Atendido | Flutter (Android como alvo principal) |
 | RP05 | Arquitetura cliente-servidor | Atendido | App, API, worker e terminal com papéis separados |
 | RP06 | Desenvolvimento incremental por sprint | Atendido | S1 13/13 e S2 com entregas parciais registradas |
-| RP07 | Documentação de arquitetura, diagramas e comunicação | Parcial | `docs/architecture/` com visão geral, contratos MQTT, modelo de dados e ADR; falta diagrama de casos de uso |
+| RP07 | Documentação de arquitetura, diagramas e comunicação | Atendido | `docs/architecture/` em Mermaid: [casos de uso](../architecture/casos-de-uso.md), [componentes e implantação dev/prod](../architecture/componentes-implantacao.md), [sequências QR/NFC](../architecture/sequencias.md), modelo de dados, contratos MQTT e ADR, ligados a partir da [visão geral](../architecture/visao-geral.md) (US-35, [evidência](evidencias/us-35.md)) |
 | RP08 | Escopo viável, com simulações | Atendido | Wokwi e simulador Node |
 | RP09 | Pipeline CI/CD | Atendido | GitHub Actions |
 | RP10 | Testes no pipeline (obrigatório) | Atendido | RNF10 |
 | RP11 | Deploy automatizado do backend em nuvem | Atendido | Vercel + Neon; `/health` público |
 | RP12 | Conteinerização | Parcial | `backend/Dockerfile` e `docker-compose.dev.yml` (Mosquitto + Postgres); app e firmware não são containerizados (esperado) |
 
-## Lacunas por prioridade (estado de 11/11/2026)
+## Lacunas por prioridade (estado de 24/11/2026)
 
 1. **RF09 + RF13 (app)**: o app já pede o acesso e mostra o resultado (US-29); falta validar câmera e GPS em aparelho real e a demonstração ponta-a-ponta com o terminal (US-34).
 2. **RF08**: tela "minhas autorizações" — US-28 sem PR.
@@ -76,8 +76,8 @@ Status: **Atendido** · **Parcial** (parte comprovada) · **Não atendido** · *
 4. **RNF07**: estratégia e orçamento documentados em [`evidencias/dt-22.md`](evidencias/dt-22.md); falta medir corrente no hardware (US-34).
 5. **RF03**: confirmar com o professor/PO se "horário inicial/final" exige janela diária dentro do período — hoje é um intervalo contínuo.
 6. **RNF04**: telas de administração e histórico entregues, sem auditoria de acessibilidade registrada.
-7. **RNF08/RNF11**: checks obrigatórios e proteção da `main` não foram revalidados nesta rodada.
-8. **Entrega final**: demonstração visual do QR no display (US-22), diagramas (US-35) e relatório ABNT/apresentação (US-36) seguem abertos; APK de release em loja não entrou (a execução usou APK debug).
+7. **RNF08/RNF11**: os seis checks obrigatórios e o CodeQL estavam verdes em 24/11/2026; a proteção da `main` exige uma aprovação e os seis contextos.
+8. **Entrega final**: o relatório ABNT, as mídias e o roteiro entraram em 24/11/2026; o PDF está versionado. A apresentação em si e a revisão por pares do relatório dependem da cerimônia. O APK de release em loja não entrou (a execução usou APK debug).
 
 Pendências transversais: o worker no Render foi observado **LIVE** em 11/11, com `mqtt conectado` no EMQX TLS e `/healthz` ok, mas sem medição de continuidade ([`us-37.md`](evidencias/us-37.md)); DT-11 foi fechada pela DT-24, com pinagem por SHA e Dependabot integrados em 10/11 (#56) ([evidência](evidencias/dt-24.md)). A API respondeu com banco ok em 02/11 (versão `6b6aa26`), após uma primeira resposta 503, e em 11/11 (`a0625d7`); isso não é prova de operação contínua nem de fluxo físico completo.
 

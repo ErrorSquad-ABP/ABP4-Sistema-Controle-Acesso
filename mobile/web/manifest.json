@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#FAFAFA",
     "theme_color": "#0A0A0A",
-    "description": "App do Sistema de Controle de Acesso (ErrorSquad ABP4)",
+    "description": "Controle de Acesso: consulte suas autorizações e leia o QR Code do terminal (ErrorSquad ABP4)",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

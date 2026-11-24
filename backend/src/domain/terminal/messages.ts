@@ -23,10 +23,18 @@ export interface QrCodeMessage extends Envelope {
   readonly expiresAt: string;
 }
 
-export interface AccessEventMessage extends Envelope {
+export interface NfcTagReadMessage extends Envelope {
   readonly type: 'nfc_read';
   readonly uid: string;
 }
+
+/** Prova efemera lida do celular por HCE; nao e o UID do aparelho. */
+export interface NfcHceReadMessage extends Envelope {
+  readonly type: 'nfc_hce_read';
+  readonly credentialToken: string;
+}
+
+export type AccessEventMessage = NfcTagReadMessage | NfcHceReadMessage;
 
 export interface StatusMessage extends Envelope {
   readonly state: 'online' | 'offline';

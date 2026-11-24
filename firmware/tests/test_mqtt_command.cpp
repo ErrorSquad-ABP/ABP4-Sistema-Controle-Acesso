@@ -74,6 +74,8 @@ int main() {
   assert(broker.subscriptions == 2);
   assert(broker.callback != nullptr);
   assert(broker.bufferSize >= 512);
+  // O status online do heartbeat ja saiu; os numeros abaixo contam so ACKs.
+  broker.publishCalls = 0;
 
   // QR rotativo: o terminal so guarda o token; quem valida e a API.
   deliver(

@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório ABP4</title>
+<style>
+@page { size: A4; margin: 3cm 2cm 2cm 3cm; }
+html { -webkit-print-color-adjust: exact; }
+body { font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 1.5; color: #000; }
+p { text-align: justify; text-indent: 1.25cm; margin: 0 0 0.55em 0; }
+h1 { font-size: 12pt; font-weight: bold; text-transform: uppercase; text-align: left;
+     margin: 0 0 1em 0; page-break-before: always; page-break-after: avoid; }
+h2 { font-size: 12pt; font-weight: bold; text-align: left; margin: 1.3em 0 0.8em 0; page-break-after: avoid; }
+ul, ol { margin: 0.4em 0 0.8em 2.2em; }
+li { text-align: justify; margin-bottom: 0.25em; }
+figure { margin: 1.2em 0 1.4em 0; text-align: center; page-break-inside: avoid; }
+figure img { max-width: 100%; max-height: 12.5cm; }
+figcaption { font-size: 10pt; text-align: center; margin-top: 0.35em; line-height: 1.2; }
+figcaption span { display: block; }
+table { width: 100%; border-collapse: collapse; font-size: 10pt; line-height: 1.25;
+        margin: 0.8em 0 1.2em 0; page-break-inside: auto; }
+th, td { border: 1px solid #000; padding: 4px 5px; vertical-align: top; text-align: left; }
+th { font-weight: bold; }
+.capa { page-break-after: always; }
+.capa, .rosto { text-align: center; }
+.capa p, .rosto p { text-indent: 0; text-align: center; }
+.capa strong, .rosto strong { font-weight: bold; }
+.natureza { margin-left: 8cm; text-align: justify; }
+.natureza p { text-indent: 0; text-align: justify; }
+.toc { font-size: 12pt; }
+.toc div { display: flex; align-items: baseline; margin: 0.35em 0; }
+.toc-top { font-weight: bold; text-transform: uppercase; }
+.toc-sub { margin-left: 1.2cm !important; }
+.toc-text { white-space: nowrap; }
+.toc-dots { flex: 1; border-bottom: 1px dotted #000; margin: 0 4px 4px 4px; }
+.toc-page { width: 3ch; text-align: right; }
+code { font-family: "Courier New", monospace; font-size: 10pt; }
+</style></head><body>
+<div class="capa">
+<p><strong>CENTRO ESTADUAL DE EDUCAÇÃO TECNOLÓGICA PAULA SOUZA</strong><br>
+<strong>FACULDADE DE TECNOLOGIA DE JACAREÍ</strong><br>
+<strong>CURSO SUPERIOR DE TECNOLOGIA EM DESENVOLVIMENTO DE SOFTWARE MULTIPLATAFORMA</strong></p>
+<p><br><br><br><br></p>
+<p><strong>ERRORSQUAD</strong></p>
+<p><br><br><br></p>
+<p><strong>SISTEMA INTEGRADO DE CONTROLE DE ACESSO COM TERMINAL ESP32, APLICAÇÃO MÓVEL E BACKEND EM NUVEM</strong></p>
+<p><br><br><br><br></p>
+<p><strong>Arthur Facchinetti</strong><br>
+<strong>Caio Araujo</strong><br>
+<strong>Carlos Santo</strong><br>
+<strong>Felipe Pacheco</strong><br>
+<strong>João Victor Lopes Rosa</strong><br>
+<strong>Leo Silva</strong></p>
+<p><br><br><br><br></p>
+<p><strong>JACAREÍ</strong><br>
+<strong>2026</strong></p>
+</div>
+<div class="rosto">
+<p><strong>ERRORSQUAD</strong></p>
+<p><br><br><br></p>
+<p><strong>SISTEMA INTEGRADO DE CONTROLE DE ACESSO COM TERMINAL ESP32, APLICAÇÃO MÓVEL E BACKEND EM NUVEM</strong></p>
+<p><br><br><br><br></p>
+<div class="natureza">
+<p>Relatório técnico-científico apresentado à Faculdade de Tecnologia de Jacareí — FATEC Jacareí, como requisito parcial da Aprendizagem Baseada em Projetos (ABP) do curso Superior de Tecnologia em Desenvolvimento de Software Multiplataforma, referente ao Desafio 4DSM 2026-2.</p>
+<p>Orientação: professor responsável pela disciplina de Projeto.</p>
+</div>
+<p><br><br><br><br></p>
+<p><strong>JACAREÍ</strong><br>
+<strong>2026</strong></p>
+</div>
+<h1 id="h1">RESUMO</h1>
+<p>Este trabalho descreve o desenvolvimento de um sistema integrado de controle de acesso para edifícios, composto por um terminal físico baseado em ESP32, uma aplicação móvel em Flutter e um backend em Node.js/TypeScript executado em nuvem. O problema tratado é a substituição de controles de acesso baseados em chaves ou credenciais estáticas por um fluxo auditável, com autorizações temporárias, QR Code rotativo e autenticação por NFC. A solução foi construída em três sprints, com arquitetura cliente-servidor, banco PostgreSQL, mensageria MQTT e implantação contínua. Os resultados incluem o fluxo de acesso por QR e por NFC validado com hardware real, o aplicativo com as telas de usuário e administração, a demo web publicada, o worker MQTT em operação e uma suíte automatizada com centenas de testes. Também são declaradas as limitações: o módulo GPS do terminal não estava disponível; a resiliência offline do firmware foi planejada e postergada; a medição de consumo elétrico não foi realizada; a abertura física de uma cancela real não foi demonstrada; e a revisão de segurança permanece em revisão por pares. O trabalho conclui que o objetivo de um controle de acesso funcional, auditável e integrável foi alcançado no escopo de software e de bancada, com as lacunas físicas explicitamente registradas.</p>
+<p><strong>Palavras-chave:</strong> controle de acesso; ESP32; NFC; QR Code; Flutter; MQTT; arquitetura em nuvem.</p>
+<h1 id="h2">ABSTRACT</h1>
+<p>This work describes the development of an integrated building access control system composed of an ESP32-based physical terminal, a Flutter mobile application, and a Node.js/TypeScript backend running in the cloud. The problem addressed is the replacement of key-based or static-credential access control with an auditable flow based on temporary authorizations, rotating QR codes, and NFC authentication. The solution was built in three sprints using a client-server architecture, a PostgreSQL database, MQTT messaging, and continuous deployment. Results include a QR and NFC access flow validated with real hardware, the mobile application with user and administration screens, a published web demo, an operating MQTT worker, and an automated test suite with hundreds of tests. Limitations are also stated: the terminal GPS module was unavailable; firmware offline resilience was planned and postponed; electrical consumption was not measured; physical gate actuation was not demonstrated with a real gate; and the security review remains under peer review. The work concludes that the goal of a functional, auditable, and integrable access control was achieved within the software and bench scope, with physical gaps explicitly recorded.</p>
+<p><strong>Keywords:</strong> access control; ESP32; NFC; QR Code; Flutter; MQTT; cloud architecture.</p>
+<h1 id="h3">LISTA DE ILUSTRAÇÕES</h1>
+<p><strong>Figura 1</strong> – Componentes da solução<br>
+<strong>Figura 2</strong> – Implantação em desenvolvimento e produção<br>
+<strong>Figura 3</strong> – Casos de uso<br>
+<strong>Figura 4</strong> – Modelo de dados<br>
+<strong>Figura 5</strong> – Rotação do QR Code<br>
+<strong>Figura 6</strong> – Acesso por QR Code<br>
+<strong>Figura 7</strong> – Acesso por NFC (tag física e celular)<br>
+<strong>Figura 8</strong> – Demo web: tela de entrada no tema claro<br>
+<strong>Figura 9</strong> – Demo web: tela de entrada no tema escuro</p>
+<h1 id="h4">LISTA DE QUADROS</h1>
+<p><strong>Quadro 1</strong> – Requisitos funcionais e situação final<br>
+<strong>Quadro 2</strong> – Requisitos não funcionais e restrições<br>
+<strong>Quadro 3</strong> – Entregas por sprint<br>
+<strong>Quadro 4</strong> – Evidências de teste e operação<br>
+<strong>Quadro 5</strong> – Rastreabilidade entre requisito, evidência e lacuna<br>
+<strong>Quadro 6</strong> – Riscos residuais e tratamento</p>
+<h1 id="h5">LISTA DE ABREVIATURAS E SIGLAS</h1>
+<p><strong>ABP</strong> — Aprendizagem Baseada em Projetos<br>
+<strong>ACK</strong> — confirmação de execução de comando<br>
+<strong>API</strong> — Application Programming Interface<br>
+<strong>ATS</strong> — Answer To Select<br>
+<strong>CI/CD</strong> — Integração Contínua e Entrega Contínua<br>
+<strong>ESP32</strong> — microcontrolador com Wi-Fi e Bluetooth<br>
+<strong>HCE</strong> — Host Card Emulation<br>
+<strong>JWT</strong> — JSON Web Token<br>
+<strong>MQTT</strong> — protocolo de mensageria publish/subscribe<br>
+<strong>NFC</strong> — Near Field Communication<br>
+<strong>QR</strong> — Quick Response<br>
+<strong>RBAC</strong> — Role-Based Access Control<br>
+<strong>RC522</strong> — leitor NFC de 13,56 MHz<br>
+<strong>REST</strong> — Representational State Transfer<br>
+<strong>TLS</strong> — Transport Layer Security</p>
+<h1 id="h6">SUMÁRIO</h1>
+<nav class="toc">
+<div class="toc-top"><span class="toc-text">1 INTRODUÇÃO</span><span class="toc-dots"></span><span class="toc-page" data-idx="0">10</span></div>
+<div class="toc-sub"><span class="toc-text">1.1 Contexto e problema</span><span class="toc-dots"></span><span class="toc-page" data-idx="1">10</span></div>
+<div class="toc-sub"><span class="toc-text">1.2 Objetivos</span><span class="toc-dots"></span><span class="toc-page" data-idx="2">10</span></div>
+<div class="toc-sub"><span class="toc-text">1.3 Justificativa</span><span class="toc-dots"></span><span class="toc-page" data-idx="3">11</span></div>
+<div class="toc-sub"><span class="toc-text">1.4 Organização do trabalho</span><span class="toc-dots"></span><span class="toc-page" data-idx="4">11</span></div>
+<div class="toc-top"><span class="toc-text">2 REQUISITOS E ESCOPO</span><span class="toc-dots"></span><span class="toc-page" data-idx="5">12</span></div>
+<div class="toc-sub"><span class="toc-text">2.1 Requisitos do desafio</span><span class="toc-dots"></span><span class="toc-page" data-idx="6">12</span></div>
+<div class="toc-sub"><span class="toc-text">2.2 Decisões de escopo</span><span class="toc-dots"></span><span class="toc-page" data-idx="7">13</span></div>
+<div class="toc-top"><span class="toc-text">3 ARQUITETURA E TECNOLOGIAS</span><span class="toc-dots"></span><span class="toc-page" data-idx="8">15</span></div>
+<div class="toc-sub"><span class="toc-text">3.1 Visão geral</span><span class="toc-dots"></span><span class="toc-page" data-idx="9">15</span></div>
+<div class="toc-sub"><span class="toc-text">3.2 Backend</span><span class="toc-dots"></span><span class="toc-page" data-idx="10">17</span></div>
+<div class="toc-sub"><span class="toc-text">3.3 Aplicativo móvel</span><span class="toc-dots"></span><span class="toc-page" data-idx="11">18</span></div>
+<div class="toc-sub"><span class="toc-text">3.4 Firmware do terminal</span><span class="toc-dots"></span><span class="toc-page" data-idx="12">18</span></div>
+<div class="toc-sub"><span class="toc-text">3.5 Modelo de dados</span><span class="toc-dots"></span><span class="toc-page" data-idx="13">18</span></div>
+<div class="toc-sub"><span class="toc-text">3.6 Segurança e operação</span><span class="toc-dots"></span><span class="toc-page" data-idx="14">19</span></div>
+<div class="toc-top"><span class="toc-text">4 DESENVOLVIMENTO POR SPRINT</span><span class="toc-dots"></span><span class="toc-page" data-idx="15">20</span></div>
+<div class="toc-sub"><span class="toc-text">4.1 Sprint 1 — fundação</span><span class="toc-dots"></span><span class="toc-page" data-idx="16">20</span></div>
+<div class="toc-sub"><span class="toc-text">4.2 Sprint 2 — fluxo QR real</span><span class="toc-dots"></span><span class="toc-page" data-idx="17">20</span></div>
+<div class="toc-sub"><span class="toc-text">4.3 Sprint 3 — NFC, hardware e entrega</span><span class="toc-dots"></span><span class="toc-page" data-idx="18">20</span></div>
+<div class="toc-sub"><span class="toc-text">4.4 Processo e qualidade</span><span class="toc-dots"></span><span class="toc-page" data-idx="19">21</span></div>
+<div class="toc-top"><span class="toc-text">5 RESULTADOS E EVIDÊNCIAS</span><span class="toc-dots"></span><span class="toc-page" data-idx="20">22</span></div>
+<div class="toc-sub"><span class="toc-text">5.1 Testes e integração contínua</span><span class="toc-dots"></span><span class="toc-page" data-idx="21">22</span></div>
+<div class="toc-sub"><span class="toc-text">5.2 Acesso por QR Code</span><span class="toc-dots"></span><span class="toc-page" data-idx="22">22</span></div>
+<div class="toc-sub"><span class="toc-text">5.3 Acesso por NFC: tag física e celular</span><span class="toc-dots"></span><span class="toc-page" data-idx="23">24</span></div>
+<div class="toc-sub"><span class="toc-text">5.4 Demo web</span><span class="toc-dots"></span><span class="toc-page" data-idx="24">25</span></div>
+<div class="toc-sub"><span class="toc-text">5.5 Presença e heartbeat</span><span class="toc-dots"></span><span class="toc-page" data-idx="25">26</span></div>
+<div class="toc-sub"><span class="toc-text">5.6 Implantação e operação</span><span class="toc-dots"></span><span class="toc-page" data-idx="26">26</span></div>
+<div class="toc-sub"><span class="toc-text">5.7 Rastreabilidade</span><span class="toc-dots"></span><span class="toc-page" data-idx="27">26</span></div>
+<div class="toc-top"><span class="toc-text">6 DIFICULDADES E LIMITAÇÕES</span><span class="toc-dots"></span><span class="toc-page" data-idx="28">28</span></div>
+<div class="toc-sub"><span class="toc-text">6.1 Tempo de resposta do HCE no RC522</span><span class="toc-dots"></span><span class="toc-page" data-idx="29">28</span></div>
+<div class="toc-sub"><span class="toc-text">6.2 GPS do aplicativo</span><span class="toc-dots"></span><span class="toc-page" data-idx="30">28</span></div>
+<div class="toc-sub"><span class="toc-text">6.3 Módulo GPS do terminal</span><span class="toc-dots"></span><span class="toc-page" data-idx="31">28</span></div>
+<div class="toc-sub"><span class="toc-text">6.4 Resiliência offline</span><span class="toc-dots"></span><span class="toc-page" data-idx="32">28</span></div>
+<div class="toc-sub"><span class="toc-text">6.5 Abertura física e energia</span><span class="toc-dots"></span><span class="toc-page" data-idx="33">29</span></div>
+<div class="toc-sub"><span class="toc-text">6.6 Segurança e aceites pendentes</span><span class="toc-dots"></span><span class="toc-page" data-idx="34">29</span></div>
+<div class="toc-top"><span class="toc-text">7 CONCLUSÃO</span><span class="toc-dots"></span><span class="toc-page" data-idx="35">30</span></div>
+<div class="toc-top"><span class="toc-text">REFERÊNCIAS</span><span class="toc-dots"></span><span class="toc-page" data-idx="36">31</span></div>
+<div class="toc-top"><span class="toc-text">APÊNDICE A — ROTEIRO DE REPRODUÇÃO</span><span class="toc-dots"></span><span class="toc-page" data-idx="37">33</span></div>
+<div class="toc-top"><span class="toc-text">APÊNDICE B — ÍNDICE DE EVIDÊNCIAS</span><span class="toc-dots"></span><span class="toc-page" data-idx="38">34</span></div>
+<div class="toc-top"><span class="toc-text">APÊNDICE C — LINKS</span><span class="toc-dots"></span><span class="toc-page" data-idx="39">35</span></div>
+</nav>
+
+<h1 id="h7">1 INTRODUÇÃO</h1>
+<h2 id="h8">1.1 Contexto e problema</h2>
+<p>O controle de acesso em edifícios costuma depender de chaves físicas, cartões de proximidade ou porteiros. Esses mecanismos são difíceis de auditar, de revogar em tempo real e de operar com autorizações temporárias, como a visita de um prestador por algumas horas. O desafio proposto pela FATEC Jacareí para o 4DSM 2026-2 pede um sistema de baixo custo com dois componentes principais: um terminal de acesso, responsável por ler QR Code e NFC e acionar a liberação, e uma aplicação móvel, usada para consultar autorizações, ler o QR e administrar o sistema (FATEC, 2026).</p>
+<p>O problema técnico central é conciliar três requisitos que puxam em direções diferentes: (i) a decisão de acesso precisa ser centralizada e auditável, para que o terminal não seja uma autoridade isolada; (ii) a leitura no terminal precisa ser rápida o suficiente para uma pessoa encostar o celular ou a tag e receber o retorno; e (iii) a operação precisa sobreviver a falhas de rede sem liberar acesso por conta própria. A solução adotada separa a decisão da atuação: o terminal apenas lê a credencial e publica a tentativa; o backend decide; o terminal executa o comando já decidido e devolve um ACK.</p>
+<h2 id="h9">1.2 Objetivos</h2>
+<p>O objetivo geral foi construir um sistema integrado de controle de acesso, com terminal físico, aplicação móvel e backend em nuvem, capaz de autorizar e registrar acessos por QR Code e NFC. Os objetivos específicos foram:</p>
+<ul>
+<li>modelar usuários, locais, autorizações e eventos de acesso em banco relacional;</li>
+<li>emitir QR Code assinado e rotativo, com validade curta e vínculo ao terminal;</li>
+<li>ler QR pelo aplicativo e enviar a tentativa com posição geográfica;</li>
+<li>ler tag NFC e prova efêmera de celular (HCE) pelo terminal;</li>
+<li>decidir o acesso no backend, consumir a autorização de forma transacional e registrar o evento;</li>
+<li>entregar o comando ao terminal por MQTT, executar a atuação e registrar o ACK;</li>
+<li>operar com implantação contínua, testes automatizados e documentação de arquitetura;</li>
+<li>publicar uma demonstração web do aplicativo como entrega complementar.</li>
+</ul>
+<h2 id="h10">1.3 Justificativa</h2>
+<p>A separação entre decisão e atuação reduz o risco de um terminal comprometido liberar acesso por conta própria. O uso de credenciais temporárias e de uso único permite revogar acessos sem trocar fechaduras. O QR rotativo de 25 segundos e a prova HCE de 60 segundos, consumida no primeiro acesso aceito, reduzem a janela de reutilização de uma credencial capturada. A auditabilidade é obtida porque toda tentativa vira um evento com decisão, motivo, autorização e comando associado.</p>
+<p>Do ponto de vista acadêmico, o projeto integra conteúdos de engenharia de software, banco de dados, redes, sistemas embarcados, desenvolvimento móvel e DevOps em um artefato único, com evidências versionadas e limitações declaradas.</p>
+<h2 id="h11">1.4 Organização do trabalho</h2>
+<p>A Seção 2 apresenta os requisitos e as decisões de escopo. A Seção 3 descreve a arquitetura e as tecnologias. A Seção 4 percorre o desenvolvimento por sprint. A Seção 5 consolida os resultados e as evidências. A Seção 6 discute dificuldades e limitações. A Seção 7 conclui. Os apêndices reúnem o roteiro de reprodução e o índice de evidências.</p>
+<h1 id="h12">2 REQUISITOS E ESCOPO</h1>
+<h2 id="h13">2.1 Requisitos do desafio</h2>
+<p>Os requisitos foram lidos do documento do Desafio 4DSM 2026-2 e mantidos em uma matriz versionada, com status e evidência por item (ERRORSQUAD, 2026a). A matriz distingue quatro situações: atendido, parcial, não atendido e não comprovado. Um requisito só é marcado como atendido quando existe evidência no repositório ou execução registrada; caso contrário, a lacuna é declarada.</p>
+<p><strong>Quadro 1 – Requisitos funcionais e situação final</strong></p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requisito (resumo)</th>
+<th>Situação</th>
+<th>Evidência principal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RF01</td>
+<td>Cadastro de usuários com perfis</td>
+<td>Atendido</td>
+<td>CRUD e RBAC no backend</td>
+</tr>
+<tr>
+<td>RF02</td>
+<td>Cadastro de local de acesso</td>
+<td>Atendido</td>
+<td>API e tela de locais</td>
+</tr>
+<tr>
+<td>RF03</td>
+<td>Autorização com janela, usos e situação</td>
+<td>Parcial</td>
+<td>Intervalo contínuo; não há janela diária</td>
+</tr>
+<tr>
+<td>RF04</td>
+<td>Consulta de autorizações com filtros</td>
+<td>Atendido</td>
+<td>Listagem paginada e filtros</td>
+</tr>
+<tr>
+<td>RF05</td>
+<td>Cancelamento de autorização</td>
+<td>Atendido</td>
+<td>Cancelamento com motivo</td>
+</tr>
+<tr>
+<td>RF06</td>
+<td>Histórico de acessos</td>
+<td>Atendido</td>
+<td>Eventos e tela de histórico</td>
+</tr>
+<tr>
+<td>RF07</td>
+<td>Autenticação no app</td>
+<td>Atendido</td>
+<td>Login JWT e sessão persistida</td>
+</tr>
+<tr>
+<td>RF08</td>
+<td>Usuário vê suas autorizações</td>
+<td>Atendido</td>
+<td>Tela e API <code>/me/authorizations</code></td>
+</tr>
+<tr>
+<td>RF09</td>
+<td>Leitura de QR pelo app</td>
+<td>Atendido</td>
+<td>Scanner envia pedido e mostra resultado</td>
+</tr>
+<tr>
+<td>RF10</td>
+<td>Leitura de NFC pelo terminal</td>
+<td>Atendido</td>
+<td>RC522, MQTT e decisão no backend</td>
+</tr>
+<tr>
+<td>RF11</td>
+<td>Terminal com tela, NFC, sinalização, GPS e abertura</td>
+<td>Parcial</td>
+<td>Sem GPS (módulo indisponível); abertura física de cancela não demonstrada</td>
+</tr>
+<tr>
+<td>RF12</td>
+<td>QR rotativo de 25 s</td>
+<td>Atendido</td>
+<td>Emissão e publicação no worker</td>
+</tr>
+<tr>
+<td>RF13</td>
+<td>Validação do QR (assinatura, prazo, local, usos)</td>
+<td>Atendido</td>
+<td>Política de acesso e geofence de 100 m</td>
+</tr>
+<tr>
+<td>RF14</td>
+<td>Validação NFC pelo backend</td>
+<td>Atendido</td>
+<td>Tag física e prova HCE</td>
+</tr>
+<tr>
+<td>RF15</td>
+<td>Liberação do acesso</td>
+<td>Atendido</td>
+<td>Comando <code>open</code> e servo posicional</td>
+</tr>
+<tr>
+<td>RF16</td>
+<td>Negação com indicação visual/sonora</td>
+<td>Atendido</td>
+<td>LED, buzzer e display</td>
+</tr>
+<tr>
+<td>RF17</td>
+<td>Registro de toda tentativa</td>
+<td>Atendido</td>
+<td>Evento por decisão, com motivo e ACK</td>
+</tr>
+</tbody>
+</table>
+<p>Fonte: adaptado de ERRORSQUAD (2026a).</p>
+<p><strong>Quadro 2 – Requisitos não funcionais e restrições</strong></p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requisito (resumo)</th>
+<th>Situação</th>
+<th>Observação</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RNF01</td>
+<td>IoT + backend Node/TS + API REST + app</td>
+<td>Atendido</td>
+<td>Monorepo com firmware, backend e mobile</td>
+</tr>
+<tr>
+<td>RNF02</td>
+<td>Autenticação, proteção e comunicação segura</td>
+<td>Parcial</td>
+<td>JWT, HTTPS, TLS no broker e no firmware; revisão de segurança em revisão por pares</td>
+</tr>
+<tr>
+<td>RNF03</td>
+<td>Retry/persistência sob falha</td>
+<td>Parcial</td>
+<td>Outbox no backend; fila local do firmware postergada (US-25)</td>
+</tr>
+<tr>
+<td>RNF04</td>
+<td>Interface acessível ao público idoso</td>
+<td>Parcial</td>
+<td>Fonte ampliada e rótulos; auditoria formal não realizada</td>
+</tr>
+<tr>
+<td>RNF05</td>
+<td>Modularidade</td>
+<td>Atendido</td>
+<td>Clean Architecture e regra de camadas</td>
+</tr>
+<tr>
+<td>RNF06</td>
+<td>Banco em nuvem</td>
+<td>Atendido</td>
+<td>PostgreSQL no Neon</td>
+</tr>
+<tr>
+<td>RNF07</td>
+<td>Eficiência energética</td>
+<td>Parcial</td>
+<td>Projeto e orçamento documentados; consumo não medido</td>
+</tr>
+<tr>
+<td>RNF08</td>
+<td>CI com build, testes e lint</td>
+<td>Parcial</td>
+<td>Checks obrigatórios; firmware sem lint dedicado</td>
+</tr>
+<tr>
+<td>RNF09</td>
+<td>CD automatizado</td>
+<td>Atendido</td>
+<td>Deploy do backend após CI</td>
+</tr>
+<tr>
+<td>RNF10</td>
+<td>Testes no pipeline</td>
+<td>Atendido</td>
+<td>Backend, mobile e firmware</td>
+</tr>
+<tr>
+<td>RNF11</td>
+<td>Git com branches e commits descritivos</td>
+<td>Atendido</td>
+<td>Fluxo por branch e PR</td>
+</tr>
+<tr>
+<td>RNF12</td>
+<td>Feedback de build/deploy</td>
+<td>Atendido</td>
+<td>GitHub Actions</td>
+</tr>
+<tr>
+<td>RP01</td>
+<td>Node.js + Express + TypeScript</td>
+<td>Atendido</td>
+<td>Backend</td>
+</tr>
+<tr>
+<td>RP02</td>
+<td>Integração com dispositivo físico</td>
+<td>Parcial</td>
+<td>NFC, display, servo e feedback; GPS ausente</td>
+</tr>
+<tr>
+<td>RP03</td>
+<td>Protocolo IoT</td>
+<td>Atendido</td>
+<td>MQTT v1</td>
+</tr>
+<tr>
+<td>RP04</td>
+<td>Aplicativo móvel</td>
+<td>Atendido</td>
+<td>Flutter/Android</td>
+</tr>
+<tr>
+<td>RP05</td>
+<td>Cliente-servidor</td>
+<td>Atendido</td>
+<td>App, API, worker e terminal</td>
+</tr>
+<tr>
+<td>RP06</td>
+<td>Desenvolvimento incremental</td>
+<td>Atendido</td>
+<td>Três sprints</td>
+</tr>
+<tr>
+<td>RP07</td>
+<td>Documentação de arquitetura</td>
+<td>Atendido</td>
+<td>Diagramas em Mermaid</td>
+</tr>
+<tr>
+<td>RP08</td>
+<td>Escopo viável com simulações</td>
+<td>Atendido</td>
+<td>Wokwi e simulador Node</td>
+</tr>
+<tr>
+<td>RP09</td>
+<td>Pipeline CI/CD</td>
+<td>Atendido</td>
+<td>GitHub Actions</td>
+</tr>
+<tr>
+<td>RP10</td>
+<td>Testes no pipeline</td>
+<td>Atendido</td>
+<td>RNF10</td>
+</tr>
+<tr>
+<td>RP11</td>
+<td>Deploy automatizado em nuvem</td>
+<td>Atendido</td>
+<td>Vercel, Render e Neon</td>
+</tr>
+<tr>
+<td>RP12</td>
+<td>Conteinerização</td>
+<td>Parcial</td>
+<td>Backend e infraestrutura local</td>
+</tr>
+</tbody>
+</table>
+<p>Fonte: adaptado de ERRORSQUAD (2026a).</p>
+<h2 id="h14">2.2 Decisões de escopo</h2>
+<p>Três decisões foram tomadas e registradas ao longo do projeto. A primeira foi não usar o UID aleatório do celular como identidade: o Android apresenta um UID que muda a cada aproximação, e usá-lo criaria uma identidade instável e não autenticada. Em vez disso, o aplicativo emite uma prova efêmera de 128 bits na API e a apresenta por HCE; o banco guarda apenas o hash, e a prova é consumida no primeiro acesso aceito (ERRORSQUAD, 2026b).</p>
+<p>A segunda foi manter o terminal sem autoridade de decisão. Sem rede ou sem hora confiável, o terminal recusa o comando; ele nunca abre a porta por conta própria. A terceira foi declarar o GPS do terminal fora do escopo quando o módulo NEO-6M não estava disponível. A posição usada na decisão continua vindo do aplicativo no pedido de QR, e o terminal não publica coordenada.</p>
+<h1 id="h15">3 ARQUITETURA E TECNOLOGIAS</h1>
+<h2 id="h16">3.1 Visão geral</h2>
+<p>A solução é um monorepo com quatro partes: aplicativo Flutter, API REST em Node.js/TypeScript, worker MQTT e firmware ESP32. A API e o worker compartilham o mesmo código de domínio e o mesmo banco PostgreSQL, mas são processos separados: a API atende o aplicativo por HTTPS; o worker permanece conectado ao broker e processa tentativas, ACKs e presença. O terminal fala MQTT com o broker e nunca acessa o banco.</p>
+<figure>
+<img src="../midias/diagramas/componentes.png" alt="Componentes da solução">
+<figcaption><strong>Figura 1</strong> – Componentes da solução<br><span>Fonte: elaborado pelos autores (2026).</span></figcaption>
+</figure>
+
+<p>A Figura 2 mostra a implantação. Em desenvolvimento, o banco e o broker sobem por Docker Compose e a API/worker rodam localmente. Em produção, a API está na Vercel, o worker no Render, o banco no Neon e o broker no EMQX Cloud com TLS. O aplicativo é distribuído como APK de depuração para a banca; a demo web é publicada em projeto separado na Vercel.</p>
+<figure>
+<img src="../midias/diagramas/implantacao.png" alt="Implantação em desenvolvimento e produção">
+<figcaption><strong>Figura 2</strong> – Implantação em desenvolvimento e produção<br><span>Fonte: elaborado pelos autores (2026).</span></figcaption>
+</figure>
+
+<figure>
+<img src="../midias/diagramas/casos-de-uso.png" alt="Casos de uso">
+<figcaption><strong>Figura 3</strong> – Casos de uso<br><span>Fonte: elaborado pelos autores (2026).</span></figcaption>
+</figure>
+
+<p>A Figura 3 resume os atores e casos de uso. O usuário autenticado consulta autorizações, escaneia o QR e usa o NFC do celular; o administrador gerencia usuários, autorizações e locais; o terminal exibe o QR, lê tag e celular, executa o comando e confirma com ACK. O heartbeat de presença está implementado no firmware, mas ainda não foi confirmado no hardware.</p>
+<h2 id="h17">3.2 Backend</h2>
+<p>O backend segue uma separação em camadas: <code>domain</code> concentra entidades e regras sem dependência externa; <code>application</code> orquestra casos de uso; <code>infrastructure</code> implementa Prisma, MQTT e HTTP; <code>main</code> monta a aplicação. A regra de dependência é verificada no lint. A API expõe contrato REST versionado e documentação OpenAPI; a validação de entrada usa Zod, e os erros de domínio são traduzidos para respostas HTTP sem vazar detalhes internos (ERRORSQUAD, 2026c).</p>
+<p>Os fluxos principais são: emissão de QR assinado; emissão de prova HCE; decisão de acesso para QR, tag NFC e HCE; consulta de autorizações e histórico; e administração de usuários e locais. A decisão acontece em uma transação que grava o evento, consome a autorização e, quando liberado, grava o comando na outbox. O consumo condicional evita gastar um uso quando a autorização já se esgotou ou quando a credencial HCE já foi consumida.</p>
+<h2 id="h18">3.3 Aplicativo móvel</h2>
+<p>O aplicativo foi desenvolvido em Flutter, com Riverpod para estado e <code>go_router</code> para navegação. As telas cobrem login, autorizações, detalhe, histórico, perfil, locais, administração e scanner. O scanner usa <code>mobile_scanner</code> para ler o QR e <code>geolocator</code> para obter a posição; o pedido é enviado com um <code>requestId</code> idempotente. A sessão é persistida no armazenamento seguro do aparelho, e o token é anexado apenas em requisições para a origem da API.</p>
+<p>Um ajuste relevante ocorreu no fim da Sprint 3: a localização passou a ser buscada na abertura do aplicativo, e não apenas quando o QR é lido. Sem isso, o GPS a frio podia exceder o limite de dez segundos e o pedido nem chegava ao backend. O aplicativo reaproveita a posição apenas se ela for recente e precisa; caso contrário, busca uma nova dentro do mesmo limite.</p>
+<h2 id="h19">3.4 Firmware do terminal</h2>
+<p>O firmware é escrito em C++ com PlatformIO para ESP32. Os módulos separam responsabilidades: <code>mqtt</code> (conexão, TLS, comandos, ACK, status), <code>nfc</code> (RC522 e HCE), <code>display</code> (OLED e LCD), <code>door</code> (servo posicional), <code>feedback</code> (LED e buzzer), <code>clock_time</code> (SNTP) e <code>gps</code> (esqueleto, sem módulo disponível). O terminal só executa um comando se tiver hora confiável, se o comando estiver dentro do prazo e se a porta não estiver em ciclo. O ACK é publicado uma vez; o relay do backend republica o mesmo comando enquanto não houver ACK, e o terminal deduplica por <code>commandId</code>.</p>
+<h2 id="h20">3.5 Modelo de dados</h2>
+<p>O modelo relacional cobre usuários, locais, autorizações, credenciais, eventos, terminais, comandos e deduplicação de mensagens. A Figura 7 apresenta as entidades principais e seus relacionamentos. A credencial armazena somente o hash do token ou do UID normalizado; a prova HCE tem <code>consumedAt</code> para garantir uso único.</p>
+<figure>
+<img src="../midias/diagramas/modelo-dados.png" alt="Modelo de dados">
+<figcaption><strong>Figura 4</strong> – Modelo de dados<br><span>Fonte: elaborado pelos autores (2026).</span></figcaption>
+</figure>
+
+<h2 id="h21">3.6 Segurança e operação</h2>
+<p>A autenticação usa JWT com segredo obrigatório em produção, perfis ADMIN/RESIDENT/VISITOR e limitação de tentativas de login. A API responde por HTTPS e aplica CORS por allowlist exata; a demo web tem sua origem cadastrada explicitamente. O broker exige TLS, e o firmware valida o certificado com CA embutida — a configuração que aceita qualquer certificado é proibida no CI. Segredos de produção ficam no provedor e não são versionados. A revisão de segurança complementar foi conduzida e está em revisão por pares; os riscos residuais e os aceites formais pendentes estão registrados na evidência da US-33.</p>
+<h1 id="h22">4 DESENVOLVIMENTO POR SPRINT</h1>
+<h2 id="h23">4.1 Sprint 1 — fundação</h2>
+<p>A Sprint 1 (15 a 21 de outubro de 2026) teve como objetivo colocar a fundação no ar e um esqueleto conversando ponta a ponta em simulação. Foram entregues a estrutura do monorepo, o esqueleto do backend com autenticação e usuários, o firmware inicial com display, servo, LED e buzzer, o simulador de terminal e a infraestrutura local com Mosquitto e PostgreSQL. A revisão e a retrospectiva registraram o que funcionou e o que precisava amadurecer: contrato, testes e deploy.</p>
+<h2 id="h24">4.2 Sprint 2 — fluxo QR real</h2>
+<p>A Sprint 2 (22 de outubro a 11 de novembro) entregou o fluxo QR no backend, a credencial de 25 segundos, a decisão de acesso, o evento auditado, a outbox e o worker MQTT com relay e deduplicação. Também entraram o login real no aplicativo, as telas do Figma, a administração de usuários, autorizações e locais, e o endurecimento de entrega: migrations no CD, seed protegida, TLS no firmware, CORS, teto de 100 metros, Actions pinadas por SHA e Dependabot (ERRORSQUAD, 2026d).</p>
+<p>O fechamento ocorreu em 10 de novembro, um dia antes da Review, com 11 de 13 histórias concluídas; as duas restantes e algumas antecipações da Sprint 3 foram concluídas em 11 de novembro. O documento da Review 2 registra a separação entre o que estava no servidor, o que estava no aplicativo e o que ainda dependia de bancada.</p>
+<h2 id="h25">4.3 Sprint 3 — NFC, hardware e entrega</h2>
+<p>A Sprint 3 (12 a 25 de novembro) concentrou o que faltava para o controle de acesso físico e para a entrega final. As entregas efetivas foram:</p>
+<ul>
+<li><strong>NFC físico (US-23):</strong> leitura de tag pelo RC522, publicação MQTT, decisão no backend e feedback no terminal.</li>
+<li><strong>HCE do celular (US-24 e PR #77):</strong> prova efêmera emitida pela API e apresentada pelo <code>HostApduService</code>; o firmware lê a prova por ISO-DEP e publica <code>nfc_hce_read</code>.</li>
+<li><strong>QR compacto e display (US-22):</strong> QR numérico de 41 dígitos renderizado no OLED, com margem e escala adequadas, e status no LCD.</li>
+<li><strong>Heartbeat e presença (US-24):</strong> status retained a cada 30 segundos e LWT <code>offline</code>; o firmware passa a anunciar presença sem depender de uma leitura NFC.</li>
+<li><strong>Diagramas finais (US-35):</strong> casos de uso, componentes, implantação e sequências em Mermaid, conferidos contra o código.</li>
+<li><strong>Demo web e identidade (US-38):</strong> build web publicado na Vercel, ícones da marca e aviso de limitações do navegador.</li>
+<li><strong>Encerramento da dívida de energia (DT-22):</strong> decisão, orçamento estimado e procedimento documentados; a medição não foi realizada e o requisito permanece parcial.</li>
+<li><strong>Relatório e apresentação (US-36):</strong> este documento, a pasta de mídias e o roteiro de demonstração.</li>
+</ul>
+<p>A US-25 (resiliência offline do firmware) foi analisada, teve o escopo detalhado e foi movida para bloqueio por decisão do time: ela não bloqueia a entrega e mexe no caminho de reconexão e na persistência local, com risco de instabilidade na véspera da banca. O card registra o escopo preservado para retomada.</p>
+<p><strong>Quadro 3 – Entregas por sprint</strong></p>
+<table>
+<thead>
+<tr>
+<th>Sprint</th>
+<th>Período</th>
+<th>Foco</th>
+<th>Resultado principal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S1</td>
+<td>15–21/10/2026</td>
+<td>Fundação</td>
+<td>Monorepo, esqueletos, simulação e infraestrutura local</td>
+</tr>
+<tr>
+<td>S2</td>
+<td>22/10–11/11/2026</td>
+<td>Fluxo QR real</td>
+<td>Decisão, evento, outbox, app, admin e deploy</td>
+</tr>
+<tr>
+<td>S3</td>
+<td>12–25/11/2026</td>
+<td>NFC, hardware e entrega</td>
+<td>Tag, HCE, QR no OLED, heartbeat, demo web e documentação final</td>
+</tr>
+</tbody>
+</table>
+<p>Fonte: elaborado pelos autores (2026).</p>
+<h2 id="h26">4.4 Processo e qualidade</h2>
+<p>O time trabalhou com branches por card, commits descritivos, pull requests e revisão por pares. A <code>main</code> exige seis checks obrigatórios e uma aprovação; o CodeQL complementa a análise. O Definition of Done inclui testes, documentação afetada e evidência. As evidências ficam em <code>docs/entrega/evidencias/</code>, uma por card, com o que foi verificado, o que não foi e como reproduzir.</p>
+<h1 id="h27">5 RESULTADOS E EVIDÊNCIAS</h1>
+<h2 id="h28">5.1 Testes e integração contínua</h2>
+<p>Na data de entrega, a suíte do aplicativo tinha 664 testes aprovados e análise estática sem problemas. O backend teve 450 testes aprovados no merge do fluxo HCE, incluindo integração e unitários; a suíte de firmware tem testes host para lógica pura, MQTT com broker simulado, TLS, timing da porta e leitura NFC/HCE, além de builds com e sem TLS. O CI executa build do backend, Docker, análise e testes do app, build e instalação do APK, e build do firmware com <code>-Werror</code> nos testes host.</p>
+<p><strong>Quadro 4 – Evidências de teste e operação</strong></p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Evidência</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>App Flutter</td>
+<td>664 testes aprovados; <code>flutter analyze</code> sem problemas (24/11/2026)</td>
+</tr>
+<tr>
+<td>Backend</td>
+<td>450 testes aprovados no merge do #77; CI com lint, typecheck, testes, build e E2E</td>
+</tr>
+<tr>
+<td>Firmware</td>
+<td>Suite host (MQTT, TLS, NFC/HCE, display, servo, timing) e builds PlatformIO</td>
+</tr>
+<tr>
+<td>CI</td>
+<td>Seis checks obrigatórios + CodeQL + Dependabot</td>
+</tr>
+<tr>
+<td>API em produção</td>
+<td><code>/health</code> com <code>status: ok</code> e <code>database: ok</code></td>
+</tr>
+<tr>
+<td>Worker MQTT</td>
+<td><code>/healthz</code> com <code>status: ok</code>; conexão TLS ao broker</td>
+</tr>
+<tr>
+<td>Demo web</td>
+<td>Página, manifest, rota de login e CORS verificados em 24/11/2026</td>
+</tr>
+<tr>
+<td>Hardware</td>
+<td>QR, tag física e HCE com decisão <code>GRANTED</code> e ACK <code>executed</code></td>
+</tr>
+</tbody>
+</table>
+<p>Fonte: elaborado pelos autores (2026).</p>
+<h2 id="h29">5.2 Acesso por QR Code</h2>
+<p>A Figura 6 mostra a sequência do acesso por QR. O aplicativo lê o token exibido no terminal, obtém a posição e envia o pedido com um <code>requestId</code>. A API valida assinatura, prazo, terminal, credencial, autorização, usos e distância; grava o evento; consome a autorização; e publica o comando. O terminal executa e devolve o ACK. Em 23 e 24 de novembro, leituras reais produziram eventos <code>GRANTED</code> com ACK <code>executed</code>; tentativas fora do raio produziram <code>DENIED</code> com motivo <code>OUT_OF_RANGE</code>, sem comando.</p>
+<figure>
+<img src="../midias/diagramas/sequencia-qr-rotacao.png" alt="Rotação do QR Code">
+<figcaption><strong>Figura 5</strong> – Rotação do QR Code<br><span>Fonte: elaborado pelos autores (2026).</span></figcaption>
+</figure>
+
+<figure>
+<img src="../midias/diagramas/sequencia-qr-acesso.png" alt="Acesso por QR Code">
+<figcaption><strong>Figura 6</strong> – Acesso por QR Code<br><span>Fonte: elaborado pelos autores (2026).</span></figcaption>
+</figure>
+
+<h2 id="h30">5.3 Acesso por NFC: tag física e celular</h2>
+<p>A Figura 7 mostra as duas formas de NFC. A tag física envia o UID normalizado. O celular envia uma prova de 128 bits obtida na API, apresentada por HCE; o firmware envia o <code>SELECT AID</code>, recebe 16 bytes e o status <code>9000</code>, e publica <code>nfc_hce_read</code>. A prova é consumida no primeiro acesso aceito; uma segunda apresentação da mesma prova é negada com <code>INVALID_CREDENTIAL</code>, sem gastar um novo uso da autorização.</p>
+<figure>
+<img src="../midias/diagramas/sequencia-nfc.png" alt="Acesso por NFC">
+<figcaption><strong>Figura 7</strong> – Acesso por NFC (tag física e celular)<br><span>Fonte: elaborado pelos autores (2026).</span></figcaption>
+</figure>
+
+<p>Em bancada, a tag física abriu o acesso duas vezes, e o NFC do celular abriu quatro vezes, todas com ACK <code>executed</code>. A leitura do celular exigiu um ajuste de tempo: o RC522 espera 25 milissegundos por resposta, e o Android levava mais que isso para conectar ao serviço HCE na primeira apresentação. A correção foi preparar o serviço enquanto o aplicativo está em primeiro plano na tela de NFC, sem mudar a autorização nem a prova.</p>
+<h2 id="h31">5.4 Demo web</h2>
+<p>A demo web foi publicada em <code>https://abp4-demo-web.vercel.app</code>, em projeto separado da API. A tela de entrada, o manifest e a rota de login foram verificados, o console não apresentou erros e o navegador conseguiu ler a resposta de <code>/health</code> da API, o que confirma o CORS com a origem exata. A demo não oferece a ação de NFC do Android nem o controle de zoom do scanner, porque esses recursos dependem de plugin e de câmera que não existem no navegador.</p>
+<figure>
+<img src="../midias/web/entrar-desktop-claro.png" alt="Demo web no tema claro">
+<figcaption><strong>Figura 8</strong> – Demo web: tela de entrada no tema claro<br><span>Fonte: captura dos autores em 24/11/2026.</span></figcaption>
+</figure>
+
+<figure>
+<img src="../midias/web/entrar-desktop-escuro.png" alt="Demo web no tema escuro">
+<figcaption><strong>Figura 9</strong> – Demo web: tela de entrada no tema escuro<br><span>Fonte: captura dos autores em 24/11/2026.</span></figcaption>
+</figure>
+
+<h2 id="h32">5.5 Presença e heartbeat</h2>
+<p>O firmware publica <code>terminals/{id}/status</code> retained, QoS 1, ao conectar e a cada 30 segundos, com <code>state: online</code> e a versão do firmware. Ao conectar, registra também o LWT <code>offline</code> retained. Com isso, o worker deixa de depender de uma leitura NFC recente para considerar o terminal online e voltar a publicar o QR após um boot. O código foi mergeado e tem teste host; a confirmação no ESP32 ficou pendente porque o firmware não foi regravado na véspera da entrega.</p>
+<h2 id="h33">5.6 Implantação e operação</h2>
+<p>A API de produção respondeu com banco ok durante a entrega; a demo web está publicada; o worker MQTT está no ar com <code>/healthz</code> ok. O banco está no Neon, com migrations aplicadas. O broker está no EMQX Cloud com TLS. A operação contínua não foi medida além das verificações pontuais; a evidência da US-37 registra essa distinção.</p>
+<h2 id="h34">5.7 Rastreabilidade</h2>
+<p>O Quadro 5 liga cada requisito crítico à evidência e à lacuna. A regra adotada é: o que não tem evidência não é apresentado como comprovado.</p>
+<p><strong>Quadro 5 – Rastreabilidade entre requisito, evidência e lacuna</strong></p>
+<table>
+<thead>
+<tr>
+<th>Requisito</th>
+<th>Evidência</th>
+<th>Lacuna declarada</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RF09/RF13 (QR)</td>
+<td>eventos e ACK no banco; captura do app</td>
+<td>abertura física de cancela não demonstrada</td>
+</tr>
+<tr>
+<td>RF10/RF14 (NFC)</td>
+<td>tag e HCE com ACK; evidência US-23</td>
+<td>GPS do terminal ausente</td>
+</tr>
+<tr>
+<td>RF11</td>
+<td>display, servo, LEDs, buzzer e heartbeat</td>
+<td>módulo NEO-6M indisponível</td>
+</tr>
+<tr>
+<td>RF17</td>
+<td>eventos com decisão, motivo e comando</td>
+<td>—</td>
+</tr>
+<tr>
+<td>RNF02</td>
+<td>TLS no firmware e no broker; revisão US-33</td>
+<td>aceites formais e auditoria de dependências pendentes</td>
+</tr>
+<tr>
+<td>RNF03</td>
+<td>outbox e relay no backend</td>
+<td>fila local do firmware (US-25) bloqueada</td>
+</tr>
+<tr>
+<td>RNF07</td>
+<td>decisão e orçamento em <code>dt-22.md</code></td>
+<td>consumo não medido</td>
+</tr>
+<tr>
+<td>RNF08</td>
+<td>CI com seis checks</td>
+<td>firmware sem lint dedicado</td>
+</tr>
+</tbody>
+</table>
+<p>Fonte: elaborado pelos autores (2026).</p>
+<h1 id="h35">6 DIFICULDADES E LIMITAÇÕES</h1>
+<h2 id="h36">6.1 Tempo de resposta do HCE no RC522</h2>
+<p>O leitor RC522 abandona a espera por resposta em cerca de 25 milissegundos. Na primeira apresentação do celular, o Android levava mais tempo para conectar o serviço de emulação, e o leitor registrava timeout. A análise dos logs do Android e do firmware mostrou que o serviço era encontrado, mas a conexão chegava tarde. A solução foi antecipar o serviço enquanto o aplicativo está em primeiro plano e reduzir a resposta para 16 bytes binários, o menor quadro que o leitor já havia demonstrado aceitar. O problema ilustra a diferença entre “o protocolo está correto” e “o protocolo cabe no tempo do hardware”.</p>
+<h2 id="h37">6.2 GPS do aplicativo</h2>
+<p>A primeira versão pedia a posição apenas após a leitura do QR, com limite de dez segundos. Em ambiente interno, o GPS a frio podia exceder o limite e o pedido nem era enviado. A correção passou a iniciar a busca na abertura do aplicativo e a aproveitar uma posição recente e precisa; o limite de dez segundos foi mantido. A solução não inventa posição: se não houver leitura válida, o aplicativo informa a falha.</p>
+<h2 id="h38">6.3 Módulo GPS do terminal</h2>
+<p>O terminal foi planejado com um módulo NEO-6M, mas o componente não estava disponível. Em vez de simular coordenadas — o que produziria uma evidência falsa ”, o GPS foi declarado fora do escopo. A posição continua vindo do aplicativo, e o terminal não publica coordenada. O requisito RF11 permanece parcial por esse motivo, e a matriz registra a lacuna.</p>
+<h2 id="h39">6.4 Resiliência offline</h2>
+<p>A US-25 previa backoff com jitter e fila local persistida para sobreviver a quedas de rede. A análise mostrou que a mudança mexe no caminho de reconexão e no armazenamento não volátil do ESP32, com risco de instabilidade na véspera da banca. O card foi movido para bloqueio, com o escopo preservado: backoff com teto e jitter, fila com capacidade e TTL, carimbo de tempo na leitura, reenvio apenas dentro de 30 segundos, descarte contado e deduplicação por <code>messageId</code>.</p>
+<h2 id="h40">6.5 Abertura física e energia</h2>
+<p>O servo posicional é acionado e o feedback funciona, mas o mecanismo físico de uma cancela ou catraca real não foi acoplado. O requisito de “liberação do acesso” está atendido no nível do comando e da atuação elétrica; a demonstração em uma porta real não foi feita. A medição de consumo elétrico também não foi realizada: a DT-22 foi encerrada com decisão de projeto, orçamento estimado em faixa e procedimento de medição preservado, sem declarar valores medidos.</p>
+<h2 id="h41">6.6 Segurança e aceites pendentes</h2>
+<p>A revisão de segurança encontrou riscos que dependem de decisão do time, como o rate limit em memória não agregar réplicas e o JWT não ter revogação no servidor. Esses riscos estão documentados com recomendação e responsável pendente; não foram apresentados como aceitos. A auditoria automatizada de dependências e a validação de headers no ambiente hospedado também ficaram pendentes. O relatório não trata esses pontos como resolvidos.</p>
+<p><strong>Quadro 6 – Riscos residuais e tratamento</strong></p>
+<table>
+<thead>
+<tr>
+<th>Risco</th>
+<th>Tratamento atual</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Perda de credencial HCE</td>
+<td>prova de uso único, hash no banco e expiração de 60 s</td>
+</tr>
+<tr>
+<td>Reutilização de QR</td>
+<td>validade de 25 s, vínculo ao terminal e idempotência</td>
+</tr>
+<tr>
+<td>Queda de rede no terminal</td>
+<td>comando não é executado sem hora confiável; fila offline postergada</td>
+</tr>
+<tr>
+<td>Terminal comprometido</td>
+<td>terminal não decide acesso; só executa comando assinado pela decisão</td>
+</tr>
+<tr>
+<td>worker reiniciar e perder presença</td>
+<td>heartbeat/LWT implementado; confirmação no hardware pendente</td>
+</tr>
+<tr>
+<td>Consumo elétrico desconhecido</td>
+<td>orçamento e procedimento documentados; medição não realizada</td>
+</tr>
+</tbody>
+</table>
+<p>Fonte: elaborado pelos autores (2026).</p>
+<h1 id="h42">7 CONCLUSÃO</h1>
+<p>O projeto entregou um sistema de controle de acesso funcional no escopo de software e de bancada. O aplicativo lê o QR, envia a posição e mostra a decisão; o terminal lê tag e celular, executa o comando e confirma; o backend decide, audita e entrega o comando; o worker mantém a mensageria; e a infraestrutura opera em nuvem com testes e implantação contínua. O fluxo foi exercitado com hardware real: QR, tag física e HCE produziram eventos e ACKs registrados.</p>
+<p>As limitações estão declaradas e não escondidas: o GPS do terminal não existe no protótipo, a fila offline do firmware foi postergada, o consumo elétrico não foi medido, a abertura de uma cancela real não foi demonstrada e a revisão de segurança ainda tem aceites pendentes. O trabalho mostra que a separação entre decisão e atuação, a credencial temporária e o registro de cada tentativa são viáveis em um protótipo de baixo custo, e deixa um caminho claro para fechar as lacunas físicas.</p>
+<p>Como trabalhos futuros, destacam-se: concluir a US-25 com fila persistida e backoff; integrar o módulo GPS quando disponível ou substituí-lo por uma fonte de posição documentada; acoplar o servo a uma cancela real e medir o consumo; concluir a auditoria de segurança e os aceites formais; e evoluir a demo web para cobrir login e leitura de QR com uma conta de demonstração.</p>
+<h1 id="h43">REFERÊNCIAS</h1>
+<p>ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. <strong>NBR 14724</strong>: informação e documentação — trabalhos acadêmicos — apresentação. Rio de Janeiro: ABNT, 2011.</p>
+<p>ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. <strong>NBR 6023</strong>: informação e documentação — referências — elaboração. Rio de Janeiro: ABNT, 2018.</p>
+<p>ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. <strong>NBR 10520</strong>: informação e documentação — citações em documentos — apresentação. Rio de Janeiro: ABNT, 2023.</p>
+<p>ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. <strong>NBR 6027</strong>: informação e documentação — sumário — apresentação. Rio de Janeiro: ABNT, 2012.</p>
+<p>ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. <strong>NBR 6028</strong>: informação e documentação — resumo, resenha e recensão — apresentação. Rio de Janeiro: ABNT, 2021.</p>
+<p>ERRORSQUAD. <strong>ABP4 — Sistema de Controle de Acesso</strong>: repositório do projeto. 2026a. Disponível em: https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso. Acesso em: 24 nov. 2026.</p>
+<p>ERRORSQUAD. <strong>Contratos MQTT v1</strong>. 2026b. Disponível em: https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso/blob/main/docs/architecture/contratos-mqtt.md. Acesso em: 24 nov. 2026.</p>
+<p>ERRORSQUAD. <strong>Documentação da API</strong>. 2026c. Disponível em: https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso/blob/main/docs/api/README.md. Acesso em: 24 nov. 2026.</p>
+<p>ERRORSQUAD. <strong>Review 2 — Sprint 2</strong>. 2026d. Disponível em: https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso/blob/main/docs/entrega/review-2.md. Acesso em: 24 nov. 2026.</p>
+<p>ERRORSQUAD. <strong>Matriz de requisitos</strong>. 2026e. Disponível em: https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso/blob/main/docs/entrega/matriz-requisitos.md. Acesso em: 24 nov. 2026.</p>
+<p>ESPRESSIF SYSTEMS. <strong>ESP32 Series Datasheet</strong>. 2024. Disponível em: https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf. Acesso em: 24 nov. 2026.</p>
+<p>FACULDADE DE TECNOLOGIA DE JACAREÍ. <strong>Desafio 4DSM 2026-2</strong>. Jacareí: FATEC, 2026. Documento do desafio.</p>
+<p>GOOGLE. <strong>Flutter documentation</strong>. 2026. Disponível em: https://docs.flutter.dev. Acesso em: 24 nov. 2026.</p>
+<p>GOOGLE. <strong>Host-based card emulation overview</strong>. 2026. Disponível em: https://developer.android.com/develop/connectivity/nfc/hce. Acesso em: 24 nov. 2026.</p>
+<p>INTERNATIONAL ORGANIZATION FOR STANDARDIZATION. <strong>ISO/IEC 14443-4</strong>: cards and security devices for personal identification — contactless proximity objects — Part 4: transmission protocol. Geneva: ISO, 2018.</p>
+<p>OASIS. <strong>MQTT Version 3.1.1</strong>: OASIS Standard. 2014. Disponível em: https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html. Acesso em: 24 nov. 2026.</p>
+<p>PRISMA. <strong>Prisma ORM documentation</strong>. 2026. Disponível em: https://www.prisma.io/docs. Acesso em: 24 nov. 2026.</p>
+<h1 id="h44">APÊNDICE A — ROTEIRO DE REPRODUÇÃO</h1>
+<ol>
+<li>Clonar o repositório e instalar as dependências do backend, do aplicativo e do firmware conforme os guias em <code>docs/guides/</code>.</li>
+<li>Subir a infraestrutura local com Docker Compose (Mosquitto e PostgreSQL).</li>
+<li>Rodar as migrations e a seed de demonstração no banco local.</li>
+<li>Iniciar a API e o worker; conferir <code>/health</code> e <code>/healthz</code>.</li>
+<li>Abrir o aplicativo no emulador ou aparelho, autenticar e verificar a lista de autorizações.</li>
+<li>Configurar o terminal com o <code>config.h</code> local (sem versionar segredos), gravar o firmware e conferir a serial.</li>
+<li>Apresentar a tag, o celular com HCE e o QR; conferir no banco o evento, a decisão e o ACK.</li>
+<li>Para a demo web, abrir <code>https://abp4-demo-web.vercel.app</code> e verificar a tela de entrada e o CORS.</li>
+</ol>
+<h1 id="h45">APÊNDICE B — ÍNDICE DE EVIDÊNCIAS</h1>
+<p>As evidências por card estão em <code>docs/entrega/evidencias/</code>. Os principais documentos são: <code>us-23-nfc-rc522.md</code> (NFC), <code>us-24.md</code> (heartbeat), <code>us-29-aparelho.md</code> (aplicativo em aparelho), <code>us-35.md</code> (diagramas), <code>us-37.md</code> (worker), <code>us-38.md</code> (demo web), <code>dt-06.md</code> (TLS), <code>dt-22.md</code> (energia), <code>dt-23.md</code> (geofence) e <code>dt-24.md</code> (supply chain). A matriz de requisitos é a fonte de verdade para status e lacunas.</p>
+<h1 id="h46">APÊNDICE C — LINKS</h1>
+<ul>
+<li>Repositório: https://github.com/ErrorSquad-ABP/ABP4-Sistema-Controle-Acesso</li>
+<li>Board: https://trello.com/b/AxZZyPyN/errorsquad-abp-4dsm</li>
+<li>Design: https://www.figma.com/design/nddGhlwJIi5rMzhvsK5Rkl</li>
+<li>API: https://abp-4-sistema-controle-acesso.vercel.app/health</li>
+<li>Demo web: https://abp4-demo-web.vercel.app</li>
+<li>Worker: https://abp4-mqtt-worker.onrender.com/healthz</li>
+</ul>
+</body></html>

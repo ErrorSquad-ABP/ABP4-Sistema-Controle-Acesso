@@ -65,6 +65,29 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
+  /access-credentials/nfc:
+    post:
+      operationId: issueNfcCredential
+      tags:
+        - credentials
+      summary: Emitir prova efemera para o NFC do celular
+      description: "Gera uma prova aleatoria de 128 bits valida por 60 s, guardada apenas como hash, para o app apresentar por HCE. A prova identifica a sessao no momento do toque, mas nao concede acesso: terminal, usuario, autorizacao, prazo e limite continuam validados no pedido de acesso. Uso unico: o primeiro acesso aceito a consome. Requer sessao autenticada; 503 sem banco."
+      x-story: US-23
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Prova efemera e instante de expiracao
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueNfcCredentialResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /auth/login:
     post:
       operationId: login
@@ -1233,6 +1256,20 @@ components:
       required:
         - latitude
         - longitude
+    IssueNfcCredentialResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          pattern: ^[0-9a-f]{32}$
+          description: Prova efemera de uso unico, so em memoria
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+        - token
+        - expiresAt
+      description: Prova efemera para o NFC do celular; nao concede acesso sozinha
     Location:
       type: object
       properties:

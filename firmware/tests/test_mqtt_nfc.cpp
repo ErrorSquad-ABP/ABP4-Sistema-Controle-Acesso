@@ -22,6 +22,8 @@ int main() {
   WiFi.currentStatus = WL_CONNECTED;
   broker.connectResult = true;
   terminal_mqtt::update();
+  // O status online do heartbeat ja saiu; os testes abaixo contam so tentativas.
+  broker.publishCalls = 0;
   utc = 0;
   assert(!terminal_mqtt::publishNfc("04A1B2C3"));
   assert(broker.publishCalls == 0);

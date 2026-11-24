@@ -32,11 +32,13 @@ Crie `include/config.h` a partir do exemplo **somente se ainda não existir**.
 Uma configuração antiga deve ser migrada manualmente: ela tem GPIOs em conflito
 com o RC522. Ajuste WiFi e o IP LAN do broker antes de gravar no ESP32.
 
-No perfil físico, **`DOOR_ENABLED=0`** mantém o GPIO do servo sem acionamento:
+No exemplo seguro, **`DOOR_ENABLED=0`** mantém o GPIO do servo sem acionamento:
 `open` executa apenas o feedback de decisão (ACK `executed` confirma esse
-feedback, não abertura física). Só habilite depois de confirmar que o servo
-é de rotação contínua, sua alimentação e a calibração dos valores 0/90/180.
-Para servo posicional é necessário adaptar o driver, não só habilitar o pino.
+feedback, não abertura física). Só habilite depois de confirmar modelo,
+alimentação e calibração. `DOOR_SERVO_POSITIONAL=0` preserva o driver de rotação
+contínua; `1` usa `DOOR_SERVO_OPEN`/`DOOR_SERVO_CLOSE` como posições, mantém o
+pulso enquanto aberto e o desliga após fechar, sem enviar uma posição neutra.
+Nenhum dos modos movimenta o servo no boot. Não há sensor de posição.
 `FEEDBACK_BUZZER_ENABLED=0` evita acionar um buzzer de modelo desconhecido;
 habilite somente após confirmar piezo passivo compatível ou driver apropriado.
 
@@ -47,8 +49,9 @@ ou conversor bidirecional se os pull-ups forem para 5 V. No perfil físico padr�
 (`TERMINAL_DISPLAY_OLED=0`), esses displays mostram **status NFC**.
 A variante `TERMINAL_DISPLAY_OLED=1` da US-29 mostra QR compacto no OLED,
 com seleção da menor versão, margem completa por padrão e ajustes pela serial.
-Nesse modo, o OLED usa `Wire` e o LCD de status não é inicializado. LEDs/buzzer
-e NFC continuam ativos. O TFT só é inicializado no perfil legado com
+Nesse modo, o OLED continua no barramento `TwoWire(1)` (21/22), e o LCD usa
+`Wire` (16/17) para mensagens de leitura, decisão e movimento, se
+`LCD_ENABLED=1`. LEDs/buzzer e NFC continuam ativos. O TFT só é inicializado no perfil legado com
 `TERMINAL_DISPLAY_OLED=0`: nunca há dois drivers disputando `terminal_display`.
 
 ```powershell
@@ -68,6 +71,35 @@ bipes nos dois perfis, inclusive buzzer desabilitado. O CI compila os dois perfi
 Roteiro de aceite e limites: [US-23](../docs/entrega/evidencias/us-23-nfc-rc522.md).
 Passo a passo de preparação, cadastro de tag e teste físico:
 [testar US-23](../docs/guides/testar-us-23-nfc.md).
+
+### Bancada SG90 com OLED QR e LCD de status
+
+Após confirmar a montagem e a compatibilidade elétrica, ajuste somente o
+`include/config.h` local, preservando Wi-Fi, broker e credenciais:
+
+```cpp
+#define DOOR_ENABLED 1
+#define DOOR_SERVO_POSITIONAL 1
+#define DOOR_SERVO_OPEN 135
+#define DOOR_SERVO_CLOSE 45
+#define DOOR_SERVO_MIN_US 500
+#define DOOR_SERVO_MAX_US 2500
+#define DOOR_MOVE_MS 600U
+#define FEEDBACK_BUZZER_ENABLED 1
+#define LCD_ENABLED 1
+#define TERMINAL_DISPLAY_OLED 1
+```
+
+Com essa faixa, 45°/135° geram pulsos de 1000/2000 µs, evitando os extremos
+do SG90. A orientação e os ângulos da cancela ainda exigem conferência física.
+O LCD não pode levar 5 V aos GPIOs. Compilar não comprova funcionamento físico.
+
+Os testes `test_door_positional` e `test_display_combined` exercitam o driver
+posicional e os dois displays juntos, inclusive a ausência de cada display.
+`test_nfc held-tag` verifica que HALT não é confundido com remoção da tag.
+`test_nfc recover-reader` cobre a reinicialização após queda do leitor.
+O LCD atualiza um byte por ciclo, com timeout I²C curto, e é desabilitado se
+perder resposta; uma falha nele não deve prender o loop em uma linha inteira.
 
 ---
 
@@ -356,7 +388,7 @@ conexão do simulador ao broker nem o movimento real do servo.
 
 ## Limites desta história
 
-- Heartbeat/LWT (`terminals/{id}/status`) e GPS continuam pendentes (US-24).
+- Heartbeat/LWT (`terminals/{id}/status`) implementado no `mqtt.cpp` (status retained a cada 30 s e LWT offline). GPS ficou fora do escopo: o módulo NEO-6M não está disponível e o terminal não publica coordenada (US-24).
   NFC está implementado no perfil físico pela US-23; permanece desabilitado
   no perfil TFT legado, cujos pinos conflitam com o RC522.
 - O TLS (DT-06) foi validado no ESP32 contra o EMQX em 06/11/2026 (conexão e
