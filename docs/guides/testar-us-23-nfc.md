@@ -124,8 +124,10 @@ do Docker nem `localhost`. Ajuste/regrave se o IP mudar. No perfil físico
 Preserve a pinagem do modelo. O exemplo inicia buzzer/LCD desligados para outras
 montagens. Nesta bancada, `open` confirma feedback, não abertura física.
 OLED/LCD mostram status NFC por padrão (`TERMINAL_DISPLAY_OLED=0`). A opção
-`TERMINAL_DISPLAY_OLED=1` da US-29 seleciona QR no OLED em vez do status OLED/LCD.
-As duas implementações são exclusivas; a integração não altera sua pinagem.
+`TERMINAL_DISPLAY_OLED=1` seleciona QR no OLED e mantém o LCD de status quando
+`LCD_ENABLED=1`. Os displays usam barramentos separados, preservando a pinagem.
+Para SG90 posicional, use `DOOR_SERVO_POSITIONAL=1` e os ângulos calibrados;
+veja o perfil de bancada no [README do firmware](../../firmware/README.md).
 
 No terminal PlatformIO:
 

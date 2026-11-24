@@ -11,19 +11,82 @@ TestSerial Serial;
 TestSPI SPI;
 TestReader testReader;
 int publishes = 0;
+int hcePublishes = 0;
 bool online = true;
 bool publish(const char* uid) {
   assert(strcmp(uid, "04A1B2C3") == 0);
   ++publishes;
   return online;
 }
+bool publishHce(const char* token) {
+  assert(strcmp(token, "000102030405060708090a0b0c0d0e0f") == 0 || hcePublishes > 0);
+  ++hcePublishes;
+  return online;
+}
 void tick(uint32_t now) { testNow = now; terminal_nfc::update(); }
 
-int main(int argc, char**) {
-  if (argc > 1) testReader.version = 0xFF;
+int main(int argc, char** argv) {
+  const bool heldTag = argc > 1 && strcmp(argv[1], "held-tag") == 0;
+  const bool hce = argc > 1 && strcmp(argv[1], "hce") == 0;
+  const bool recovering = argc > 1 && strcmp(argv[1], "recover-reader") == 0;
+  if (argc > 1 && !heldTag && !recovering && !hce) testReader.version = 0xFF;
   terminal_nfc::setPublisher(publish);
+  terminal_nfc::setHcePublisher(publishHce);
   terminal_nfc::begin();
   assert(SPI.sck == 18 && SPI.miso == 19 && SPI.mosi == 23 && SPI.ss == 32);
+  if (hce) {
+    testReader.sak = 0x20;
+    for (int i = 0; i < 16; ++i) testReader.apduReply[i] = static_cast<uint8_t>(i);
+    testReader.apduReply[16] = 0x90;
+    testReader.apduReply[17] = 0x00;
+    testReader.apduLength = 18;
+    tick(0);
+    assert(testReader.apduCalls == 1 && hcePublishes == 1);
+    tick(100);
+    assert(testReader.apduCalls == 2 && hcePublishes == 1);
+    testReader.apduReply[0] = 0xFF;
+    testReader.present = false;
+    tick(700);
+    testReader.present = true;
+    tick(800);
+    assert(hcePublishes == 2);
+    testReader.apduOk = false;
+    testReader.present = false;
+    tick(1400);
+    testReader.present = true;
+    tick(1500);
+    assert(hcePublishes == 2);
+    puts("nfc: prova HCE publicada uma vez por apresentacao e falha fechada OK");
+    return 0;
+  }
+  if (recovering) {
+    tick(0);
+    testReader.version = 0;
+    tick(2000);
+    assert(publishes == 1);
+    testReader.version = 0x92;
+    tick(4000);
+    assert(testReader.initializations == 2);
+    assert(publishes == 1);
+    testReader.present = false;
+    tick(4500); tick(5000);
+    testReader.present = true;
+    tick(5100);
+    assert(publishes == 2);
+    puts("nfc: queda de alimentacao reinicializa leitor sem duplicar apresentacao OK");
+    return 0;
+  }
+  if (heldTag) {
+    tick(0); tick(1000); tick(1100);
+    assert(publishes == 1);
+    testReader.present = false;
+    tick(1200);
+    testReader.present = true;
+    tick(1300);
+    assert(publishes == 1);
+    puts("nfc: tag em HALT nao conta como ausente e remocao breve nao rearma OK");
+    return 0;
+  }
   if (argc > 1) {
     tick(0); tick(1000);
     assert(testReader.wakeups == 0 && publishes == 0);

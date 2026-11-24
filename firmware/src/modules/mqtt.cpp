@@ -341,4 +341,30 @@ bool publishNfc(const char* uid) {
                         static_cast<int>(length), false, 1);
 }
 
+bool publishNfcHce(const char* token) {
+  if (token == nullptr || strlen(token) != 32) return false;
+  for (size_t i = 0; i < 32; ++i) {
+    const char c = token[i];
+    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return false;
+  }
+  const uint64_t now = clockNow();
+  if (!connected() || !clock_policy::reliable(now)) return false;
+  char messageId[37];
+  char timestamp[32] = {};
+  makeMessageId(messageId, sizeof messageId);
+  iso8601::fromEpoch(now, timestamp, sizeof timestamp);
+  JsonDocument document;
+  document["v"] = 1;
+  document["messageId"] = messageId;
+  document["terminalId"] = terminal_settings::id;
+  document["timestamp"] = timestamp;
+  document["type"] = "nfc_hce_read";
+  document["credentialToken"] = token;
+  char payload[320];
+  const size_t length = serializeJson(document, payload, sizeof payload);
+  if (length == 0 || length >= sizeof payload) return false;
+  return client.publish(terminal_settings::accessEventsTopic, payload,
+                        static_cast<int>(length), false, 1);
+}
+
 }  // namespace terminal_mqtt

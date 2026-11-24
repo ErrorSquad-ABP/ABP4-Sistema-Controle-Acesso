@@ -21,4 +21,17 @@ inline uint8_t smallestFor(size_t tokenBytes) {
   return 0;
 }
 
+// Texto so de digitos com ate 41 caracteres cabe no modo numerico da versao 1
+// (152 bits menos modo e contador); os demais usam o limite por bytes, que e
+// conservador e nunca subestima a versao necessaria.
+inline uint8_t forText(const char* text) {
+  size_t size = 0;
+  bool numeric = true;
+  for (; text[size] != '\0'; ++size) {
+    numeric = numeric && text[size] >= '0' && text[size] <= '9';
+  }
+  if (size == 0) return 0;
+  return numeric && size <= 41 ? 1 : smallestFor(size);
+}
+
 }  // namespace qr_version

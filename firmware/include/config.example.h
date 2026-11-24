@@ -81,8 +81,10 @@
 #define LCD_SCL_PIN 17
 #define LCD_ADDRESS 0x27
 
-// Atuacao herdada do prototipo (teste-servo). Servo de rotacao continua: os
-// valores escolhem sentido e velocidade, nao uma posicao angular.
+// 0 = rotacao continua; 1 = posicional, com OPEN/CLOSE em graus calibrados.
+#ifndef DOOR_SERVO_POSITIONAL
+#define DOOR_SERVO_POSITIONAL 0
+#endif
 #define DOOR_SERVO_OPEN 180
 #define DOOR_SERVO_STOP 90
 #define DOOR_SERVO_CLOSE 0
@@ -105,7 +107,7 @@
 #define TFT_SCK_PIN 33
 
 // Display: 0 = status OLED/LCD no perfil fisico, ou TFT no perfil legado.
-// 1 = QR compacto no OLED (US-29), em vez do status OLED/LCD.
+// 1 = QR compacto no OLED e status no LCD, quando LCD_ENABLED=1.
 // O guard permite habilitar a variante por -DTERMINAL_DISPLAY_OLED=1 no build.
 #ifndef TERMINAL_DISPLAY_OLED
 #define TERMINAL_DISPLAY_OLED 0

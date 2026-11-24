@@ -30,19 +30,23 @@ inline bool validUid(const char* uid) {
 // WUPA detecta tambem a tag que foi colocada em HALT na leitura anterior.
 class Presentation {
  public:
-  bool observe(const char* uid, uint32_t now) {
-    if (!validUid(uid)) return false;
-    const bool fresh = strcmp(uid_, uid) != 0;
-    strcpy(uid_, uid);
-    lastSeen_ = now;
-    return fresh;
-  }
+  bool observe(const char* uid, uint32_t now) { return observeValue(uid, now, true); }
+  /** Prova HCE tem 32 hex; nao passa pela regra de UID de tag. */
+  bool observeToken(const char* token, uint32_t now) { return observeValue(token, now, false); }
   void present(uint32_t now) { lastSeen_ = now; }
   void absent(uint32_t now, uint32_t removalMs) {
     if (now - lastSeen_ >= removalMs) uid_[0] = '\0';
   }
  private:
-  char uid_[21] = {};
+  bool observeValue(const char* value, uint32_t now, bool requireUid) {
+    if (requireUid && !validUid(value)) return false;
+    if (value == nullptr || strlen(value) >= sizeof uid_) return false;
+    const bool fresh = strcmp(uid_, value) != 0;
+    strcpy(uid_, value);
+    lastSeen_ = now;
+    return fresh;
+  }
+  char uid_[33] = {};
   uint32_t lastSeen_ = 0;
 };
 }  // namespace nfc_scan
