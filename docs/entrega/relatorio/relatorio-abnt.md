@@ -75,7 +75,12 @@ This work describes the development of an integrated building access control sys
 **Figura 6** – Acesso por QR Code  
 **Figura 7** – Acesso por NFC (tag física e celular)  
 **Figura 8** – Demo web: tela de entrada no tema claro  
-**Figura 9** – Demo web: tela de entrada no tema escuro
+**Figura 9** – Demo web: tela de entrada no tema escuro  
+**Figura 10** – App: minhas autorizações  
+**Figura 11** – App: detalhe da autorização  
+**Figura 12** – App: acesso por NFC com prova ativa  
+**Figura 13** – App: scanner de QR Code  
+**Figura 14** – App: perfil do usuário
 
 # LISTA DE QUADROS
 
@@ -361,15 +366,44 @@ A demo web foi publicada em `https://abp4-demo-web.vercel.app`, em projeto separ
 <figcaption><strong>Figura 9</strong> – Demo web: tela de entrada no tema escuro<br><span>Fonte: captura dos autores em 24/11/2026.</span></figcaption>
 </figure>
 
-## 5.5 Presença e heartbeat
+## 5.5 Aplicativo em aparelho
+
+As Figuras 10 a 14 mostram o aplicativo em execução no Motorola g86 5G, com a conta de demonstração. A lista traz autorizações ativas e expiradas; o detalhe mostra local, período, usos restantes e pessoa. A tela de NFC exibe a prova efêmera com contagem regressiva; o scanner aponta a câmera para o QR do terminal; o perfil permite editar o nome e alternar o tema.
+
+<figure>
+<img src="../midias/app/01-autorizacoes.png" alt="Minhas autorizações no app">
+<figcaption><strong>Figura 10</strong> – App: minhas autorizações<br><span>Fonte: captura dos autores em 24/11/2026.</span></figcaption>
+</figure>
+
+<figure>
+<img src="../midias/app/02-detalhe.png" alt="Detalhe da autorização no app">
+<figcaption><strong>Figura 11</strong> – App: detalhe da autorização<br><span>Fonte: captura dos autores em 24/11/2026.</span></figcaption>
+</figure>
+
+<figure>
+<img src="../midias/app/03-nfc.png" alt="Acesso por NFC no app">
+<figcaption><strong>Figura 12</strong> – App: acesso por NFC com prova ativa<br><span>Fonte: captura dos autores em 24/11/2026.</span></figcaption>
+</figure>
+
+<figure>
+<img src="../midias/app/04-scanner.png" alt="Scanner de QR Code no app">
+<figcaption><strong>Figura 13</strong> – App: scanner de QR Code<br><span>Fonte: captura dos autores em 24/11/2026.</span></figcaption>
+</figure>
+
+<figure>
+<img src="../midias/app/07-perfil.png" alt="Perfil no app">
+<figcaption><strong>Figura 14</strong> – App: perfil do usuário<br><span>Fonte: captura dos autores em 24/11/2026.</span></figcaption>
+</figure>
+
+## 5.6 Presença e heartbeat
 
 O firmware publica `terminals/{id}/status` retained, QoS 1, ao conectar e a cada 30 segundos, com `state: online` e a versão do firmware. Ao conectar, registra também o LWT `offline` retained. Com isso, o worker deixa de depender de uma leitura NFC recente para considerar o terminal online e voltar a publicar o QR após um boot. O código foi mergeado e tem teste host; a confirmação no ESP32 ficou pendente porque o firmware não foi regravado na véspera da entrega.
 
-## 5.6 Implantação e operação
+## 5.7 Implantação e operação
 
 A API de produção respondeu com banco ok durante a entrega; a demo web está publicada; o worker MQTT está no ar com `/healthz` ok. O banco está no Neon, com migrations aplicadas. O broker está no EMQX Cloud com TLS. A operação contínua não foi medida além das verificações pontuais; a evidência da US-37 registra essa distinção.
 
-## 5.7 Rastreabilidade
+## 5.8 Rastreabilidade
 
 O Quadro 5 liga cada requisito crítico à evidência e à lacuna. A regra adotada é: o que não tem evidência não é apresentado como comprovado.
 
