@@ -16,9 +16,10 @@ class NfcAccessPage extends ConsumerStatefulWidget {
 }
 
 class _NfcAccessPageState extends ConsumerState<NfcAccessPage> {
+  late final _bridge = ref.read(nfcBridgeProvider);
   NfcCredential? _credential;
   String? _error;
-  bool _supported = true;
+  bool? _supported;
   Timer? _ticker;
 
   @override
@@ -31,21 +32,19 @@ class _NfcAccessPageState extends ConsumerState<NfcAccessPage> {
   @override
   void dispose() {
     _ticker?.cancel();
-    unawaited(ref.read(nfcBridgeProvider).clearToken());
+    if (_supported == true) unawaited(_bridge.clearToken());
     super.dispose();
   }
 
   Future<void> _activate() async {
-    final bridge = ref.read(nfcBridgeProvider);
     try {
-      final supported = await bridge.isSupported();
+      final supported = await _bridge.isSupported();
       if (!mounted) return;
-      if (!supported) {
-        setState(() => _supported = false);
-        return;
-      }
+      setState(() => _supported = supported);
+      if (!supported) return;
       final credential = await ref.read(nfcCredentialGatewayProvider).issue();
-      await bridge.setToken(credential.token);
+      if (!mounted) return;
+      await _bridge.setToken(credential.token);
       if (!mounted) return;
       setState(() {
         _credential = credential;
@@ -105,7 +104,7 @@ class _NfcAccessPageState extends ConsumerState<NfcAccessPage> {
               style: text.bodyMedium,
             ),
             const SizedBox(height: AppSpacing.lg),
-            if (!_supported)
+            if (_supported == false)
               Text('Este aparelho não suporta NFC por HCE.', style: TextStyle(color: palette.textSecondary))
             else if (_error != null) ...[
               Text(_error!, style: TextStyle(color: palette.error)),

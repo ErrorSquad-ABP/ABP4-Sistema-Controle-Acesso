@@ -5,6 +5,7 @@ import 'package:controle_acesso/features/scanner/access_contract.dart';
 import 'package:controle_acesso/features/scanner/http_access_gateway.dart';
 import 'package:controle_acesso/features/scanner/scanner_contracts.dart';
 import 'package:controle_acesso/features/scanner/scanner_gateways.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -34,6 +35,68 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  void allowStartupLocation(WidgetTester tester) {
+    for (final channel in [
+      'flutter.baseflow.com/geolocator',
+      'flutter.baseflow.com/geolocator_android',
+    ]) {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        MethodChannel(channel),
+        (call) async => call.method == 'checkPermission' ? 2 : null,
+      );
+    }
+  }
+
+  testWidgets('começa a obter a posição ao abrir o app logado', (tester) async {
+    allowStartupLocation(tester);
+    final pending = location.pending = Completer<GeoCoordinate>();
+    await pumpApp(tester);
+
+    expect(location.positionReads, 1);
+    expect(location.permissionRequests, 0);
+    expect(access.requests, isEmpty);
+
+    await tester.tap(find.text('Escanear QR Code'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('simular leitura'));
+    await tester.pump();
+    pending.complete(
+      GeoCoordinate(
+        latitude: -23.55,
+        longitude: -46.63,
+        accuracyMeters: 12,
+        measuredAt: fixedNow,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(location.positionReads, 1);
+    expect(access.requests.single.position.latitude, -23.55);
+  });
+
+  testWidgets('uma posição antiga da abertura não vai no pedido de QR', (
+    tester,
+  ) async {
+    allowStartupLocation(tester);
+    location.point = GeoCoordinate(
+      latitude: -23.54,
+      longitude: -46.63,
+      accuracyMeters: 12,
+      measuredAt: fixedNow.subtract(const Duration(seconds: 11)),
+    );
+    await pumpApp(tester);
+    expect(location.positionReads, 1);
+    location.point = const GeoCoordinate(latitude: -23.55, longitude: -46.64);
+
+    await tester.tap(find.text('Escanear QR Code'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('simular leitura'));
+    await tester.pumpAndSettle();
+
+    expect(location.positionReads, 2);
+    expect(access.requests.single.position.latitude, -23.55);
+  });
 
   testWidgets('usuário logado vai da Home ao scanner', (tester) async {
     await pumpApp(tester);
