@@ -79,7 +79,7 @@ Mensagem com `v` desconhecida, `terminalId` diferente do tópico ou campo faltan
 }
 ```
 
-`credentialToken` são 32 caracteres hexadecimais minúsculos (128 bits). É a prova que o app obtém em `POST /api/v1/access-credentials/nfc` e apresenta por HCE (AID `F041425034444D01`, resposta de 16 bytes + `9000`); nunca é o UID do aparelho. O banco guarda só o hash da prova (`Credential` do tipo `NFC_HCE`), que vale **60 s** e é **consumida no primeiro acesso aceito**: uma segunda tentativa com a mesma prova é negada com `INVALID_CREDENTIAL`, sem gastar uso da autorização. Frescor, dedup e decisão seguem as mesmas regras do `nfc_read`. O parser e o caso de uso estão na `main` (#77); o firmware do repositório ainda não publica este tipo.
+`credentialToken` são 32 caracteres hexadecimais minúsculos (128 bits). É a prova que o app obtém em `POST /api/v1/access-credentials/nfc` e apresenta por HCE (AID `F041425034444D01`, resposta de 16 bytes + `9000`); nunca é o UID do aparelho. O banco guarda só o hash da prova (`Credential` do tipo `NFC_HCE`), que vale **60 s** e é **consumida no primeiro acesso aceito**: uma segunda tentativa com a mesma prova é negada com `INVALID_CREDENTIAL`, sem gastar uso da autorização. Frescor, dedup e decisão seguem as mesmas regras do `nfc_read`. O parser e o caso de uso estão na `main` (#77) e o firmware publica este tipo desde o #79.
 
 Na US-23, o RC522 físico produz UIDs de 4, 7 ou 10 bytes (8, 14 ou 20
 caracteres, preservando zeros iniciais). Uma apresentação gera uma tentativa;

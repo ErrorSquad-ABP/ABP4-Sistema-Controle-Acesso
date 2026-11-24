@@ -6,7 +6,7 @@ Esse é o **desenho alvo**, não a declaração de que todo o fluxo está operac
 
 **Atualização de 11/11/2026:** o app envia o pedido de acesso e tem as 12 telas do Figma; o NFC RC522 foi integrado (US-23) com evidência física inicial; o worker no Render foi observado no ar com `mqtt conectado` no EMQX TLS; a API está em `a0625d7`. Continuam pendentes o servo/cancela física, o GPS/heartbeat (US-24), a resiliência offline (US-25) e o fluxo completo app → terminal real.
 
-**Atualização de 23/11/2026:** os diagramas finais de casos de uso, componentes, implantação e sequências QR/NFC estão na seção [Diagramas de arquitetura](#diagramas-de-arquitetura) (US-35), conferidos contra a `main` em `0d6245f`. Entrou também o acesso por NFC do celular (HCE, #77): o app gera uma prova de 60 s e de uso único na API e a apresenta ao leitor. API, worker e app estão na `main`; a leitura da prova pelo ESP32 não está no repositório. Seguem pendentes no firmware o GPS e o heartbeat (US-24), que aparecem tracejados nos diagramas junto com a leitura HCE.
+**Atualização de 24/11/2026:** os diagramas finais de casos de uso, componentes, implantação e sequências QR/NFC estão na seção [Diagramas de arquitetura](#diagramas-de-arquitetura) (US-35), conferidos contra a `main` em `349575d`. Entrou também o acesso por NFC do celular (HCE, #77): o app gera uma prova de 60 s e de uso único na API e a apresenta ao leitor; o firmware lê a prova por ISO-DEP desde o #79. Seguem pendentes no firmware o GPS e o heartbeat (US-24), que aparecem tracejados nos diagramas.
 
 ## Diagrama
 
@@ -75,7 +75,7 @@ O backend implementa este processamento para mensagens simuladas e reais; a leit
 3. O processo MQTT responde no tópico de comando do terminal — libera ou nega — e registra o evento de acesso.
 4. O terminal abre a porta, sinaliza o resultado (LED/buzzer) e publica o ACK de execução.
 
-**NFC do celular (HCE, #77):** em vez do UID da tag, o celular entrega uma prova de 128 bits que o app pede em `POST /api/v1/access-credentials/nfc`. A prova vale 60 s, só o hash vai ao banco e ela é consumida no primeiro acesso aceito. O terminal a publica como `nfc_hce_read` e o resto do fluxo é o mesmo. A leitura da prova pelo ESP32 ainda não está no repositório. Sequência completa em [`sequencias.md`](sequencias.md#3-acesso-por-nfc-tag-física-ou-celular).
+**NFC do celular (HCE, #77):** em vez do UID da tag, o celular entrega uma prova de 128 bits que o app pede em `POST /api/v1/access-credentials/nfc`. A prova vale 60 s, só o hash vai ao banco e ela é consumida no primeiro acesso aceito. O terminal lê a prova por ISO-DEP e a publica como `nfc_hce_read` (#79). Sequência completa em [`sequencias.md`](sequencias.md#3-acesso-por-nfc-tag-física-ou-celular).
 
 ## Matriz de transporte
 

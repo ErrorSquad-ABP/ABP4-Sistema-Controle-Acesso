@@ -1,6 +1,6 @@
 # Casos de uso
 
-Quem usa o sistema e o que cada um consegue fazer, conferido contra as rotas da API (`backend/src/main/http/routes/`), os papéis do banco (`UserRole` em `backend/prisma/schema.prisma`), o app (`mobile/lib/features/`) e o firmware (`firmware/src/`). Retrato da `main` em `0d6245f` (23/11/2026).
+Quem usa o sistema e o que cada um consegue fazer, conferido contra as rotas da API (`backend/src/main/http/routes/`), os papéis do banco (`UserRole` em `backend/prisma/schema.prisma`), o app (`mobile/lib/features/`) e o firmware (`firmware/src/`). Retrato da `main` em `349575d` (24/11/2026).
 
 Os perfis de pessoa são os do banco: **Administrador** (`ADMIN`), **Condômino** (`RESIDENT`) e **Visitante** (`VISITOR`). Os três são **usuários autenticados** e herdam os mesmos casos de uso de acesso; o administrador soma a gestão. O **Terminal** (ESP32) é um ator de sistema: fala só MQTT e nunca decide acesso sozinho.
 
@@ -56,11 +56,11 @@ flowchart LR
   UC7 -.->|depende de| UC15
   INC2 -.->|gera| UC16
 
-  TER --- UC13 & UC14 & UC16
-  TER -.- UC15 & UC17
+  TER --- UC13 & UC14 & UC15 & UC16
+  TER -.- UC17
 
   classDef pendente stroke-dasharray: 5 5
-  class UC15,UC17 pendente
+  class UC17 pendente
 ```
 
 ## Onde cada caso de uso está
@@ -83,7 +83,7 @@ flowchart LR
 | Consultar histórico geral | administrador | `GET /api/v1/access-events` | US-21, US-31 |
 | Exibir QR rotativo | terminal | recebe `terminals/{id}/qr` do worker e desenha no display | US-22, #73 |
 | Ler tag e enviar a tentativa | terminal | `terminal_nfc::update` → `terminal_mqtt::publishNfc` | US-23 |
-| Ler a prova HCE do celular | terminal | **não está no repositório**: o firmware da `main` não envia o `SELECT AID` nem publica `nfc_hce_read` | #77 (pendente no firmware) |
+| Ler a prova HCE do celular | terminal | ISO-DEP: o firmware envia o `SELECT AID` e publica `nfc_hce_read` (`firmware/src/modules/nfc.cpp`) | #77, #79 |
 | Executar comando e confirmar com ACK | terminal | recebe `terminals/{id}/commands`, publica `terminals/{id}/acks` | US-08, US-26 |
 | Informar presença por heartbeat | terminal | `terminals/{id}/status` com LWT — **pendente** | US-24 |
 
@@ -91,7 +91,7 @@ flowchart LR
 
 - **Quem cria autorização é só o administrador.** O app descreve o visitante como "acesso temporário liberado por um morador", mas a rota `POST /authorizations` exige `requireAdmin`. O condômino não cria autorização para visitante. O diagrama segue o código.
 - **A tag física não é cadastrada pelo app nem pela API.** A credencial `NFC` entra pelo seed ou pelos scripts de provisionamento (`backend/prisma/seed.ts`, `provision.ts`). Já a prova do celular (`NFC_HCE`) é emitida pela API a cada uso, vale 60 s e é consumida no primeiro acesso aceito.
-- **O NFC do celular depende de firmware que não está no repositório.** A API, o worker e o app (serviço HCE `NfcHceService`, AID `F041425034444D01`) estão na `main`. O PR #77 registra um teste real com `NFC_HCE GRANTED`, mas o código do ESP32 que lê a prova e publica `nfc_hce_read` não está em nenhuma branch do GitHub. Por isso "Ler a prova HCE do celular" aparece tracejado.
+- **O NFC do celular está completo.** A API, o worker, o app (serviço HCE `NfcHceService`, AID `F041425034444D01`) e a leitura ISO-DEP pelo ESP32 estão na `main` (#77 e #79). O teste real registrou `NFC_HCE GRANTED` com a prova consumida e o ACK do terminal.
 - **O QR negado não chega ao terminal.** No QR, o resultado volta para o app na resposta HTTP e só a decisão `GRANTED` grava um comando `open`. No NFC, o worker publica `open` ou `deny`, porque o terminal é a única interface de quem encostou a tag ou o celular.
 - **Heartbeat pendente (US-24).** O firmware ainda não publica `status` nem registra LWT. Hoje o worker passa a considerar o terminal online quando recebe dele uma tentativa NFC recente (`TerminalMessageRouter`), e só então envia o QR rotativo. Em simulação, o status é publicado pelo `sim-terminal`.
 

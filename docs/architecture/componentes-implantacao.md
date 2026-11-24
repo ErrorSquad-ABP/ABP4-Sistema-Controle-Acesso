@@ -1,6 +1,6 @@
 # Componentes e implantação
 
-Peças do sistema, como elas conversam e onde cada uma roda em desenvolvimento e em produção. Conferido contra a `main` em `0d6245f` (23/11/2026): `backend/src/main/` (composição da API e do worker), `firmware/src/`, `mobile/lib/features/`, `mobile/android/`, `infra/docker-compose.dev.yml`, `render.yaml` e `.github/workflows/cd-backend.yml`.
+Peças do sistema, como elas conversam e onde cada uma roda em desenvolvimento e em produção. Conferido contra a `main` em `349575d` (24/11/2026): `backend/src/main/` (composição da API e do worker), `firmware/src/`, `mobile/lib/features/`, `mobile/android/`, `infra/docker-compose.dev.yml`, `render.yaml` e `.github/workflows/cd-backend.yml`.
 
 ## Diagrama de componentes
 
@@ -49,7 +49,7 @@ flowchart LR
     T_MQTT["mqtt · Wi-Fi, TLS, fila de comandos, ACK"]
     T_DISP["display · QR e status"]
     T_NFC["nfc · RC522 lê tag física"]
-    T_HCE["leitura HCE do celular<br/>fora do repositório"]
+    T_HCE["leitura HCE do celular<br/>SELECT AID e prova"]
     T_DOOR["door · servo"]
     T_FB["feedback · LED e buzzer"]
     T_GPS["gps · esqueleto US-24"]
@@ -65,13 +65,13 @@ flowchart LR
   BROKER -->|qr · commands| T_MQTT
   T_MQTT -->|access-events · acks| BROKER
   T_NFC --> T_MQTT
-  T_HCE -.-> T_MQTT
-  A_HCE -.->|NFC ISO-DEP| T_HCE
+  T_HCE --> T_MQTT
+  A_HCE -->|NFC ISO-DEP| T_HCE
   T_CLK --> T_MQTT
   T_MQTT --> T_DOOR & T_FB & T_DISP
 
   classDef pendente stroke-dasharray: 5 5
-  class T_GPS,T_HCE pendente
+  class T_GPS pendente
 ```
 
 ### Responsabilidade de cada componente
@@ -83,7 +83,7 @@ flowchart LR
 | Worker (Render) | Recebe tentativas NFC (tag e celular), ACKs e status; publica QR rotativo e comandos; republica comandos sem ACK dentro do prazo (outbox) | Não atende o app |
 | Broker | Entrega as mensagens MQTT v1 (QoS 1, exceto o QR com QoS 0), com TLS em produção | Não guarda comandos (sem retain) |
 | PostgreSQL | Fonte única de usuários, autorizações, credenciais, eventos, outbox de comandos (`TerminalCommand`) e dedup (`ProcessedAccessMessage`) | — |
-| Terminal ESP32 | Mostra o QR, lê a tag, executa o comando válido, sinaliza e confirma com ACK | Nunca decide acesso. Sem hora confiável, recusa o comando (`clock_unsynced`). Leitura HCE e heartbeat ainda não estão no firmware do repositório |
+| Terminal ESP32 | Mostra o QR, lê a tag e a prova HCE do celular, executa o comando válido, sinaliza e confirma com ACK | Nunca decide acesso. Sem hora confiável, recusa o comando (`clock_unsynced`). Heartbeat ainda não está no firmware |
 
 Tópicos, payloads e QoS: [`contratos-mqtt.md`](contratos-mqtt.md). Tabelas: [`modelo-dados.md`](modelo-dados.md). Camadas internas do backend: [`caso-de-uso-modelo.md`](caso-de-uso-modelo.md).
 
@@ -144,7 +144,7 @@ flowchart LR
 
   GH -->|migrate deploy + deploy| API_P
   PHONE -->|HTTPS + JWT| API_P
-  PHONE -.->|NFC HCE| ESP
+  PHONE -->|NFC HCE| ESP
   API_P -->|SQL/TLS| PG_P
   WRK_P -->|SQL/TLS| PG_P
   API_P -->|mqtts| BR_P

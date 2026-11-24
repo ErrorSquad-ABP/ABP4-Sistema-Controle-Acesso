@@ -1,6 +1,6 @@
 # Sequências de acesso
 
-Ordem das mensagens nos fluxos que envolvem o terminal: a rotação do QR, o acesso por QR, o acesso por NFC (tag física e celular) e a entrega do comando até o ACK, que é comum aos dois métodos. Cada passo cita a classe ou constante que o implementa na `main` em `0d6245f` (23/11/2026), para que o diagrama possa ser conferido contra o código.
+Ordem das mensagens nos fluxos que envolvem o terminal: a rotação do QR, o acesso por QR, o acesso por NFC (tag física e celular) e a entrega do comando até o ACK, que é comum aos dois métodos. Cada passo cita a classe ou constante que o implementa na `main` em `349575d` (24/11/2026), para que o diagrama possa ser conferido contra o código.
 
 ## Prazos e proteções que aparecem nos fluxos
 
@@ -100,7 +100,7 @@ As duas formas publicam no mesmo tópico `terminals/{id}/access-events` e passam
 
 A tentativa só é aceita enquanto é recente. O frescor é conferido **quatro vezes**: no parser, no início do caso de uso, depois da reserva de dedup e dentro da transação, depois dos locks. Uma tentativa velha é descartada no parser e nem marca o terminal como online. O terminal não guarda tentativas para mandar depois: sem rede ou sem hora confiável, a pessoa precisa reapresentar a tag (fila offline é a US-25).
 
-A leitura da prova HCE pelo ESP32 **não está no repositório** (ver [`casos-de-uso.md`](casos-de-uso.md)); o diagrama mostra o protocolo que a API e o app já implementam.
+A leitura da prova HCE pelo ESP32 está no firmware (`SELECT AID` ISO-DEP, prova de 16 bytes + `9000`, publicação de `nfc_hce_read`).
 
 ```mermaid
 sequenceDiagram
@@ -116,7 +116,7 @@ sequenceDiagram
   alt tag física
     U->>T: encosta a tag no RC522
     T->>T: lê o UID, uma tentativa por apresentação da tag
-  else celular com HCE (leitura no ESP32 fora do repositório)
+  else celular com HCE
     U->>A: abre Acesso por NFC
     A->>API: POST /api/v1/access-credentials/nfc com JWT
     API->>DB: grava Credential NFC_HCE só com o hash da prova, válida por 60 s
