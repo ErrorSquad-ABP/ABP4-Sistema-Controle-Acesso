@@ -65,7 +65,7 @@ describe('DT-03: decisao pelo local resolvido do terminal', () => {
   });
 
   it.each([
-    [200, -22.998652, 'deny'],
+    [200, -22.998652, 'open'],
     [200, -22.999551, 'open'],
     [40, -22.999551, 'deny'],
     [0, -23, 'deny'],

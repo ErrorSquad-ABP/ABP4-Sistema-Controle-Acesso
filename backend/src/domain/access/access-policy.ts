@@ -28,7 +28,7 @@ export interface PolicyDecision {
   authorizationId: string | null; distanceMeters: number | null;
 }
 
-const MAX_QR_DISTANCE_METERS = 100;
+const MAX_QR_DISTANCE_METERS = 500;
 
 export function decideAccess(ctx: AccessPolicyContext): PolicyDecision {
   let distanceMeters: number | null = null;

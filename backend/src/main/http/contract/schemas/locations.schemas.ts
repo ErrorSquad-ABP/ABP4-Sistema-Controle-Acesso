@@ -5,8 +5,8 @@ import { DateTime, Id, page } from './common.schemas.js';
 const Name = z.string().trim().min(2).max(120);
 const Description = z.string().trim().min(1).max(200);
 
-/** Teto de 100 m da DT-23, repetido na CHECK `AccessLocation_radiusMeters_check`. */
-const RadiusMeters = z.int().min(1).max(100);
+/** Teto de 500 m, repetido na CHECK `AccessLocation_radiusMeters_check`. */
+const RadiusMeters = z.int().min(1).max(500);
 
 export const Location = named(
   'Location',
@@ -16,7 +16,7 @@ export const Location = named(
     description: z.string().nullable(),
     latitude: z.number().min(-90).max(90),
     longitude: z.number().min(-180).max(180),
-    radiusMeters: RadiusMeters.describe('Raio de acesso em metros (1 a 100)'),
+    radiusMeters: RadiusMeters.describe('Raio de acesso em metros (1 a 500)'),
     isActive: z.boolean(),
     createdAt: DateTime,
     updatedAt: DateTime,

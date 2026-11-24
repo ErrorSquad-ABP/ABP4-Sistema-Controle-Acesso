@@ -197,12 +197,12 @@ describe('locais de acesso', () => {
     ]);
   });
 
-  it('POST recusa raio fora de 1..100 e coordenadas invalidas', async () => {
+  it('POST recusa raio fora de 1..500 e coordenadas invalidas', async () => {
     const { app, token } = buildApp();
     const auth = `Bearer ${await token()}`;
     const base = { name: 'Edificio Aurora', latitude: -23.1857, longitude: -45.8846, radiusMeters: 100 };
 
-    for (const radiusMeters of [0, 101, 50.5]) {
+    for (const radiusMeters of [0, 501, 50.5]) {
       const res = await request(app).post('/api/v1/locations').set('Authorization', auth).send({ ...base, radiusMeters });
       expect(res.status, `raio ${radiusMeters}`).toBe(400);
       expect(res.body.error.details).toHaveProperty('radiusMeters');

@@ -873,7 +873,7 @@ paths:
         - locations
       summary: Cadastrar local de acesso
       description: |-
-        So ADMIN. `radiusMeters` aceita de 1 a 100 (teto da DT-23); omitido, usa 100. Latitude e longitude em graus decimais.
+        So ADMIN. `radiusMeters` aceita de 1 a 500; omitido, usa 100. Latitude e longitude em graus decimais.
 
         Restrito ao perfil ADMIN.
       x-story: US-39
@@ -1175,7 +1175,7 @@ components:
           description: Raio de acesso em metros (1 a 100, teto da DT-23)
           type: integer
           minimum: 1
-          maximum: 100
+          maximum: 500
       required:
         - name
         - latitude
@@ -1217,7 +1217,7 @@ components:
         - OUT_OF_RANGE
         - UNKNOWN_TERMINAL
         - TERMINAL_INACTIVE
-      description: "Motivo da negativa. CREDENTIAL_EXPIRED: QR fora da validade de 10 s · OUT_OF_RANGE: fora do raio do local (no maximo 100 m)"
+      description: "Motivo da negativa. CREDENTIAL_EXPIRED: QR fora da validade de 10 s · OUT_OF_RANGE: fora do raio do local (no maximo 500 m)"
     ErrorBody:
       type: object
       properties:
@@ -1294,8 +1294,8 @@ components:
         radiusMeters:
           type: integer
           minimum: 1
-          maximum: 100
-          description: Raio de acesso em metros (1 a 100)
+          maximum: 500
+          description: Raio de acesso em metros (1 a 500)
         isActive:
           type: boolean
         createdAt:
