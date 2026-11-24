@@ -6,15 +6,15 @@
 
 Sistema integrado de baixo custo para controle de acesso em edifícios, com arquitetura prevista de terminal ESP32 (QR rotativo + NFC), app Flutter e backend Node/TypeScript por REST e MQTT. Este monorepo reúne backend, mobile, firmware, infraestrutura e documentação do projeto.
 
-## Estado atual — 11/11/2026
+## Estado atual — 24/11/2026 (entrega final)
 
-- **Backend:** login JWT/RBAC, usuários, autorizações, QR assinado de 25 s, decisão de acesso, histórico, outbox e processamento MQTT implementados. Entraram o perfil editável (só nome, `PATCH /me`), a listagem autenticada de locais ativos e o cadastro de local por ADMIN (`GET`/`POST /locations`, raio de 1–100 m). A suíte tem **433 testes aprovados e 40 pulados** (os que exigem banco configurado). A API de produção roda no commit `a0625d7` com `database: ok`.
-- **App:** as **12 telas do Figma** (claro/escuro) estão implementadas — entrar, minhas autorizações, detalhe, escanear QR, liberado, negado, perfil, locais, novo local, vazio, carregando e erro —, além do shell com abas **Autorizações/Histórico/Perfil**. As telas de administração de autorizações (US-30) e de usuários + histórico (US-31) não têm frame no Figma e seguem o design system. A Home antiga foi removida; as rotas novas são `/scan`, `/locais`, `/admin/autorizacoes`, `/admin/usuarios` e `/autorizacoes/:id`. São **640 testes** de Flutter, e o app foi executado em aparelho físico (Motorola g86 5G, Android 15) com APK debug e `adb reverse` — ver [`us-29-aparelho.md`](docs/entrega/evidencias/us-29-aparelho.md).
-- **Terminal:** o NFC RC522 foi integrado (US-23, #67), com leitura, publicação MQTT e feedback de decisão; a evidência física inicial existe, mas o servo estava desabilitado nesse perfil. Servo/cancela física continua **não implementada**. GPS e heartbeat (US-24) e a resiliência offline (US-25) seguem pendentes. O TLS do broker foi validado no ESP32 contra o EMQX (DT-06).
-- **Operação:** a API pública respondeu em 11/11 com `version: a0625d7` e `database: ok`. O worker `abp4-mqtt-worker` está **LIVE no Render**, com `mqtt conectado` no EMQX Cloud (TLS 8883) e `/healthz` ok; Neon e EMQX Cloud completam a infraestrutura. `QR_TOKEN_SECRET` e `JWT_SECRET` foram rotacionados em 11/11, sem valores versionados. A continuidade do serviço não foi medida — ver [`us-37.md`](docs/entrega/evidencias/us-37.md).
-- **Trello:** US-28, US-30, US-31 e US-39 estão em **Concluído**, com comentário de evidência. A contagem viva do board deve ser lida no Trello; permanecem ressalvas de aceite em US-22 (demonstração visual) e no fluxo físico completo.
+- **Backend:** login JWT/RBAC, usuários, autorizações, locais, QR assinado de 25 s, prova HCE, decisão de acesso, histórico, outbox e processamento MQTT implementados. A suíte teve **450 testes aprovados** no merge do fluxo HCE; o CI mantém lint, typecheck, testes, build e E2E. A API de produção responde com `database: ok` e libera a origem exata da demo web no CORS. A revisão de segurança está no PR #76, em revisão por pares.
+- **App:** as **12 telas do Figma** (claro/escuro), o shell com abas e as telas de administração estão implementadas. O scanner lê o QR e envia o pedido; o acesso por NFC usa HCE com prova efêmera. A localização passou a ser buscada na abertura do app, não só na leitura, mantendo o limite de 10 s. São **664 testes** de Flutter e análise estática limpa; a execução em aparelho usou APK debug (Motorola g86 5G, Android 15).
+- **Terminal:** o QR numérico de 41 dígitos é desenhado inteiro no OLED, com status no LCD. O RC522 lê tag física e prova HCE; o servo posicional, LEDs e buzzer respondem à decisão. O heartbeat/LWT está no firmware da `main` (US-24), pendente de confirmação no ESP32. O GPS do terminal ficou fora do escopo porque o módulo NEO-6M não estava disponível; o terminal não publica coordenada.
+- **Operação:** API na Vercel, worker `abp4-mqtt-worker` no Render, PostgreSQL no Neon e broker EMQX Cloud com TLS; `/health` e `/healthz` responderam ok em 24/11. A demo web está em [abp4-demo-web.vercel.app](https://abp4-demo-web.vercel.app). O consumo elétrico não foi medido; a DT-22 foi encerrada por escopo, com orçamento e procedimento documentados.
+- **Pendências declaradas:** US-25 (fila offline do firmware) está bloqueada; US-24 aguarda confirmação no hardware; US-33 aguarda revisão por pares; a abertura de uma cancela real não foi demonstrada. A matriz de requisitos aponta evidência ou lacuna para cada item.
 
-Conferência dos cards, evidências, testes e pendências em [`docs/entrega/auditoria-estado-atual.md`](docs/entrega/auditoria-estado-atual.md), com o retrato do fechamento em [`docs/entrega/review-2.md`](docs/entrega/review-2.md). Código integrado, simulação e operação real são tratados separadamente; o fluxo app → terminal real ainda não foi demonstrado, e a abertura física da cancela não está implementada.
+A entrega final está em [`docs/entrega/review-3.md`](docs/entrega/review-3.md), com o relatório em [`docs/entrega/relatorio/relatorio-abnt.pdf`](docs/entrega/relatorio/relatorio-abnt.pdf), as mídias em [`docs/entrega/midias/`](docs/entrega/midias/) e o roteiro em [`docs/entrega/apresentacao/roteiro-apresentacao.md`](docs/entrega/apresentacao/roteiro-apresentacao.md).
 
 ## Arquitetura
 
@@ -86,7 +86,12 @@ Passo a passo de ambiente, infraestrutura e execução em [`docs/guides/como-rod
 - [`docs/scrum/README.md`](docs/scrum/README.md) — como o time aplica Scrum (backlog, DoD, sprints e templates).
 - [`docs/entrega/review-1.md`](docs/entrega/review-1.md) — documento de entrega da Review 1 (Sprint 1).
 - [`docs/entrega/review-2.md`](docs/entrega/review-2.md) — documento de entrega da Review 2 (Sprint 2), com o estado de 11/11.
+- [`docs/entrega/review-3.md`](docs/entrega/review-3.md) — documento de entrega final (Review 3), com o estado de 24/11.
+- [`docs/entrega/relatorio/relatorio-abnt.pdf`](docs/entrega/relatorio/relatorio-abnt.pdf) — relatório final em ABNT (fonte em Markdown ao lado).
+- [`docs/entrega/midias/README.md`](docs/entrega/midias/README.md) — diagramas, capturas da demo web e índice de mídias para slides.
+- [`docs/entrega/apresentacao/roteiro-apresentacao.md`](docs/entrega/apresentacao/roteiro-apresentacao.md) — roteiro cronometrado e divisão de fala.
 - [`docs/scrum/sprints/sprint-2.md`](docs/scrum/sprints/sprint-2.md) — fechamento da Sprint 2 · [review](docs/scrum/sprints/sprint-2-review.md) · [retro](docs/scrum/sprints/sprint-2-retro.md).
+- [`docs/scrum/sprints/sprint-3.md`](docs/scrum/sprints/sprint-3.md) — fechamento da Sprint 3 · [review](docs/scrum/sprints/sprint-3-review.md) · [retro](docs/scrum/sprints/sprint-3-retro.md).
 - [`docs/entrega/README.md`](docs/entrega/README.md) — índice das evidências por card (`docs/entrega/evidencias/`).
 - [`docs/entrega/matriz-requisitos.md`](docs/entrega/matriz-requisitos.md) — matriz do edital (RF, RNF e RP) com status e lacunas.
 - [`docs/architecture/visao-geral.md`](docs/architecture/visao-geral.md) — arquitetura, fluxos de acesso e matriz de transporte.
