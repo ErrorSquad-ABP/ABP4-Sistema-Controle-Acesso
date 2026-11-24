@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/feedback_banner.dart';
+import '../../core/widgets/web_demo_notice.dart';
 import 'auth_contract.dart';
 import 'session_controller.dart';
 
@@ -200,6 +202,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           'Entre para ver suas liberações',
                           style: text.bodyMedium,
                         ),
+                        if (kIsWeb) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          const WebDemoNotice(),
+                        ],
                         const SizedBox(height: 40),
                         AutofillGroup(
                           child: Form(

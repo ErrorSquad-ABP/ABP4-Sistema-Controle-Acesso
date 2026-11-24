@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:controle_acesso/app.dart';
+import 'package:controle_acesso/core/theme/app_theme.dart';
 import 'package:controle_acesso/features/authorizations/authorization_contract.dart';
 import 'package:controle_acesso/features/authorizations/http_authorization_gateway.dart';
 import 'package:controle_acesso/features/authorizations/authorizations_page.dart';
@@ -21,7 +22,11 @@ void main() {
     gateway = FakeAuthorizationGateway();
   });
 
-  Future<void> pumpApp(WidgetTester tester, {bool settle = true}) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    bool settle = true,
+    bool web = false,
+  }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -30,7 +35,12 @@ void main() {
           locationGatewayProvider.overrideWithValue(FakeLocationGateway()),
           qrScannerGatewayProvider.overrideWithValue(FakeQrScannerGateway()),
         ],
-        child: const App(),
+        child: web
+            ? MaterialApp(
+                theme: AppTheme.light(),
+                home: const AuthorizationsPage(isWeb: true),
+              )
+            : const App(),
       ),
     );
     if (settle) {
@@ -43,6 +53,13 @@ void main() {
 
   Finder filterOption(String label) => find.text(label).first;
   Finder navDestination(String label) => find.text(label).last;
+
+  testWidgets('a ação de NFC não aparece no navegador', (tester) async {
+    await pumpApp(tester, web: true);
+
+    expect(find.text('Acesso por NFC'), findsNothing);
+    expect(find.text('Escanear QR Code'), findsOneWidget);
+  });
 
   testWidgets('abre na tela de autorizações com a ação e as três abas', (
     tester,

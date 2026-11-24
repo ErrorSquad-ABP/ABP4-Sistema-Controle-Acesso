@@ -515,6 +515,17 @@ void main() {
       expect(sessionRedirect(loggedIn, AppRoutes.scan), isNull);
     });
   });
+
+  group('webRedirect', () {
+    test('a tela de NFC não abre no navegador', () {
+      expect(webRedirect(AppRoutes.nfc, web: true), AppRoutes.home);
+      expect(webRedirect(AppRoutes.scan, web: true), isNull);
+    });
+
+    test('fora do navegador nada muda', () {
+      expect(webRedirect(AppRoutes.nfc, web: false), isNull);
+    });
+  });
 }
 
 /// Recusa o token antes de qualquer `await`: a conferência não pode correr

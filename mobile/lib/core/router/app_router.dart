@@ -57,6 +57,11 @@ String? sessionRedirect(AsyncValue<SessionState> session, String location) {
   return null;
 }
 
+/// Rotas que só existem fora do navegador (HCE depende de plugin Android).
+@visibleForTesting
+String? webRedirect(String location, {bool web = kIsWeb}) =>
+    web && location == AppRoutes.nfc ? AppRoutes.home : null;
+
 /// Router unico do app. Nao observa a sessao com `watch` (recriaria o
 /// router): repassa as mudancas ao `refreshListenable`, que reavalia o
 /// redirect.
@@ -67,8 +72,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
     initialLocation: AppRoutes.home,
     refreshListenable: session,
-    redirect: (context, state) =>
-        sessionRedirect(session.value, state.matchedLocation),
+    redirect: (context, state) {
+      final sessionTarget = sessionRedirect(
+        session.value,
+        state.matchedLocation,
+      );
+      if (sessionTarget != null) return sessionTarget;
+      return webRedirect(state.matchedLocation);
+    },
     routes: [
       GoRoute(
         path: AppRoutes.loading,
