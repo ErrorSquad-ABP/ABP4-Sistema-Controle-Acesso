@@ -165,22 +165,30 @@ class GeolocatorLocationGateway implements LocationGateway {
 
   @override
   Future<GeoCoordinate> currentPosition() async {
+    // Prédios com estrutura metálica geram multipath: exigir GPS de alta
+    // precisão pode nao fechar dentro do prazo. A precisao media usa Wi-Fi/
+    // celular e entrega uma posicao utilizavel para a geofence.
+    Position? lastKnown;
+    try {
+      lastKnown = await Geolocator.getLastKnownPosition();
+    } on Exception {
+      lastKnown = null;
+    }
+    if (lastKnown != null && _isFresh(lastKnown, const Duration(minutes: 2))) {
+      return _toCoordinate(lastKnown);
+    }
     try {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
+          accuracy: LocationAccuracy.medium,
           timeLimit: Duration(seconds: 10),
         ),
       );
-      // O contrato aceita só precisão finita e não negativa.
-      final accuracy = position.accuracy;
-      return GeoCoordinate(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        accuracyMeters: accuracy.isFinite && accuracy >= 0 ? accuracy : null,
-        measuredAt: position.timestamp,
-      );
+      return _toCoordinate(position);
     } on TimeoutException {
+      if (lastKnown != null && _isFresh(lastKnown, const Duration(minutes: 15))) {
+        return _toCoordinate(lastKnown);
+      }
       throw const LocationFailure(LocationFailureReason.timeout);
     } on PermissionDeniedException {
       throw const LocationFailure(LocationFailureReason.denied);
@@ -189,5 +197,21 @@ class GeolocatorLocationGateway implements LocationGateway {
     } on Exception {
       throw const LocationFailure(LocationFailureReason.unknown);
     }
+  }
+
+  bool _isFresh(Position position, Duration limit) {
+    final age = DateTime.now().difference(position.timestamp);
+    return !age.isNegative && age <= limit;
+  }
+
+  GeoCoordinate _toCoordinate(Position position) {
+    // O contrato aceita so precisao finita e nao negativa.
+    final accuracy = position.accuracy;
+    return GeoCoordinate(
+      latitude: position.latitude,
+      longitude: position.longitude,
+      accuracyMeters: accuracy.isFinite && accuracy >= 0 ? accuracy : null,
+      measuredAt: position.timestamp,
+    );
   }
 }
